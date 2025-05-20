@@ -13,6 +13,7 @@ import { AuthProvider } from "@/hooks/use-auth";
 
 // Admin pages
 import AdminDashboard from "@/pages/admin/dashboard";
+import AdminDashboardFlowbite from "@/pages/admin/dashboard-flowbite";
 
 // Customer pages
 import CustomerHome from "@/pages/customer/home";
@@ -25,6 +26,7 @@ function Router() {
 
       {/* Admin routes */}
       <ProtectedRoute path="/admin" component={AdminDashboard} />
+      <ProtectedRoute path="/admin/dashboard-flowbite" component={AdminDashboardFlowbite} />
 
       {/* Customer routes */}
       <ProtectedRoute path="/" component={CustomerHome} />
