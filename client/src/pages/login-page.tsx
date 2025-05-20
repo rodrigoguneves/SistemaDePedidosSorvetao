@@ -40,7 +40,7 @@ export default function LoginPage() {
     setError(null);
     // Convertendo para o formato esperado pela API
     const loginData = {
-      username: data.email, // A API espera 'username' mas estamos usando o email
+      email: data.email,
       password: data.password
     };
     
@@ -57,7 +57,7 @@ export default function LoginPage() {
         <div className={styles.loginContent}>
           <div className={styles.logoContainer}>
             <img 
-              src="/attached_assets/logo%20reduzida%20menor.png"
+              src="/attached_assets/logo reduzida menor.png"
               className={styles.logo} 
               alt="Sorvetão Logo"
             />
