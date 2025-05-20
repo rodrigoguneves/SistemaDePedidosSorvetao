@@ -57,7 +57,7 @@ export default function LoginPage() {
         <div className={styles.loginContent}>
           <div className={styles.logoContainer}>
             <img 
-              src="/attached_assets/logo reduzida menor.png"
+              src="/attached_assets/logo.png"
               className={styles.logo} 
               alt="Sorvetão Logo"
             />
