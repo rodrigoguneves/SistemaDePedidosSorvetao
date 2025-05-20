@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { ProductCategory, Product, insertProductSchema, insertProductCategorySchema } from "@shared/schema";
 
-export default function ProductsPage() {
+export default function ProdutosPage() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("products");
   const [showAddProductModal, setShowAddProductModal] = useState(false);
@@ -377,7 +377,7 @@ export default function ProductsPage() {
             </div>
           </Link>
           
-          <Link href="/admin/products">
+          <Link href="/admin/produtos">
             <div className="flex flex-col items-center cursor-pointer">
               <div className="w-10 h-10 rounded-full bg-pink-500 flex items-center justify-center">
                 <Package2 className="w-5 h-5 text-white" />
@@ -424,9 +424,9 @@ export default function ProductsPage() {
         </div>
         
         <div className="flex items-center gap-2">
-          <span className="text-sm">João Administrador</span>
+          <span className="text-sm">Admin</span>
           <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center">
-            <img src="https://randomuser.me/api/portraits/men/1.jpg" alt="Usuário" className="w-8 h-8 rounded-full" />
+            <span className="text-white font-medium">A</span>
           </div>
         </div>
       </header>
@@ -438,14 +438,13 @@ export default function ProductsPage() {
             {activeTab === "products" ? "Produtos" : "Categorias"}
           </h1>
           
-          <Button
-            color="failure"
-            pill
+          <button
+            className="bg-pink-500 hover:bg-pink-600 text-white font-medium px-4 py-2 rounded-full flex items-center"
             onClick={activeTab === "products" ? handleAddProduct : handleAddCategory}
           >
             <Plus className="mr-2 h-4 w-4" />
             {activeTab === "products" ? "Novo Produto" : "Nova Categoria"}
-          </Button>
+          </button>
         </div>
         
         {/* Conteúdo principal */}
@@ -484,19 +483,19 @@ export default function ProductsPage() {
                   <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                     <Search className="h-4 w-4 text-gray-500" />
                   </div>
-                  <TextInput
+                  <input
                     type="search"
                     placeholder="Pesquisar Produto..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 w-full p-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-pink-500"
                   />
                 </div>
                 
-                <Select
+                <select
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-60"
+                  className="w-60 p-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-pink-500"
                 >
                   <option value="all">Todas as Categorias</option>
                   {categories.map((category: ProductCategory) => (
@@ -504,7 +503,7 @@ export default function ProductsPage() {
                       {category.name}
                     </option>
                   ))}
-                </Select>
+                </select>
               </div>
               
               {/* Exibição de produtos */}
@@ -524,45 +523,47 @@ export default function ProductsPage() {
                         {categoryName}
                       </div>
                       
-                      <Table>
-                        <Table.Head className="bg-pink-50">
-                          <Table.HeadCell className="text-pink-500">Produto</Table.HeadCell>
-                          <Table.HeadCell className="text-pink-500">Categoria</Table.HeadCell>
-                          <Table.HeadCell className="text-pink-500">Unidade</Table.HeadCell>
-                          <Table.HeadCell className="text-pink-500">Preço</Table.HeadCell>
-                          <Table.HeadCell className="text-pink-500">Ações</Table.HeadCell>
-                        </Table.Head>
-                        
-                        <Table.Body>
-                          {groupedProducts[categoryName].map((product: Product) => (
-                            <Table.Row key={product.id}>
-                              <Table.Cell>{product.name}</Table.Cell>
-                              <Table.Cell>{getCategoryName(product.category_id)}</Table.Cell>
-                              <Table.Cell>{product.unit_of_sale}</Table.Cell>
-                              <Table.Cell>{formatCurrency(product.price)}</Table.Cell>
-                              <Table.Cell>
-                                <div className="flex space-x-2">
-                                  <Button
-                                    size="xs"
-                                    color="light"
-                                    onClick={() => handleEditProduct(product)}
-                                  >
-                                    <PencilIcon className="h-4 w-4 text-pink-500" />
-                                  </Button>
-                                  
-                                  <Button
-                                    size="xs"
-                                    color="light"
-                                    onClick={() => handleDeleteProduct(product)}
-                                  >
-                                    <Trash2 className="h-4 w-4 text-pink-500" />
-                                  </Button>
-                                </div>
-                              </Table.Cell>
-                            </Table.Row>
-                          ))}
-                        </Table.Body>
-                      </Table>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                          <thead className="bg-pink-50 text-pink-500">
+                            <tr>
+                              <th className="p-3">Produto</th>
+                              <th className="p-3">Categoria</th>
+                              <th className="p-3">Unidade</th>
+                              <th className="p-3">Preço</th>
+                              <th className="p-3">Ações</th>
+                            </tr>
+                          </thead>
+                          
+                          <tbody>
+                            {groupedProducts[categoryName].map((product: Product) => (
+                              <tr key={product.id} className="border-b">
+                                <td className="p-3">{product.name}</td>
+                                <td className="p-3">{getCategoryName(product.category_id)}</td>
+                                <td className="p-3">{product.unit_of_sale}</td>
+                                <td className="p-3">{formatCurrency(product.price)}</td>
+                                <td className="p-3">
+                                  <div className="flex space-x-2">
+                                    <button
+                                      className="p-1 text-pink-500 hover:bg-pink-50 rounded-full"
+                                      onClick={() => handleEditProduct(product)}
+                                    >
+                                      <Pencil className="h-4 w-4" />
+                                    </button>
+                                    
+                                    <button
+                                      className="p-1 text-pink-500 hover:bg-pink-50 rounded-full"
+                                      onClick={() => handleDeleteProduct(product)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -599,21 +600,19 @@ export default function ProductsPage() {
                         </div>
                         
                         <div className="flex gap-1">
-                          <Button
-                            size="xs"
-                            color="light"
+                          <button
+                            className="p-1 text-pink-500 hover:bg-pink-50 rounded-full"
                             onClick={() => handleEditCategory(category)}
                           >
-                            <PencilIcon className="h-4 w-4 text-pink-500" />
-                          </Button>
+                            <Pencil className="h-4 w-4" />
+                          </button>
                           
-                          <Button
-                            size="xs"
-                            color="light"
+                          <button
+                            className="p-1 text-pink-500 hover:bg-pink-50 rounded-full"
                             onClick={() => handleDeleteCategory(category)}
                           >
-                            <Trash2 className="h-4 w-4 text-pink-500" />
-                          </Button>
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -625,211 +624,224 @@ export default function ProductsPage() {
         </div>
       </main>
       
-      {/* Modal para adicionar/editar produto */}
-      <Modal
-        show={showAddProductModal}
-        onClose={() => setShowAddProductModal(false)}
-        size="lg"
-      >
-        <Modal.Header>
-          <div className="flex items-center">
-            <div className="bg-pink-100 p-3 rounded-full mr-3">
-              <Plus className="h-5 w-5 text-pink-500" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold">
-                {editingProduct ? "Editar Produto" : "Adicionar Novo Produto"}
-              </h3>
-              <p className="text-sm text-gray-500">
-                {editingProduct ? "Editar os detalhes do produto" : "Criar novo Produto"}
-              </p>
-            </div>
-          </div>
-        </Modal.Header>
-        
-        <Modal.Body>
-          <form onSubmit={productForm.handleSubmit(onSubmitProduct)}>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="name" className="block mb-1 font-medium">
-                  Nome do Produto<span className="text-pink-500">*</span>
-                </label>
-                <TextInput
-                  id="name"
-                  placeholder="ex: Picolé de Fruta Sabor Abacaxi - Caixa Completa 24un"
-                  {...productForm.register("name")}
-                />
-                {productForm.formState.errors.name && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {productForm.formState.errors.name.message as string}
-                  </p>
-                )}
+      {/* Modal de adicionar/editar produto */}
+      {showAddProductModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-lg max-w-lg w-full">
+            <div className="flex items-center border-b p-4">
+              <div className="bg-pink-100 p-3 rounded-full mr-3">
+                <Plus className="h-5 w-5 text-pink-500" />
               </div>
-              
               <div>
-                <label htmlFor="category_id" className="block mb-1 font-medium">
-                  Categoria<span className="text-pink-500">*</span>
-                </label>
-                <Select
-                  id="category_id"
-                  {...productForm.register("category_id", { valueAsNumber: true })}
-                >
-                  <option value="">Selecionar Categoria</option>
-                  {categories.map((category: ProductCategory) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </Select>
-                {productForm.formState.errors.category_id && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {productForm.formState.errors.category_id.message as string}
-                  </p>
-                )}
-              </div>
-              
-              <div>
-                <label htmlFor="description" className="block mb-1 font-medium">
-                  Descrição
-                </label>
-                <Textarea
-                  id="description"
-                  placeholder="Descrição opcional do produto..."
-                  rows={3}
-                  {...productForm.register("description")}
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="price" className="block mb-1 font-medium">
-                  Preço<span className="text-pink-500">*</span>
-                </label>
-                <TextInput
-                  id="price"
-                  placeholder="R$ 0,00"
-                  {...productForm.register("price")}
-                />
-                {productForm.formState.errors.price && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {productForm.formState.errors.price.message as string}
-                  </p>
-                )}
-              </div>
-              
-              <div>
-                <label htmlFor="unit_of_sale" className="block mb-1 font-medium">
-                  Unidade de Venda<span className="text-pink-500">*</span>
-                </label>
-                <TextInput
-                  id="unit_of_sale"
-                  placeholder="ex: Caixa de 24un, caixa de 12un, kg, Unidade"
-                  {...productForm.register("unit_of_sale")}
-                />
-                {productForm.formState.errors.unit_of_sale && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {productForm.formState.errors.unit_of_sale.message as string}
-                  </p>
-                )}
+                <h3 className="text-xl font-bold">
+                  {editingProduct ? "Editar Produto" : "Adicionar Novo Produto"}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {editingProduct ? "Editar os detalhes do produto" : "Criar novo Produto"}
+                </p>
               </div>
             </div>
-          </form>
-        </Modal.Body>
-        
-        <Modal.Footer>
-          <div className="flex justify-end gap-2 w-full">
-            <Button
-              color="gray"
-              onClick={() => setShowAddProductModal(false)}
-            >
-              Cancelar
-            </Button>
             
-            <Button
-              color="failure"
-              onClick={productForm.handleSubmit(onSubmitProduct)}
-              isProcessing={createProductMutation.isPending || updateProductMutation.isPending}
-            >
-              {editingProduct ? "Atualizar Produto" : "Criar Produto"}
-            </Button>
+            <div className="p-4">
+              <form id="productForm" onSubmit={productForm.handleSubmit(onSubmitProduct)}>
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="name" className="block mb-1 font-medium">
+                      Nome do Produto<span className="text-pink-500">*</span>
+                    </label>
+                    <input
+                      id="name"
+                      placeholder="ex: Picolé de Fruta Sabor Abacaxi - Caixa Completa 24un"
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-pink-500"
+                      {...productForm.register("name")}
+                    />
+                    {productForm.formState.errors.name && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {productForm.formState.errors.name.message as string}
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="category_id" className="block mb-1 font-medium">
+                      Categoria<span className="text-pink-500">*</span>
+                    </label>
+                    <select
+                      id="category_id"
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-pink-500"
+                      {...productForm.register("category_id", { valueAsNumber: true })}
+                    >
+                      <option value="">Selecionar Categoria</option>
+                      {categories.map((category: ProductCategory) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                    {productForm.formState.errors.category_id && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {productForm.formState.errors.category_id.message as string}
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="description" className="block mb-1 font-medium">
+                      Descrição
+                    </label>
+                    <textarea
+                      id="description"
+                      placeholder="Descrição opcional do produto..."
+                      rows={3}
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-pink-500"
+                      {...productForm.register("description")}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="price" className="block mb-1 font-medium">
+                      Preço<span className="text-pink-500">*</span>
+                    </label>
+                    <input
+                      id="price"
+                      placeholder="R$ 0,00"
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-pink-500"
+                      {...productForm.register("price")}
+                    />
+                    {productForm.formState.errors.price && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {productForm.formState.errors.price.message as string}
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="unit_of_sale" className="block mb-1 font-medium">
+                      Unidade de Venda<span className="text-pink-500">*</span>
+                    </label>
+                    <input
+                      id="unit_of_sale"
+                      placeholder="ex: Caixa de 24un, caixa de 12un, kg, Unidade"
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-pink-500"
+                      {...productForm.register("unit_of_sale")}
+                    />
+                    {productForm.formState.errors.unit_of_sale && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {productForm.formState.errors.unit_of_sale.message as string}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </form>
+            </div>
+            
+            <div className="flex justify-end gap-2 p-4 border-t">
+              <button
+                className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg"
+                onClick={() => setShowAddProductModal(false)}
+              >
+                Cancelar
+              </button>
+              
+              <button
+                className="px-4 py-2 text-white bg-pink-500 hover:bg-pink-600 rounded-lg flex items-center"
+                onClick={productForm.handleSubmit(onSubmitProduct)}
+                disabled={createProductMutation.isPending || updateProductMutation.isPending}
+              >
+                {createProductMutation.isPending || updateProductMutation.isPending ? (
+                  <>
+                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                    Processando...
+                  </>
+                ) : (
+                  <>{editingProduct ? "Atualizar Produto" : "Criar Produto"}</>
+                )}
+              </button>
+            </div>
           </div>
-        </Modal.Footer>
-      </Modal>
+        </div>
+      )}
       
-      {/* Modal para adicionar/editar categoria */}
-      <Modal
-        show={showAddCategoryModal}
-        onClose={() => setShowAddCategoryModal(false)}
-        size="lg"
-      >
-        <Modal.Header>
-          <div className="flex items-center">
-            <div className="bg-pink-100 p-3 rounded-full mr-3">
-              <Plus className="h-5 w-5 text-pink-500" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold">
-                {editingCategory ? "Editar Categoria" : "Adicionar Nova Categoria"}
-              </h3>
-              <p className="text-sm text-gray-500">
-                {editingCategory ? "Atualizar detalhes da categoria" : "Create New Product Category"}
-              </p>
-            </div>
-          </div>
-        </Modal.Header>
-        
-        <Modal.Body>
-          <form onSubmit={categoryForm.handleSubmit(onSubmitCategory)}>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="name" className="block mb-1 font-medium">
-                  Nome da Categoria<span className="text-pink-500">*</span>
-                </label>
-                <TextInput
-                  id="name"
-                  placeholder="e.g., Picolés Premium, Embalagens"
-                  {...categoryForm.register("name")}
-                />
-                {categoryForm.formState.errors.name && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {categoryForm.formState.errors.name.message as string}
-                  </p>
-                )}
+      {/* Modal de adicionar/editar categoria */}
+      {showAddCategoryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-lg max-w-lg w-full">
+            <div className="flex items-center border-b p-4">
+              <div className="bg-pink-100 p-3 rounded-full mr-3">
+                <Plus className="h-5 w-5 text-pink-500" />
               </div>
-              
               <div>
-                <label htmlFor="description" className="block mb-1 font-medium">
-                  Descrição
-                </label>
-                <Textarea
-                  id="description"
-                  placeholder="Descrição opcional da categoria..."
-                  rows={3}
-                  {...categoryForm.register("description")}
-                />
+                <h3 className="text-xl font-bold">
+                  {editingCategory ? "Editar Categoria" : "Adicionar Nova Categoria"}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {editingCategory ? "Atualizar detalhes da categoria" : "Criar Nova Categoria de Produto"}
+                </p>
               </div>
             </div>
-          </form>
-        </Modal.Body>
-        
-        <Modal.Footer>
-          <div className="flex justify-end gap-2 w-full">
-            <Button
-              color="gray"
-              onClick={() => setShowAddCategoryModal(false)}
-            >
-              Cancelar
-            </Button>
             
-            <Button
-              color="failure"
-              onClick={categoryForm.handleSubmit(onSubmitCategory)}
-              isProcessing={createCategoryMutation.isPending || updateCategoryMutation.isPending}
-            >
-              {editingCategory ? "Atualizar Categoria" : "Criar Categoria"}
-            </Button>
+            <div className="p-4">
+              <form id="categoryForm" onSubmit={categoryForm.handleSubmit(onSubmitCategory)}>
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="name" className="block mb-1 font-medium">
+                      Nome da Categoria<span className="text-pink-500">*</span>
+                    </label>
+                    <input
+                      id="name"
+                      placeholder="ex: Picolés Premium, Embalagens"
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-pink-500"
+                      {...categoryForm.register("name")}
+                    />
+                    {categoryForm.formState.errors.name && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {categoryForm.formState.errors.name.message as string}
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="description" className="block mb-1 font-medium">
+                      Descrição
+                    </label>
+                    <textarea
+                      id="description"
+                      placeholder="Descrição opcional da categoria..."
+                      rows={3}
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-pink-500"
+                      {...categoryForm.register("description")}
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+            
+            <div className="flex justify-end gap-2 p-4 border-t">
+              <button
+                className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg"
+                onClick={() => setShowAddCategoryModal(false)}
+              >
+                Cancelar
+              </button>
+              
+              <button
+                className="px-4 py-2 text-white bg-pink-500 hover:bg-pink-600 rounded-lg flex items-center"
+                onClick={categoryForm.handleSubmit(onSubmitCategory)}
+                disabled={createCategoryMutation.isPending || updateCategoryMutation.isPending}
+              >
+                {createCategoryMutation.isPending || updateCategoryMutation.isPending ? (
+                  <>
+                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                    Processando...
+                  </>
+                ) : (
+                  <>{editingCategory ? "Atualizar Categoria" : "Criar Categoria"}</>
+                )}
+              </button>
+            </div>
           </div>
-        </Modal.Footer>
-      </Modal>
+        </div>
+      )}
     </div>
   );
 }

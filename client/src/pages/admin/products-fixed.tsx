@@ -20,6 +20,17 @@ import {
 } from "lucide-react";
 import { ProductCategory, Product, insertProductSchema, insertProductCategorySchema } from "@shared/schema";
 
+// Importando componentes do Flowbite
+import { 
+  Button, 
+  TextInput, 
+  Textarea, 
+  Select, 
+  Tabs, 
+  Table, 
+  Modal
+} from "flowbite-react";
+
 export default function ProductsPage() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("products");
@@ -424,9 +435,9 @@ export default function ProductsPage() {
         </div>
         
         <div className="flex items-center gap-2">
-          <span className="text-sm">João Administrador</span>
+          <span className="text-sm">Admin</span>
           <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center">
-            <img src="https://randomuser.me/api/portraits/men/1.jpg" alt="Usuário" className="w-8 h-8 rounded-full" />
+            <span className="text-white font-medium">A</span>
           </div>
         </div>
       </header>
@@ -440,7 +451,6 @@ export default function ProductsPage() {
           
           <Button
             color="failure"
-            pill
             onClick={activeTab === "products" ? handleAddProduct : handleAddCategory}
           >
             <Plus className="mr-2 h-4 w-4" />
@@ -547,7 +557,7 @@ export default function ProductsPage() {
                                     color="light"
                                     onClick={() => handleEditProduct(product)}
                                   >
-                                    <PencilIcon className="h-4 w-4 text-pink-500" />
+                                    <Pencil className="h-4 w-4 text-pink-500" />
                                   </Button>
                                   
                                   <Button
@@ -604,7 +614,7 @@ export default function ProductsPage() {
                             color="light"
                             onClick={() => handleEditCategory(category)}
                           >
-                            <PencilIcon className="h-4 w-4 text-pink-500" />
+                            <Pencil className="h-4 w-4 text-pink-500" />
                           </Button>
                           
                           <Button
@@ -625,211 +635,215 @@ export default function ProductsPage() {
         </div>
       </main>
       
-      {/* Modal para adicionar/editar produto */}
-      <Modal
-        show={showAddProductModal}
-        onClose={() => setShowAddProductModal(false)}
-        size="lg"
-      >
-        <Modal.Header>
-          <div className="flex items-center">
-            <div className="bg-pink-100 p-3 rounded-full mr-3">
-              <Plus className="h-5 w-5 text-pink-500" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold">
-                {editingProduct ? "Editar Produto" : "Adicionar Novo Produto"}
-              </h3>
-              <p className="text-sm text-gray-500">
-                {editingProduct ? "Editar os detalhes do produto" : "Criar novo Produto"}
-              </p>
-            </div>
-          </div>
-        </Modal.Header>
-        
-        <Modal.Body>
-          <form onSubmit={productForm.handleSubmit(onSubmitProduct)}>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="name" className="block mb-1 font-medium">
-                  Nome do Produto<span className="text-pink-500">*</span>
-                </label>
-                <TextInput
-                  id="name"
-                  placeholder="ex: Picolé de Fruta Sabor Abacaxi - Caixa Completa 24un"
-                  {...productForm.register("name")}
-                />
-                {productForm.formState.errors.name && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {productForm.formState.errors.name.message as string}
-                  </p>
-                )}
+      {showAddProductModal && (
+        <Modal
+          show={showAddProductModal}
+          onClose={() => setShowAddProductModal(false)}
+          size="lg"
+        >
+          <Modal.Header>
+            <div className="flex items-center">
+              <div className="bg-pink-100 p-3 rounded-full mr-3">
+                <Plus className="h-5 w-5 text-pink-500" />
               </div>
-              
               <div>
-                <label htmlFor="category_id" className="block mb-1 font-medium">
-                  Categoria<span className="text-pink-500">*</span>
-                </label>
-                <Select
-                  id="category_id"
-                  {...productForm.register("category_id", { valueAsNumber: true })}
-                >
-                  <option value="">Selecionar Categoria</option>
-                  {categories.map((category: ProductCategory) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </Select>
-                {productForm.formState.errors.category_id && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {productForm.formState.errors.category_id.message as string}
-                  </p>
-                )}
-              </div>
-              
-              <div>
-                <label htmlFor="description" className="block mb-1 font-medium">
-                  Descrição
-                </label>
-                <Textarea
-                  id="description"
-                  placeholder="Descrição opcional do produto..."
-                  rows={3}
-                  {...productForm.register("description")}
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="price" className="block mb-1 font-medium">
-                  Preço<span className="text-pink-500">*</span>
-                </label>
-                <TextInput
-                  id="price"
-                  placeholder="R$ 0,00"
-                  {...productForm.register("price")}
-                />
-                {productForm.formState.errors.price && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {productForm.formState.errors.price.message as string}
-                  </p>
-                )}
-              </div>
-              
-              <div>
-                <label htmlFor="unit_of_sale" className="block mb-1 font-medium">
-                  Unidade de Venda<span className="text-pink-500">*</span>
-                </label>
-                <TextInput
-                  id="unit_of_sale"
-                  placeholder="ex: Caixa de 24un, caixa de 12un, kg, Unidade"
-                  {...productForm.register("unit_of_sale")}
-                />
-                {productForm.formState.errors.unit_of_sale && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {productForm.formState.errors.unit_of_sale.message as string}
-                  </p>
-                )}
+                <h3 className="text-xl font-bold">
+                  {editingProduct ? "Editar Produto" : "Adicionar Novo Produto"}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {editingProduct ? "Editar os detalhes do produto" : "Criar novo Produto"}
+                </p>
               </div>
             </div>
-          </form>
-        </Modal.Body>
-        
-        <Modal.Footer>
-          <div className="flex justify-end gap-2 w-full">
-            <Button
-              color="gray"
-              onClick={() => setShowAddProductModal(false)}
-            >
-              Cancelar
-            </Button>
-            
-            <Button
-              color="failure"
-              onClick={productForm.handleSubmit(onSubmitProduct)}
-              isProcessing={createProductMutation.isPending || updateProductMutation.isPending}
-            >
-              {editingProduct ? "Atualizar Produto" : "Criar Produto"}
-            </Button>
-          </div>
-        </Modal.Footer>
-      </Modal>
+          </Modal.Header>
+          
+          <Modal.Body>
+            <form id="productForm" onSubmit={productForm.handleSubmit(onSubmitProduct)}>
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="name" className="block mb-1 font-medium">
+                    Nome do Produto<span className="text-pink-500">*</span>
+                  </label>
+                  <TextInput
+                    id="name"
+                    placeholder="ex: Picolé de Fruta Sabor Abacaxi - Caixa Completa 24un"
+                    {...productForm.register("name")}
+                  />
+                  {productForm.formState.errors.name && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {productForm.formState.errors.name.message as string}
+                    </p>
+                  )}
+                </div>
+                
+                <div>
+                  <label htmlFor="category_id" className="block mb-1 font-medium">
+                    Categoria<span className="text-pink-500">*</span>
+                  </label>
+                  <Select
+                    id="category_id"
+                    {...productForm.register("category_id", { valueAsNumber: true })}
+                  >
+                    <option value="">Selecionar Categoria</option>
+                    {categories.map((category: ProductCategory) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </Select>
+                  {productForm.formState.errors.category_id && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {productForm.formState.errors.category_id.message as string}
+                    </p>
+                  )}
+                </div>
+                
+                <div>
+                  <label htmlFor="description" className="block mb-1 font-medium">
+                    Descrição
+                  </label>
+                  <Textarea
+                    id="description"
+                    placeholder="Descrição opcional do produto..."
+                    rows={3}
+                    {...productForm.register("description")}
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="price" className="block mb-1 font-medium">
+                    Preço<span className="text-pink-500">*</span>
+                  </label>
+                  <TextInput
+                    id="price"
+                    placeholder="R$ 0,00"
+                    {...productForm.register("price")}
+                  />
+                  {productForm.formState.errors.price && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {productForm.formState.errors.price.message as string}
+                    </p>
+                  )}
+                </div>
+                
+                <div>
+                  <label htmlFor="unit_of_sale" className="block mb-1 font-medium">
+                    Unidade de Venda<span className="text-pink-500">*</span>
+                  </label>
+                  <TextInput
+                    id="unit_of_sale"
+                    placeholder="ex: Caixa de 24un, caixa de 12un, kg, Unidade"
+                    {...productForm.register("unit_of_sale")}
+                  />
+                  {productForm.formState.errors.unit_of_sale && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {productForm.formState.errors.unit_of_sale.message as string}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </form>
+          </Modal.Body>
+          
+          <Modal.Footer>
+            <div className="flex justify-end gap-2 w-full">
+              <Button
+                color="gray"
+                onClick={() => setShowAddProductModal(false)}
+              >
+                Cancelar
+              </Button>
+              
+              <Button
+                color="failure"
+                type="submit"
+                form="productForm"
+                isProcessing={createProductMutation.isPending || updateProductMutation.isPending}
+              >
+                {editingProduct ? "Atualizar Produto" : "Criar Produto"}
+              </Button>
+            </div>
+          </Modal.Footer>
+        </Modal>
+      )}
       
-      {/* Modal para adicionar/editar categoria */}
-      <Modal
-        show={showAddCategoryModal}
-        onClose={() => setShowAddCategoryModal(false)}
-        size="lg"
-      >
-        <Modal.Header>
-          <div className="flex items-center">
-            <div className="bg-pink-100 p-3 rounded-full mr-3">
-              <Plus className="h-5 w-5 text-pink-500" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold">
-                {editingCategory ? "Editar Categoria" : "Adicionar Nova Categoria"}
-              </h3>
-              <p className="text-sm text-gray-500">
-                {editingCategory ? "Atualizar detalhes da categoria" : "Create New Product Category"}
-              </p>
-            </div>
-          </div>
-        </Modal.Header>
-        
-        <Modal.Body>
-          <form onSubmit={categoryForm.handleSubmit(onSubmitCategory)}>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="name" className="block mb-1 font-medium">
-                  Nome da Categoria<span className="text-pink-500">*</span>
-                </label>
-                <TextInput
-                  id="name"
-                  placeholder="e.g., Picolés Premium, Embalagens"
-                  {...categoryForm.register("name")}
-                />
-                {categoryForm.formState.errors.name && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {categoryForm.formState.errors.name.message as string}
-                  </p>
-                )}
+      {showAddCategoryModal && (
+        <Modal
+          show={showAddCategoryModal}
+          onClose={() => setShowAddCategoryModal(false)}
+          size="lg"
+        >
+          <Modal.Header>
+            <div className="flex items-center">
+              <div className="bg-pink-100 p-3 rounded-full mr-3">
+                <Plus className="h-5 w-5 text-pink-500" />
               </div>
+              <div>
+                <h3 className="text-xl font-bold">
+                  {editingCategory ? "Editar Categoria" : "Adicionar Nova Categoria"}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {editingCategory ? "Atualizar detalhes da categoria" : "Criar Nova Categoria de Produto"}
+                </p>
+              </div>
+            </div>
+          </Modal.Header>
+          
+          <Modal.Body>
+            <form id="categoryForm" onSubmit={categoryForm.handleSubmit(onSubmitCategory)}>
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="name" className="block mb-1 font-medium">
+                    Nome da Categoria<span className="text-pink-500">*</span>
+                  </label>
+                  <TextInput
+                    id="name"
+                    placeholder="ex: Picolés Premium, Embalagens"
+                    {...categoryForm.register("name")}
+                  />
+                  {categoryForm.formState.errors.name && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {categoryForm.formState.errors.name.message as string}
+                    </p>
+                  )}
+                </div>
+                
+                <div>
+                  <label htmlFor="description" className="block mb-1 font-medium">
+                    Descrição
+                  </label>
+                  <Textarea
+                    id="description"
+                    placeholder="Descrição opcional da categoria..."
+                    rows={3}
+                    {...categoryForm.register("description")}
+                  />
+                </div>
+              </div>
+            </form>
+          </Modal.Body>
+          
+          <Modal.Footer>
+            <div className="flex justify-end gap-2 w-full">
+              <Button
+                color="gray"
+                onClick={() => setShowAddCategoryModal(false)}
+              >
+                Cancelar
+              </Button>
               
-              <div>
-                <label htmlFor="description" className="block mb-1 font-medium">
-                  Descrição
-                </label>
-                <Textarea
-                  id="description"
-                  placeholder="Descrição opcional da categoria..."
-                  rows={3}
-                  {...categoryForm.register("description")}
-                />
-              </div>
+              <Button
+                color="failure"
+                type="submit"
+                form="categoryForm"
+                isProcessing={createCategoryMutation.isPending || updateCategoryMutation.isPending}
+              >
+                {editingCategory ? "Atualizar Categoria" : "Criar Categoria"}
+              </Button>
             </div>
-          </form>
-        </Modal.Body>
-        
-        <Modal.Footer>
-          <div className="flex justify-end gap-2 w-full">
-            <Button
-              color="gray"
-              onClick={() => setShowAddCategoryModal(false)}
-            >
-              Cancelar
-            </Button>
-            
-            <Button
-              color="failure"
-              onClick={categoryForm.handleSubmit(onSubmitCategory)}
-              isProcessing={createCategoryMutation.isPending || updateCategoryMutation.isPending}
-            >
-              {editingCategory ? "Atualizar Categoria" : "Criar Categoria"}
-            </Button>
-          </div>
-        </Modal.Footer>
-      </Modal>
+          </Modal.Footer>
+        </Modal>
+      )}
     </div>
   );
 }

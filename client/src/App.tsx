@@ -34,7 +34,7 @@ function Router() {
       {/* Admin routes */}
       <ProtectedRoute path="/admin" component={AdminDashboard} />
       <ProtectedRoute path="/admin/dashboard-flowbite" component={AdminDashboardFlowbite} />
-      <ProtectedRoute path="/admin/products" component={React.lazy(() => import("@/pages/admin/products"))} />
+      <ProtectedRoute path="/admin/products" component={React.lazy(() => import("@/pages/admin/produtos"))} />
 
       {/* Customer routes */}
       <ProtectedRoute path="/" component={CustomerHome} />
