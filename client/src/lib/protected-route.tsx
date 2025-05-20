@@ -2,15 +2,12 @@ import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 import { Redirect, Route } from "wouter";
 
-export function ProtectedRoute({
-  path,
-  component: Component,
-  requiredRole,
-}: {
+interface ProtectedRouteProps {
   path: string;
-  component: () => React.JSX.Element;
-  requiredRole?: 'admin' | 'manager' | 'customer';
-}) {
+  component: () => React.ReactNode;
+}
+
+export function ProtectedRoute({ path, component: Component }: ProtectedRouteProps) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
@@ -23,33 +20,9 @@ export function ProtectedRoute({
     );
   }
 
-  if (!user) {
-    return (
-      <Route path={path}>
-        <Redirect to="/auth" />
-      </Route>
-    );
-  }
-
-  if (requiredRole && user.role !== requiredRole) {
-    // For admins who try to access customer pages, redirect to admin dashboard
-    if (user.role === 'admin' || user.role === 'manager') {
-      return (
-        <Route path={path}>
-          <Redirect to="/admin" />
-        </Route>
-      );
-    }
-    
-    // For customers who try to access admin pages, redirect to customer dashboard
-    if (user.role === 'customer') {
-      return (
-        <Route path={path}>
-          <Redirect to="/" />
-        </Route>
-      );
-    }
-  }
-
-  return <Route path={path} component={Component} />;
+  return (
+    <Route path={path}>
+      {user ? <Component /> : <Redirect to="/auth" />}
+    </Route>
+  );
 }

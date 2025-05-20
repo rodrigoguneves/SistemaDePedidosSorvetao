@@ -4,49 +4,36 @@ import {
   useMutation,
   UseMutationResult,
 } from "@tanstack/react-query";
-import { User, InsertUser } from "@shared/schema";
+import { insertUserSchema, type User as SelectUser } from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useLocation } from "wouter";
+import { z } from "zod";
 
 type AuthContextType = {
-  user: User | null;
+  user: SelectUser | null;
   isLoading: boolean;
   error: Error | null;
-  loginMutation: UseMutationResult<User, Error, LoginData>;
+  loginMutation: UseMutationResult<SelectUser, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
-  registerMutation: UseMutationResult<User, Error, RegisterData>;
+  registerMutation: UseMutationResult<SelectUser, Error, RegisterData>;
 };
 
 type LoginData = {
-  email: string;
+  username: string;
   password: string;
 };
 
-type RegisterData = {
-  email: string;
-  password: string;
-  name: string;
-  company_name?: string;
-  contact_person?: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  postal_code?: string;
-};
+type RegisterData = z.infer<typeof insertUserSchema>;
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
-  const [_, setLocation] = useLocation();
-  
   const {
     data: user,
     error,
     isLoading,
-  } = useQuery<User | null, Error>({
+  } = useQuery<SelectUser | null, Error>({
     queryKey: ["/api/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
@@ -56,16 +43,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await apiRequest("POST", "/api/login", credentials);
       return await res.json();
     },
-    onSuccess: (user: User) => {
+    onSuccess: (user: SelectUser) => {
       queryClient.setQueryData(["/api/user"], user);
-      
-      // Redirect based on user role
-      if (user.role === 'admin' || user.role === 'manager') {
-        setLocation('/admin');
-      } else {
-        setLocation('/');
-      }
-      
       toast({
         title: "Login realizado com sucesso",
         description: `Bem-vindo(a), ${user.name}!`,
@@ -73,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onError: (error: Error) => {
       toast({
-        title: "Falha no login",
+        title: "Erro ao fazer login",
         description: error.message,
         variant: "destructive",
       });
@@ -81,28 +60,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const registerMutation = useMutation({
-    mutationFn: async (data: RegisterData) => {
-      const res = await apiRequest("POST", "/api/register", data);
+    mutationFn: async (userData: RegisterData) => {
+      const res = await apiRequest("POST", "/api/register", userData);
       return await res.json();
     },
-    onSuccess: (user: User) => {
+    onSuccess: (user: SelectUser) => {
       queryClient.setQueryData(["/api/user"], user);
-      
-      // Redirect based on user role
-      if (user.role === 'admin' || user.role === 'manager') {
-        setLocation('/admin');
-      } else {
-        setLocation('/');
-      }
-      
       toast({
-        title: "Registro realizado com sucesso",
-        description: `Bem-vindo(a), ${user.name}!`,
+        title: "Cadastro realizado com sucesso",
+        description: "Sua conta foi criada e você já está logado.",
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Falha no registro",
+        title: "Erro ao criar conta",
         description: error.message,
         variant: "destructive",
       });
@@ -115,15 +86,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: () => {
       queryClient.setQueryData(["/api/user"], null);
-      setLocation('/auth');
       toast({
         title: "Logout realizado com sucesso",
-        description: "Você foi desconectado",
+        description: "Você foi desconectado do sistema.",
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Falha no logout",
+        title: "Erro ao fazer logout",
         description: error.message,
         variant: "destructive",
       });
@@ -133,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        user: user ?? null,
+        user: user || null,
         isLoading,
         error,
         loginMutation,
