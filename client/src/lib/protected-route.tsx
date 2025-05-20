@@ -22,7 +22,7 @@ export function ProtectedRoute({ path, component: Component }: ProtectedRoutePro
 
   return (
     <Route path={path}>
-      {user ? <Component /> : <Redirect to="/auth" />}
+      {user ? <Component /> : <Redirect to="/login" />}
     </Route>
   );
 }

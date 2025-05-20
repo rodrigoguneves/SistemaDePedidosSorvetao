@@ -19,7 +19,7 @@ export default function NotFound() {
             </Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/auth">
+            <Link href="/login">
               Ir para página de login
             </Link>
           </Button>

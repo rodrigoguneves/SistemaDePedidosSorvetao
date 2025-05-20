@@ -7,7 +7,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import NotFound from "@/pages/not-found";
 
 // Pages
-import AuthPage from "@/pages/auth-page";
+import LoginPage from "@/pages/login-page";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { AuthProvider } from "@/hooks/use-auth";
 
@@ -20,14 +20,14 @@ import CustomerHome from "@/pages/customer/home";
 function Router() {
   return (
     <Switch>
-      <Route path="/auth" component={AuthPage} />
-      
+      <Route path="/login" component={LoginPage} />
+
       {/* Admin routes */}
       <ProtectedRoute path="/admin" component={AdminDashboard} />
-      
+
       {/* Customer routes */}
       <ProtectedRoute path="/" component={CustomerHome} />
-      
+
       {/* Fallback to 404 */}
       <Route component={NotFound} />
     </Switch>
