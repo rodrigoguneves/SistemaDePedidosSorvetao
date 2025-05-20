@@ -1,6 +1,6 @@
 
 import React from 'react';
-import AdminLayout from '@/layouts/admin-layout';
+import { AdminLayout } from '@/layouts/admin-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
