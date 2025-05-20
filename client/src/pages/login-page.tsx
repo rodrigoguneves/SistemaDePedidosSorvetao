@@ -93,14 +93,6 @@ export default function LoginPage() {
                     type="password"
                     placeholder="••••••••"
                     className={styles.input}
-
-            <a href="#" className={styles.forgotPassword} onClick={(e) => {
-              e.preventDefault();
-              alert("Entre em contato com o suporte para recuperar sua senha.");
-            }}>
-              Esqueceu sua senha?
-            </a>
-
                     {...register("password")}
                   />
                 </div>
