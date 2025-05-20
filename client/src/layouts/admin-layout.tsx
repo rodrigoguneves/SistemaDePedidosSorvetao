@@ -29,31 +29,37 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       title: "Painel",
       href: "/admin",
       icon: <LayoutDashboard size={21} />,
+      bgColor: "bg-primary",
     },
     {
       title: "Produtos",
       href: "/admin/products",
       icon: <ShoppingCart size={21} />,
+      bgColor: "bg-gray-200",
     },
     {
       title: "Clientes",
       href: "/admin/customers",
       icon: <Users size={21} />,
+      bgColor: "bg-gray-200",
     },
     {
       title: "Pedidos",
       href: "/admin/orders",
       icon: <FileText size={21} />,
+      bgColor: "bg-gray-200",
     },
     {
       title: "Financeiro",
       href: "/admin/finance",
       icon: <BarChart size={21} />,
+      bgColor: "bg-gray-200",
     },
     {
       title: "Opções",
       href: "/admin/settings",
       icon: <Settings size={21} />,
+      bgColor: "bg-gray-200",
     },
   ];
 
@@ -62,68 +68,49 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className={styles.adminPanel}>
-      <header className={styles.headerAdmin}>
-        <div className={styles.logoContainer}>
+    <div className="min-h-screen bg-[#EDF4FB]">
+      <header className="bg-white px-6 py-2 flex items-center justify-between shadow-sm">
+        <div className="flex items-center">
           {/* Logo */}
-          <div className="flex items-center gap-2">
-            <div className="rounded-lg w-10 h-10 bg-primary flex items-center justify-center text-white font-bold">
-              S
-            </div>
-            <span className="font-semibold text-lg">Sorvetão B2B</span>
+          <div className="mr-4">
+            <img src="/assets/logo.png" alt="Sorvetão" className="h-10" />
           </div>
-        </div>
-
-        <nav className={styles.navMenu}>
-          {navigationItems.map((item, index) => (
-            <div key={index} className={styles.navMenuItem}>
-              <Link href={item.href}>
-                <a className="flex flex-col items-center justify-center">
-                  <div
-                    className={
-                      location === item.href
-                        ? styles.iconContainerActive
-                        : styles.iconContainerInactive
-                    }
-                  >
-                    <div
-                      className={
-                        location === item.href
-                          ? styles.iconActive
-                          : styles.iconInactive
-                      }
-                    >
-                      {item.icon}
-                    </div>
+          
+          {/* Navigation */}
+          <nav className="flex items-center space-x-2">
+            {navigationItems.map((item, index) => (
+              <Link key={index} href={item.href}>
+                <a className="flex flex-col items-center p-2">
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                    location === item.href ? "bg-primary text-white" : item.bgColor + " text-gray-600"
+                  }`}>
+                    {item.icon}
                   </div>
-                  <span
-                    className={
-                      location === item.href
-                        ? styles.navTitleActive
-                        : styles.navTitleInactive
-                    }
-                  >
+                  <span className={`text-xs mt-1 font-medium ${
+                    location === item.href ? "text-primary" : "text-gray-600"
+                  }`}>
                     {item.title}
                   </span>
                 </a>
               </Link>
-            </div>
-          ))}
-        </nav>
+            ))}
+          </nav>
+        </div>
 
-        <div className={styles.userSection}>
-          <ModeToggle />
-          <UserNav
-            user={{
-              name: user?.name || "Administrador",
-              email: user?.email || "admin@sorveteria.com",
-              image: "https://github.com/shadcn.png",
-            }}
-          />
+        {/* User section */}
+        <div className="flex items-center gap-2">
+          <div className="text-right mr-2">
+            <div className="text-sm font-medium">João Administrador</div>
+          </div>
+          <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+            <img src="https://github.com/shadcn.png" alt="User" className="w-8 h-8 object-cover" />
+          </div>
         </div>
       </header>
 
-      {children}
+      <main className="p-6">
+        {children}
+      </main>
     </div>
   );
 }

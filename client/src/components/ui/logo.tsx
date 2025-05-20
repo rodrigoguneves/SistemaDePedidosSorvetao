@@ -19,3 +19,63 @@ export function Logo() {
     </div>
   );
 }
+import React, { useState, useEffect } from 'react';
+
+export const Logo = ({ className = "h-10" }: { className?: string }) => {
+  const [logoSrc, setLogoSrc] = useState<string>('/assets/logo.png');
+  const [logoError, setLogoError] = useState<boolean>(false);
+
+  useEffect(() => {
+    const checkImage = async (src: string) => {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(true);
+        img.onerror = () => resolve(false);
+        img.src = src;
+      });
+    };
+
+    const tryLoadingImage = async () => {
+      const paths = [
+        '/assets/logo.png',
+        '/logo.png',
+        './logo.png',
+        './attached_assets/logo.png',
+        '/attached_assets/logo.png',
+        '../attached_assets/logo.png'
+      ];
+      
+      console.log('Tentando encontrar a imagem do logo nos seguintes caminhos:');
+      
+      for (const path of paths) {
+        const exists = await checkImage(path);
+        if (exists) {
+          setLogoSrc(path);
+          setLogoError(false);
+          return;
+        } else {
+          console.log(`Imagem falhou ao carregar em: ${path}`);
+        }
+      }
+      
+      setLogoError(true);
+    };
+
+    tryLoadingImage();
+  }, []);
+
+  if (logoError) {
+    // Fallback para um logo de texto se a imagem não puder ser carregada
+    return (
+      <div className="flex items-center">
+        <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-white font-bold text-xl">
+          S
+        </div>
+        <span className="ml-2 font-bold text-primary text-xl">Sorvetão</span>
+        <span className="text-xs text-gray-500 ml-1 mt-auto mb-1">desde 1990</span>
+      </div>
+    );
+  }
+
+  return <img src={logoSrc} alt="Sorvetão" className={className} />;
+};
