@@ -280,4 +280,4 @@ const AdminDashboardFlowbite = () => {
   );
 };
 
-export default AdminDashboardFlowbite;
+export default DashboardFlowbitet AdminDashboardFlowbite;

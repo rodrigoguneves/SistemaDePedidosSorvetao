@@ -21,6 +21,7 @@ export default defineConfig({
       "@": path.resolve(import.meta.dirname, "client", "src"),
       "@shared": path.resolve(import.meta.dirname, "shared"),
       "@assets": path.resolve(import.meta.dirname, "attached_assets"),
+      "tailwindcss/version.js": path.resolve(import.meta.dirname, "client", "src", "lib", "flowbite-patches.ts"),
     },
   },
   root: path.resolve(import.meta.dirname, "client"),
