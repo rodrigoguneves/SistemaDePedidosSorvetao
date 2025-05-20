@@ -5,9 +5,9 @@ import { ThemeProvider } from "@/hooks/use-theme";
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
-  <ThemeProvider>
-    <AuthProvider>
+  <AuthProvider>
+    <ThemeProvider>
       <App />
-    </AuthProvider>
-  </ThemeProvider>
+    </ThemeProvider>
+  </AuthProvider>
 );
