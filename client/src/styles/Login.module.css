@@ -123,19 +123,20 @@
   box-sizing: border-box;
   background: #f9fafb;
   border: 1px solid #e5e7eb;
-  border-radius: 24px;
+  border-radius: 8px;
   width: 100%;
   height: 58px;
   padding: 0 48px;
   font-family: 'Inter', sans-serif;
   font-size: 16px;
   color: #374151;
-  transition: border-color 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
   outline: none;
 }
 
 .input:focus {
   border-color: #E73664;
+  box-shadow: 0 0 0 2px rgba(231, 54, 100, 0.2);
 }
 
 .input::placeholder {
@@ -148,6 +149,7 @@
   top: 50%;
   transform: translateY(-50%);
   color: #9ca3af;
+  pointer-events: none; /* Ensures the icon doesn't interfere with input interaction */
 }
 
 .loginButton {
