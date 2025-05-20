@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { z } from "zod";
@@ -21,6 +20,23 @@ export default function LoginPage() {
   const { user, loginMutation } = useAuth();
   const [, navigate] = useLocation();
   const [error, setError] = useState<string | null>(null);
+  const [imagePaths, setImagePaths] = useState<string[]>([
+    "/attached_assets/logo.png",
+    "./attached_assets/logo.png",
+    "../attached_assets/logo.png",
+    "/logo.png",
+    "./logo.png"
+  ]);
+
+  useEffect(() => {
+    console.log("Tentando encontrar a imagem do logo nos seguintes caminhos:");
+    imagePaths.forEach(path => {
+      const img = new Image();
+      img.onload = () => console.log(`Imagem carregou com sucesso em: ${path}`);
+      img.onerror = () => console.log(`Imagem falhou ao carregar em: ${path}`);
+      img.src = path;
+    });
+  }, []);
 
   // Redirect if already logged in
   if (user) {
@@ -43,7 +59,7 @@ export default function LoginPage() {
       email: data.email,
       password: data.password
     };
-    
+
     loginMutation.mutate(loginData, {
       onError: (err) => {
         setError("Credenciais inválidas. Tente novamente.");
