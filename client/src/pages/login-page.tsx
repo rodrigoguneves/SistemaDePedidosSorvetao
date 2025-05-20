@@ -57,9 +57,14 @@ export default function LoginPage() {
         <div className={styles.loginContent}>
           <div className={styles.logoContainer}>
             <img 
-              src="/attached_assets/logo.png"
+              src="/attached_assets/logo.png" 
               className={styles.logo} 
               alt="Sorvetão Logo"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                console.log("Image failed to load:", target.src);
+                target.src = "/client/public/logo.png"; // Fallback path
+              }}
             />
           </div>
 
