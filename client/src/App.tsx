@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 
 // Pages
 import AuthPage from "@/pages/auth-page";
+import LoginPage from "@/pages/login-page";
 import { ProtectedRoute } from "@/lib/protected-route";
 
 // Admin pages
@@ -31,8 +32,9 @@ function Router() {
   // Routes based on user role
   return (
     <Switch>
-      {/* Public route */}
+      {/* Public routes */}
       <Route path="/auth" component={AuthPage} />
+      <Route path="/login" component={LoginPage} />
       
       {/* Admin routes */}
       <Route path="/admin">
@@ -69,7 +71,7 @@ function Router() {
             <Route component={NotFound} />
           </Switch>
         ) : (
-          <AuthPage />
+          <LoginPage />
         )}
       </Route>
       

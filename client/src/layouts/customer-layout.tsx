@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
-  LayoutGrid,
+  Home,
   ShoppingCart,
   Package,
   User,
@@ -31,23 +31,23 @@ export function CustomerLayout({ children }: { children: React.ReactNode }) {
 
   const navigationItems = [
     {
-      title: "Dashboard",
-      href: "/customer",
-      icon: <LayoutGrid className="h-5 w-5" />,
+      title: "Início",
+      href: "/",
+      icon: <Home className="h-5 w-5" />,
     },
     {
       title: "Novo Pedido",
-      href: "/customer/new-order",
+      href: "/new-order",
       icon: <ShoppingCart className="h-5 w-5" />,
     },
     {
       title: "Meus Pedidos",
-      href: "/customer/my-orders",
+      href: "/my-orders",
       icon: <Package className="h-5 w-5" />,
     },
     {
       title: "Minha Conta",
-      href: "/customer/account",
+      href: "/account",
       icon: <User className="h-5 w-5" />,
     },
   ];

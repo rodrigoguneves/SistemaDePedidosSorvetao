@@ -1,210 +1,321 @@
-import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { AdminLayout } from "@/layouts/admin-layout";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import { PageHeader } from "@/components/ui/page-header";
-import { KpiCard } from "@/components/ui/kpi-card";
-import { SalesChart } from "@/components/dashboard/sales-chart";
-import { ActivityFeed } from "@/components/dashboard/activity-feed";
-import { QuickActions } from "@/components/dashboard/quick-actions";
-import { FinancialSummary } from "@/components/dashboard/financial-summary";
-import { OrderTable } from "@/components/orders/order-table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AdminLayout } from "@/layouts/admin-layout";
+import { useQuery } from "@tanstack/react-query";
 import {
-  DollarSign,
-  ShoppingCart,
+  LayoutDashboard,
   Users,
-  ArrowUp,
-  Clock,
-  CircleAlert,
-  PlusCircle,
-  UserPlus,
+  ShoppingCart,
   Package,
-  CreditCard,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Calendar,
+  MoreHorizontal,
+  ArrowRightCircle,
 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
+import styles from "@/styles/AdminPanel.module.css";
+import { formatCurrency } from "@/lib/utils";
+
+// Sample data for charts and stats - would be replaced with real data from API
+const salesData = [
+  { nome: "Jan", vendas: 4000 },
+  { nome: "Fev", vendas: 3000 },
+  { nome: "Mar", vendas: 2000 },
+  { nome: "Abr", vendas: 2780 },
+  { nome: "Mai", vendas: 1890 },
+  { nome: "Jun", vendas: 2390 },
+  { nome: "Jul", vendas: 3490 },
+  { nome: "Ago", vendas: 4000 },
+  { nome: "Set", vendas: 3200 },
+  { nome: "Out", vendas: 2800 },
+  { nome: "Nov", vendas: 5000 },
+  { nome: "Dez", vendas: 6000 },
+];
+
+const productData = [
+  { name: "Sorvete de Chocolate", value: 30 },
+  { name: "Sorvete de Morango", value: 25 },
+  { name: "Sorvete de Baunilha", value: 20 },
+  { name: "Sorvete de Creme", value: 15 },
+  { name: "Outros", value: 10 },
+];
+
+const COLORS = ['#e73664', '#36a2eb', '#4bc0c0', '#ffcd56', '#9966ff'];
+
+const recentOrders = [
+  {
+    id: 1,
+    cliente: "Sorveteria Doce Vida",
+    data: "15/05/2023",
+    valor: 1250.0,
+    status: "pendente"
+  },
+  {
+    id: 2,
+    cliente: "Doceria Gelada",
+    data: "14/05/2023",
+    valor: 875.5,
+    status: "entregue"
+  },
+  {
+    id: 3,
+    cliente: "Gelatos Premium",
+    data: "13/05/2023",
+    valor: 2150.75,
+    status: "processando"
+  },
+  {
+    id: 4,
+    cliente: "Ice Cream Shop",
+    data: "12/05/2023",
+    valor: 950.0,
+    status: "entregue"
+  },
+  {
+    id: 5,
+    cliente: "Sorveteria Tropical",
+    data: "11/05/2023",
+    valor: 1530.25,
+    status: "pendente"
+  }
+];
 
 export default function AdminDashboard() {
-  // Fetch pending orders
-  const { data: orders, isLoading: ordersLoading } = useQuery({
-    queryKey: ["/api/orders", { status: "pending" }],
-    queryFn: async () => {
-      const response = await fetch("/api/orders?status=pending");
-      if (!response.ok) throw new Error("Failed to fetch orders");
-      return response.json();
-    },
+  const { user } = useAuth();
+  const [currentDate, setCurrentDate] = useState('');
+
+  useEffect(() => {
+    // Format current date in Portuguese
+    const date = new Date();
+    const options: Intl.DateTimeFormatOptions = { 
+      day: 'numeric', 
+      month: 'long', 
+      year: 'numeric' 
+    };
+    setCurrentDate(date.toLocaleDateString('pt-BR', options));
+  }, []);
+
+  // This would be replaced with actual API queries
+  const { data: customerCount } = useQuery({
+    queryKey: ['/api/admin/customers/count'],
+    queryFn: () => Promise.resolve(54), // Placeholder
   });
 
-  // Mock data for sales chart
-  const salesData = [
-    { name: "Jan", value: 4200000 },
-    { name: "Fev", value: 3800000 },
-    { name: "Mar", value: 5000000 },
-    { name: "Abr", value: 4700000 },
-    { name: "Mai", value: 5200000 },
-    { name: "Jun", value: 4800000 },
-    { name: "Jul", value: 4258000 },
-  ];
+  const { data: orderCount } = useQuery({
+    queryKey: ['/api/admin/orders/count'],
+    queryFn: () => Promise.resolve(128), // Placeholder
+  });
 
-  // Quick action buttons
-  const quickActions = [
-    {
-      icon: <PlusCircle className="h-4 w-4" />,
-      label: "Novo Pedido",
-      href: "/admin/orders?new=true",
-      color: "primary" as const,
-    },
-    {
-      icon: <UserPlus className="h-4 w-4" />,
-      label: "Novo Cliente",
-      href: "/admin/customers?new=true",
-      color: "blue" as const,
-    },
-    {
-      icon: <Package className="h-4 w-4" />,
-      label: "Novo Produto",
-      href: "/admin/products?new=true",
-      color: "green" as const,
-    },
-    {
-      icon: <CreditCard className="h-4 w-4" />,
-      label: "Registrar Pagamento",
-      href: "/admin/financial?new=payment",
-      color: "purple" as const,
-    },
-  ];
+  const { data: productCount } = useQuery({
+    queryKey: ['/api/admin/products/count'],
+    queryFn: () => Promise.resolve(38), // Placeholder
+  });
 
-  // Recent activities
-  const activities = [
-    {
-      id: "1",
-      type: "order_completed" as const,
-      message: "Pedido <span class='font-semibold'>#8735</span> finalizado e pronto para entrega",
-      time: "Há 35 minutos",
-    },
-    {
-      id: "2",
-      type: "customer_update" as const,
-      message: "Cliente <span class='font-semibold'>Sorveteria Glacial</span> atualizou seus dados",
-      time: "Há 1 hora",
-    },
-    {
-      id: "3",
-      type: "payment" as const,
-      message: "Pagamento de <span class='font-semibold'>R$ 1.850,00</span> registrado para o pedido <span class='font-semibold'>#8726</span>",
-      time: "Há 2 horas",
-    },
-    {
-      id: "4",
-      type: "new_order" as const,
-      message: "Novo pedido <span class='font-semibold'>#8752</span> recebido de <span class='font-semibold'>Sorveteria Tropical</span>",
-      time: "Há 3 horas",
-    },
-  ];
+  const { data: revenue } = useQuery({
+    queryKey: ['/api/admin/revenue'],
+    queryFn: () => Promise.resolve(25890.75), // Placeholder
+  });
 
-  const financialData = {
-    revenue: 4258000,
-    expenses: 2834000,
-    balance: 1424000,
-  };
-
-  const viewOrder = (orderId: number) => {
-    // Navigate to order details page
-    window.location.href = `/admin/orders/${orderId}`;
-  };
-
-  const editOrder = (orderId: number) => {
-    // Navigate to edit order page
-    window.location.href = `/admin/orders/${orderId}/edit`;
+  // Map status to style class
+  const getStatusClass = (status: string) => {
+    switch (status) {
+      case 'pendente':
+        return styles.statusPending;
+      case 'processando':
+        return styles.statusProcessing;
+      case 'entregue':
+        return styles.statusDelivered;
+      default:
+        return '';
+    }
   };
 
   return (
     <AdminLayout>
-      <PageHeader
-        title="Painel Administrativo"
-        description="Bem-vindo ao gerenciamento de pedidos da Sorvetão!"
-      />
+      <div className={styles.mainContent}>
+        <div className={styles.pageTitle}>
+          <h1 className={styles.titleText}>Painel de Controle</h1>
+          <span className={styles.dateText}>{currentDate}</span>
+        </div>
 
-      {/* KPI Cards Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <KpiCard
-          title="Vendas do Mês"
-          value="R$ 42.580,00"
-          icon={<DollarSign className="h-5 w-5" />}
-          trendValue="12% vs. último mês"
-          trendIcon={<ArrowUp className="h-4 w-4" />}
-          trendColor="green"
-        />
+        <div className={styles.statsGrid}>
+          <Card>
+            <CardContent className="p-6">
+              <div className={styles.statHeader}>
+                <div className={styles.statTitle}>Total de Clientes</div>
+                <div className={styles.statIcon}>
+                  <Users className="h-5 w-5 text-primary" />
+                </div>
+              </div>
+              <div className={styles.statValue}>{customerCount || 0}</div>
+              <div className={styles.statDetail}>
+                <TrendingUp className="h-4 w-4" />
+                <span>8% em relação ao mês anterior</span>
+              </div>
+            </CardContent>
+          </Card>
 
-        <KpiCard
-          title="Pedidos Ativos"
-          value="28"
-          icon={<ShoppingCart className="h-5 w-5" />}
-          trendValue="8 pendentes hoje"
-          trendIcon={<Clock className="h-4 w-4" />}
-          trendColor="primary"
-        />
+          <Card>
+            <CardContent className="p-6">
+              <div className={styles.statHeader}>
+                <div className={styles.statTitle}>Total de Pedidos</div>
+                <div className={styles.statIcon}>
+                  <Package className="h-5 w-5 text-primary" />
+                </div>
+              </div>
+              <div className={styles.statValue}>{orderCount || 0}</div>
+              <div className={styles.statDetail}>
+                <TrendingUp className="h-4 w-4" />
+                <span>12% em relação ao mês anterior</span>
+              </div>
+            </CardContent>
+          </Card>
 
-        <KpiCard
-          title="Clientes Ativos"
-          value="152"
-          icon={<Users className="h-5 w-5" />}
-          trendValue="5 novos este mês"
-          trendIcon={<ArrowUp className="h-4 w-4" />}
-          trendColor="blue"
-        />
+          <Card>
+            <CardContent className="p-6">
+              <div className={styles.statHeader}>
+                <div className={styles.statTitle}>Total de Produtos</div>
+                <div className={styles.statIcon}>
+                  <ShoppingCart className="h-5 w-5 text-primary" />
+                </div>
+              </div>
+              <div className={styles.statValue}>{productCount || 0}</div>
+              <div className={styles.statDetail}>
+                <TrendingUp className="h-4 w-4" />
+                <span>5% em relação ao mês anterior</span>
+              </div>
+            </CardContent>
+          </Card>
 
-        <KpiCard
-          title="A Receber"
-          value="R$ 15.320,00"
-          icon={<DollarSign className="h-5 w-5" />}
-          trendValue="3 pagamentos atrasados"
-          trendIcon={<CircleAlert className="h-4 w-4" />}
-          trendColor="orange"
-        />
-      </div>
+          <Card>
+            <CardContent className="p-6">
+              <div className={styles.statHeader}>
+                <div className={styles.statTitle}>Faturamento Total</div>
+                <div className={styles.statIcon}>
+                  <DollarSign className="h-5 w-5 text-primary" />
+                </div>
+              </div>
+              <div className={styles.statValue}>{formatCurrency(revenue || 0)}</div>
+              <div className={`${styles.statDetail} ${styles.statDetailNegative}`}>
+                <TrendingDown className="h-4 w-4" />
+                <span>3% em relação ao mês anterior</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column (Sales Chart + Orders Table) - 2/3 width */}
-        <div className="lg:col-span-2">
-          <SalesChart data={salesData} className="mb-6" />
+        <div className={styles.chartsRow}>
+          <Card>
+            <CardContent className="p-6">
+              <div className={styles.chartHeader}>
+                <h2 className={styles.chartTitle}>Vendas Mensais</h2>
+                <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart
+                  data={salesData}
+                  margin={{
+                    top: 5,
+                    right: 20,
+                    left: 0,
+                    bottom: 5,
+                  }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="nome" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="vendas" name="Vendas (R$)" fill="#e73664" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
 
-          {/* Pending Orders Table */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-foreground">Pedidos Pendentes</h3>
-              <a href="/admin/orders" className="text-primary hover:underline text-sm font-medium">
-                Ver todos
+          <Card>
+            <CardContent className="p-6">
+              <div className={styles.chartHeader}>
+                <h2 className={styles.chartTitle}>Produtos Mais Vendidos</h2>
+                <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={productData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="value"
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  >
+                    {productData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className={styles.orderHeader}>
+              <h2 className={styles.orderTitle}>Pedidos Recentes</h2>
+              <a href="/admin/orders" className={styles.viewAllLink}>
+                Ver Todos
+                <ArrowRightCircle className="h-4 w-4 ml-2 inline" />
               </a>
             </div>
-
-            <OrderTable
-              orders={
-                ordersLoading
-                  ? []
-                  : orders?.slice(0, 4).map((order: any) => ({
-                      id: order.id,
-                      customer_name: order.customer_name || "Cliente",
-                      date: new Date(order.order_date).toLocaleDateString("pt-BR"),
-                      total: order.total,
-                      status: order.status,
-                      payment_status: order.payment_status,
-                    })) || []
-              }
-              isAdmin={true}
-              showCustomer={true}
-              onView={viewOrder}
-              onEdit={editOrder}
-            />
-          </div>
-        </div>
-
-        {/* Right Column - 1/3 width */}
-        <div className="space-y-6">
-          <QuickActions actions={quickActions} />
-          <ActivityFeed activities={activities} />
-          <FinancialSummary data={financialData} />
-        </div>
+            <div className="overflow-auto">
+              <table className={styles.orderTable}>
+                <thead>
+                  <tr>
+                    <th>Nº</th>
+                    <th>Cliente</th>
+                    <th>Data</th>
+                    <th>Valor</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentOrders.map((order) => (
+                    <tr key={order.id}>
+                      <td>#{order.id}</td>
+                      <td>{order.cliente}</td>
+                      <td>{order.data}</td>
+                      <td>{formatCurrency(order.valor)}</td>
+                      <td>
+                        <span className={getStatusClass(order.status)}>
+                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </AdminLayout>
   );

@@ -1,0 +1,227 @@
+@import "https://fonts.googleapis.com/css?family=Inter:0,700;0,500;0,400&display=swap";
+
+.loginContainer {
+  background: radial-gradient(76.21% 76.21% at 50.66% 23.8%, #f0f7ff 0%, #afc7e0 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  min-height: 100vh;
+  overflow: hidden;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
+}
+
+.loginBody {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: 1200px;
+  height: 100%;
+  padding: 2rem;
+}
+
+.loginContent {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 32px;
+  width: 448px;
+  max-width: 100%;
+}
+
+.logoContainer {
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 112px;
+}
+
+.logo {
+  width: 438px;
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 438.32/151;
+}
+
+.cardContainer {
+  background: #fff;
+  box-sizing: border-box;
+  border: 1px solid #f3f4f6;
+  border-radius: 32px;
+  width: 100%;
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.1),
+    0 10px 15px rgba(0, 0, 0, 0.1);
+  padding: 32px 0;
+}
+
+.titleContainer {
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding-bottom: 3px;
+}
+
+.title {
+  color: #e73664;
+  text-align: center;
+  width: 100%;
+  font-family: 'Inter', sans-serif;
+  font-size: 26.667px;
+  font-weight: 700;
+  line-height: 26.667px;
+}
+
+.form {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 24px;
+  width: 85%;
+  margin: 0 auto;
+}
+
+.inputGroup {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+}
+
+.label {
+  color: #374151;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: normal;
+  width: 100%;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.inputContainer {
+  position: relative;
+  width: 100%;
+}
+
+.input {
+  box-sizing: border-box;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 24px;
+  width: 100%;
+  height: 58px;
+  padding: 0 48px;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  color: #374151;
+}
+
+.input::placeholder {
+  color: #adaebc;
+}
+
+.inputIcon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+}
+
+.loginButton {
+  background: #e73664;
+  box-sizing: border-box;
+  border: none;
+  border-radius: 24px;
+  width: 100%;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.2s ease;
+}
+
+.loginButton:hover {
+  background: #d32d59;
+}
+
+.forgotPassword {
+  color: #e73664;
+  text-align: center;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 14px;
+  width: 100%;
+  display: block;
+  margin-top: 16px;
+  text-decoration: none;
+}
+
+.forgotPassword:hover {
+  text-decoration: underline;
+}
+
+.infoText {
+  color: #4b5563;
+  text-align: center;
+  width: 100%;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 14px;
+  margin-top: 16px;
+}
+
+.supportLink {
+  color: #6b7280;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 16px;
+  margin-top: 8px;
+  text-decoration: none;
+}
+
+.supportLink:hover {
+  color: #4b5563;
+}
+
+@media (max-width: 768px) {
+  .loginContent {
+    width: 90%;
+  }
+  
+  .form {
+    width: 90%;
+  }
+}
