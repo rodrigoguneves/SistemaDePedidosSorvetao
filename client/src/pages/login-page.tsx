@@ -38,7 +38,13 @@ export default function LoginPage() {
 
   const onSubmit = (data: LoginFormData) => {
     setError(null);
-    loginMutation.mutate(data, {
+    // Convertendo para o formato esperado pela API
+    const loginData = {
+      username: data.email, // A API espera 'username' mas estamos usando o email
+      password: data.password
+    };
+    
+    loginMutation.mutate(loginData, {
       onError: (err) => {
         setError("Credenciais inválidas. Tente novamente.");
       }
@@ -50,28 +56,11 @@ export default function LoginPage() {
       <div className={styles.loginBody}>
         <div className={styles.loginContent}>
           <div className={styles.logoContainer}>
-            {/* Replace with actual logo */}
-            <svg 
+            <img 
+              src="/attached_assets/logo%20reduzida%20menor.png"
               className={styles.logo} 
-              width="438" 
-              height="151" 
-              viewBox="0 0 438 151" 
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <rect width="438" height="151" rx="10" fill="#E73664" />
-              <text 
-                x="50%" 
-                y="50%" 
-                fontSize="40" 
-                fontWeight="bold" 
-                fill="white" 
-                textAnchor="middle" 
-                dominantBaseline="middle"
-              >
-                SORVETÃO B2B
-              </text>
-            </svg>
+              alt="Sorvetão Logo"
+            />
           </div>
 
           <div className={styles.cardContainer}>
@@ -104,6 +93,14 @@ export default function LoginPage() {
                     type="password"
                     placeholder="••••••••"
                     className={styles.input}
+
+            <a href="#" className={styles.forgotPassword} onClick={(e) => {
+              e.preventDefault();
+              alert("Entre em contato com o suporte para recuperar sua senha.");
+            }}>
+              Esqueceu sua senha?
+            </a>
+
                     {...register("password")}
                   />
                 </div>
