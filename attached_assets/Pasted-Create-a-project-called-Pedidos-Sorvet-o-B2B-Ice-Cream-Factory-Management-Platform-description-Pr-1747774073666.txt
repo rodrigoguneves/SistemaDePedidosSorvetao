@@ -1,0 +1,312 @@
+Create a project called Pedidos Sorvetão: B2B Ice Cream Factory Management Platform, description: Prompt for codeguide.dev:
+
+What do you want to build?
+
+We want to build "Pedidos Sorvetão," a comprehensive B2B web platform for an ice cream factory to manage orders, customers, products, and financials, featuring a dedicated portal for reseller customers and an administrative backend for factory staff.
+
+Describe your project in detail.
+
+Purpose:
+The primary purpose of "Pedidos Sorvetão" is to modernize and streamline the ordering process between our ice cream factory and its B2B reseller customers. We aim to:
+
+Provide an efficient and user-friendly online ordering experience for resellers.
+Centralize the factory's management of customers, products (SKUs and categories), and orders.
+Automate the recording of financial transactions related to sales.
+Offer robust financial tracking and management tools for the factory.
+Enhance communication and operational efficiency.
+Target Audience:
+
+Reseller Customers: Businesses (e.g., ice cream parlors, distributors, retail shops) that purchase ice cream products from the factory for resale. They need a simple way to browse products, place orders, view order history, and manage their account.
+Factory Administrators: Staff with full access to the backend system for managing all aspects, including customer accounts, product catalog, order processing, financial records, system settings, and user management (for other admins/managers).
+Factory Managers: Staff with potentially a subset of administrator permissions, possibly focusing on sales, customer relationship management, order fulfillment, and specific financial oversight.
+Key Features:
+
+Global System Features:
+
+Authentication: Secure email and password login for all user roles. Password recovery via email.
+Role-Based Access Control (RBAC): Differentiated features and data access for Customers, Managers, and Administrators.
+Data Deletion: Soft delete capability (marking records as inactive with a data_de_exclusao timestamp) for key entities (Users, Customers, Products, Orders, Financial Transactions), with an option for administrators to view/restore. Hard delete functionality restricted to administrators for permanent removal, with clear warnings.
+Reseller Customer Portal:
+
+Dashboard ("Painel"): Overview of the last 10 orders (with status and a "Repeat Order" button), an order quantity graph (monthly/weekly vs. last 6 periods), a list of open/pending payment orders with a total open amount, and prominent buttons for "Place New Order" and "Make Payment."
+Product Catalog & Order Creation ("Novo Pedido"):
+Access to a customer-specific product catalog (defined by admin).
+Products grouped by expandable/collapsible categories with item counts.
+For Popsicle categories: Tab-based navigation for packaging types (e.g., Units, Half Boxes, Full Boxes).
+Product SKU listing with name, price, and interactive quantity controls (+/-/direct input). Sorted by price (asc) then name (asc).
+Real-time updating order summary/cart (items, subtotals per category, grand total).
+Global product search.
+Checkout & Fulfillment:
+Choice between "Pickup at Factory" or "Delivery" (if enabled for the customer).
+For Delivery:
+Customer-specific delivery fee added to order total.
+Verification against customer-specific minimum order value. If below, display remaining amount needed and disable order completion until met (unless pickup is chosen).
+Delivery date selection (customer's allowed weekdays only, Mon-Fri, no Sat/Sun).
+Order History ("Meus Pedidos"): Comprehensive list of all past orders with search, filters (by date, status), and access to detailed order views.
+Profile Management ("Minha Conta"): View/edit allowed profile information (contact person, phone), change password. Admin-controlled fields are read-only.
+Administrator Backend:
+
+Admin Dashboard ("Painel"): System overview with KPIs (sales, orders, customers), sales charts, operational alerts (orders to process), financial snapshot, and quick links.
+Customer Management ("Clientes" Page):
+Customers Tab: CRUD operations for reseller customers (company details, contacts, addresses, status). Define customer-specific product catalog access (by entire categories and/or individual SKUs). Configure customer-specific delivery settings (enable delivery, fixed fee, minimum order value, allowed Mon-Fri delivery days).
+Customer Map Tab ("Mapa de Clientes"): Interactive map view (e.g., Google Maps) displaying customer locations with pins; clicking a pin shows a summary and a link to the full profile.
+Product Management ("Produtos" Page):
+Products Tab (SKUs): CRUD for individual product SKUs (name, link to category, SKU code, description, unit of sale, price, 'allow decimal quantities' flag). No inventory tracking.
+Categories Tab (Product Categories): CRUD for product categories (e.g., "Pots," "Fruit Popsicles").
+Order Management ("Pedidos" Page):
+View all customer orders with advanced search and filters.
+View detailed order information.
+Create new orders on behalf of customers with access to the full factory product catalog.
+Select fulfillment type (Pickup/Delivery) respecting customer's specific rules (delivery fee, minimum order, allowed days).
+Apply discounts to orders: requires a text field for "discount justification" and a numerical field for "discount amount," which reduces the order subtotal. No other tax/fee fields on the order.
+Record payments (partial or full, method, date).
+Update order status.
+Financial Module ("Financeiro" Page - with internal tab navigation):
+Summary Tab ("Resumo"): Detailed financial dashboard (KPIs, revenue/expense charts, account balances, pending transactions).
+Accounts Tab ("Contas"): CRUD for financial accounts (name, type, initial balance). View account ledger/statement.
+Revenues Tab ("Receitas"): Dedicated list of all revenue transactions with filters/search. "+ Add New Revenue" form. Automated revenue recording from B2B order payments (Category: "Venda Atacado", Subcategory: Client Name), reflecting the final amount after any discounts.
+Expenses Tab ("Despesas"): Dedicated list of all expense transactions with filters/search. "+ Add New Expense" form.
+Transfers Tab ("Transferências"): List and add internal fund transfers between accounts.
+Categories Tab ("Categorias"): CRUD for hierarchical financial categories and subcategories (for revenues and expenses).
+System Options ("Opções" Page - with internal tab navigation):
+Management Tab ("Gerência"): CRUD for internal system users (Administrators, Managers), role assignment. Admin can edit their own profile.
+Data Tab ("Dados"): Manage system data backups (create, download, restore). Interface for importing historical data (initially financial transactions from spreadsheets, with column mapping and validation).
+Design Tab ("Design"): Upload/change company logo. Option for admin users to toggle between a Light Theme (default) and a Dark Theme for the admin backend interface.
+Design Preferences:
+
+Overall Visual Style: Modern, clean, intuitive, user-centric, with a focus on a "Rounded Interface Concept."
+Theme:
+Default: Standard/Light theme for all pages (customer portal and admin backend).
+Admin Backend: A user-configurable option (in "Opções" > "Design" tab) to switch to a Dark Theme.
+Aesthetics:
+Rounded Elements: Significantly rounded corners for all major UI elements (buttons, cards, input fields, modals, containers).
+Icons: Icons should also follow a rounded aesthetic (rounded strokes, soft shapes, or enclosed in circular/rounded-corner backgrounds). Consistent icon style throughout.
+Color Palette:
+Primary Color: Vibrant #e73664 (used for calls-to-action, active states, key highlights, branding accents).
+Background Colors: Primarily white (#FFFFFF) for main content areas. #f0f7ff (soft light blue) for secondary backgrounds or panel differentiation.
+Typography: Modern, clean, highly legible sans-serif font family (e.g., Inter, Nunito, Open Sans). Varying weights (regular, medium, bold) for clear visual hierarchy.
+Spacing & Layout: Consistent spacing (20px padding/margins as a common guide) for balanced layouts and effective whitespace management.
+Global Top Header (for all internal pages after login):
+Left: Company Logo.
+Center (Main Navigation): Horizontally aligned menu, contextual to the logged-in user role. Each menu item is styled with a large circular icon positioned above its text label.
+Admin Example Nav: 'Painel', 'Produtos', 'Clientes', 'Pedidos', 'Financeiro', 'Opções'.
+Customer Example Nav: 'Painel', 'Novo Pedido', 'Meus Pedidos', 'Minha Conta'.
+Right: Logged-in user's name, a small circular user icon (avatar/initials), and a circular icon button for logout.
+Mobile Responsiveness:
+Customer Portal: Must be fully responsive and user-friendly on smartphones and tablets.
+Admin Backend: Must be usable on tablets, with essential functions accessible on smartphones. Optimized mobile login screen for all user types. The complex top header navigation will need a mobile-friendly adaptation (e.g., collapsing into a hamburger menu).
+This prompt aims to provide a comprehensive yet digestible overview of "Pedidos Sorvetão" for codeguide.dev., refer to the following documentation:
+
+# Unified Project Documentation
+
+## Project Requirements Document
+
+### 1. Project Overview
+
+“Pedidos Sorvetão” is a web platform designed to bridge an ice cream factory with its B2B resellers, such as ice cream parlors, distributors, and retail shops. The goal is to replace manual, paper-based ordering with a modern, efficient online system. Resellers will be able to browse a curated product catalog, place orders, repeat past orders, and record payments. On the factory side, administrators and managers will gain a centralized interface to manage customers, products, orders, financial transactions, and system settings.
+
+By implementing role-based access control, in-system notifications, and robust data management, the platform aims to boost operational efficiency, reduce errors, and provide clear insights into sales and finances. Success will be measured by faster order turnaround, fewer order mistakes, reduced phone and email inquiries, and improved visibility into customer behavior and revenue trends.
+
+### 2. In-Scope vs. Out-of-Scope
+
+**In-Scope**
+
+*   Secure email/password login for Resellers, Managers, and Administrators, plus password recovery via email.
+*   Role-Based Access Control limiting features and data by user role.
+*   Soft-delete with restoration and hard-delete for key entities: Users, Customers, Products, Orders, Financial Transactions.
+*   Reseller Portal (“Painel”, “Novo Pedido”, “Meus Pedidos”, “Minha Conta”) with product catalog, order creation, history, and profile management.
+*   Administrator Backend (“Painel”, “Clientes”, “Produtos”, “Pedidos”, “Financeiro”, “Opções”).
+*   Financial module with Summary, Accounts, Revenues (automated from orders), Expenses, Transfers, Categories.
+*   In-system notifications for new orders, status changes, and payment reminders.
+*   Data backup/restore and CSV/spreadsheet import for historical financial data.
+*   Mobile-responsive design for the Customer Portal and tablet-friendly Admin interface.
+
+**Out-of-Scope**
+
+*   Online payment gateway integration (all payments handled offline and recorded manually).
+*   Automatic PDF invoice generation or electronic tax documents.
+*   Real-time shipping label printing or carrier integrations.
+*   Multi-language or multi-currency support (only Brazilian Portuguese and Brazilian Real).
+*   Inventory management or stock tracking.
+
+### 3. User Flow
+
+A typical reseller logs in with their email and password on the portal’s secure login page. After authentication, they land on their dashboard (“Painel”) where they see a summary of recent orders, an order-quantity chart, open invoices, and calls to action for placing new orders or recording payments. From here, they can navigate to “Novo Pedido” to build an order by browsing categories and SKUs, adjust quantities, and checkout with pickup or delivery options. They can also view past orders under “Meus Pedidos” and update their contact info in “Minha Conta.”
+
+Factory staff log in via an admin portal and, depending on their role, arrive at an Admin Dashboard showing high-level KPIs like total sales, pending orders, and financial snapshots. From the top navigation they manage customers, products, orders, and financial records. They can create orders on behalf of customers, apply discounts with justification, record payments in the Financeiro module, restore deleted data, and configure system settings such as holidays, delivery rules, and UI themes.
+
+### 4. Core Features
+
+*   **Authentication & RBAC**: Secure login, password recovery, JSON Web Tokens (JWT) for session management, and role-based feature gating.
+*   **Soft/Hard Delete Management**: Timestamped soft deletion (`data_de_exclusao`) for all main entities and hard deletion restricted to admins.
+*   **Reseller Dashboard (“Painel”)**: Last 10 orders, repeat-order button, order history graph, open invoices summary, and quick action buttons.
+*   **Product Catalog & Order Creation**: Customer-specific catalog, expandable categories, popsicle tabs, global search, real-time cart summary, delivery fee and minimum order validation, holiday- and weekend-aware date picker.
+*   **Order History (“Meus Pedidos”)**: Search, filter, detailed order views, and repeat-order functionality.
+*   **Profile Management (“Minha Conta”)**: Editable contact fields, password change, read-only admin fields.
+*   **Admin Dashboard (“Painel”)**: KPIs, charts, alerts, and quick links to high-traffic modules.
+*   **Customer Management (“Clientes”)**: CRUD reseller accounts, catalog access rules, delivery settings, and interactive map with Google Maps API.
+*   **Product Management (“Produtos”)**: CRUD SKUs and categories, pricing, SKU flags for decimal quantities.
+*   **Order Management (“Pedidos”)**: View, search, filter, create on behalf of customers, apply discounts with justification, record payments, update statuses.
+*   **Financial Module (“Financeiro”)**: Multiple tabs for summary, accounts, revenues (auto and manual), expenses, transfers, categories, and detailed ledgers.
+*   **System Options (“Opções”)**: User/role management, backups/imports, design settings (logo upload, light/dark theme toggle).
+
+### 5. Tech Stack & Tools
+
+**Frontend**: React.js with TypeScript for scalable, typed UI; Tailwind CSS for rapid, utility-first styling; Chart.js for data visualization; React Router for client-side routing.
+
+**Backend**: Node.js with Express.js for API endpoints; Prisma ORM for database access; PostgreSQL as the relational database; JSON Web Tokens (JWT) and Bcrypt for authentication and password hashing.
+
+**Other Tools**: Google Maps API for customer locations; SendGrid (or similar) for sending password recovery emails; Replit IDE and hosting for development and deployment.
+
+### 6. Non-Functional Requirements
+
+*   **Performance**: API response times under 200ms under typical load; front-end initial load under 1.5s on modern connections; chart and map interactions under 100ms where possible.
+*   **Security**: HTTPS for all transport; JWT stored in secure, HTTP-only cookies; input validation and sanitization; rate limiting on login and sensitive endpoints; role checks on every request.
+*   **Compliance**: GDPR-style data controls via soft-delete; audit logs for hard deletes; password policies (minimum length, complexity).
+
+### 7. Constraints & Assumptions
+
+*   The platform will operate only in Portuguese and use Brazilian Real (R$).
+*   Hosting and deployment will use Replit’s environment and built-in SSL.
+*   Brand assets (logos, palette, typography) are provided and final.
+*   The holiday calendar will be managed manually by admins via import or CSV.
+*   All payments occur offline; the system only records them.
+*   Delivery scheduling is manual with no carrier integration.
+*   Expected scale: ~150 customers, ~200 SKUs, ~200 orders/month, growing within 24 months.
+
+### 8. Known Issues & Potential Pitfalls
+
+*   **Replit Limits**: Be mindful of memory and CPU constraints; mitigate by optimizing queries and front-end bundles.
+*   **Holiday Calendar Updates**: Relying on manual imports could lead to out-of-date delivery date blocks; add validation and reminders.
+*   **Map Performance**: Loading 150 pins may slow down; cluster pins or lazy-load based on viewport.
+*   **Offline Payments**: Manual entry risks human error; consider validation rules and audit trails.
+*   **Chart Rendering**: Complex datasets may slow Chart.js; use data aggregation or pagination.
+*   **Soft-Delete Volume**: Large volumes of soft-deleted records could bloat queries; index `data_de_exclusao` and use default filters.
+
+## App Flow Document
+
+### Onboarding and Sign-In/Sign-Up
+
+A new user arrives at the portal and sees a clean login screen prompting for email and password. Reseller accounts can be self-registered or created by administrators; either way, the user confirms their email via a one-time link before setting a password. Password recovery is available by entering an email address to receive a reset link. Administrators and managers use the same flow but with elevated roles granted by an existing admin. Logging out is done via a circular icon in the top-right header, which also provides a quick path back to the login screen.
+
+### Main Dashboard or Home Page
+
+Once logged in, resellers land on their “Painel,” which features a top header with a logo on the left, circular navigation icons in the center (Painel, Novo Pedido, Meus Pedidos, Minha Conta), and user info plus logout on the right. The main content shows recent orders, charts, and action buttons. Administrators see a similar header with menu items tailored to their role (Painel, Produtos, Clientes, Pedidos, Financeiro, Opções) and a dashboard filled with KPIs, charts, and alerts. From these dashboards, users click the navigation icons or quick-link cards to move into specific modules.
+
+### Detailed Feature Flows and Page Transitions
+
+When a reseller clicks “Novo Pedido,” the page transitions to a catalog view with expandable categories. Selecting a category reveals SKUs, each with +/– buttons or direct input for quantity. Popsicle categories display tabs for units, half boxes, or full boxes. As quantities change, a fixed footer displays the order summary and total. Clicking “Checkout” opens a modal or page where the user chooses pickup or delivery, sees delivery fees and minimum-order warnings, then picks a date from an enabled weekday calendar. Confirming the order returns them to the Painel with an in-system notification of success.
+
+Administrators navigate to “Clientes” to view a list of resellers, click “Add” or an existing row to open a form for company details, delivery settings, and catalog rules. Switching to the “Mapa de Clientes” tab loads a Google map with pins that, when clicked, show a summary card linking back to the profile form. In “Produtos,” switching tabs toggles between SKUs and categories, each opening a drawer or modal to edit details. The “Pedidos” section shows filters and a table of orders; clicking an order opens the detail view where they can apply a discount (with justification), record a payment, or change status. Creating a new backend order mimics the reseller flow but with the full catalog and customer selector at the top.
+
+Within “Financeiro,” each sub-tab (Resumo, Contas, Receitas, Despesas, Transferências, Categorias) appears under the same URL with an internal tab switch. The Resumo tab displays charts and tables that link to detailed lists in Receitas or Despesas. Clicking “+ Add” on any list opens an overlay form. In “Opções,” the Gerência tab lists users and roles, Dados handles backup and CSV import via file pickers with column mapping, and Design offers logo upload and a light/dark toggle that instantly re-themes the interface.
+
+### Settings and Account Management
+
+In “Minha Conta,” resellers see a form with editable fields for contact person, phone, and password change. Factory staff use the Gerência tab in Opções to manage their own profiles and those of colleagues. All changes are saved via an API call with success or error notifications. Users can always return to the main dashboard by clicking the Painel icon in the header.
+
+### Error States and Alternate Paths
+
+If a user enters invalid data (like a negative quantity or a password that’s too short), inline form validation highlights the field in red and displays a brief message. During network issues, a banner appears notifying of connectivity loss and caches any form data locally until reconnection. Restricted actions, such as attempting to view another customer’s order, show a “Permission Denied” message with a link back to an authorized page. Date pickers disable weekends and holidays, and if a user tries to pick them, a tooltip explains why the date is unavailable.
+
+### Conclusion and Overall App Journey
+
+From logging in to placing or managing orders, users enjoy a consistent, rounded interface that guides them with clear icons, form feedback, and contextual navigation. Resellers quickly build carts, handle payments, and track history, while administrators efficiently oversee every aspect of the business—from customer onboarding and product updates to order processing and financial reporting. Throughout, the platform delivers responsive layouts and fast feedback to keep workflows smooth and predictable.
+
+## Tech Stack Document
+
+### Frontend Technologies
+
+*   React.js with TypeScript: Enables a component-based, typed codebase for scalability and fewer runtime errors.
+*   Tailwind CSS: Utility-first styling that accelerates UI development and ensures consistency in spacing, colors, and typography.
+*   Chart.js: Lightweight library for rendering interactive charts in the dashboard and financial modules.
+*   React Router DOM: Manages client-side routing and nested routes for smooth page transitions.
+
+### Backend Technologies
+
+*   Node.js & Express.js: A flexible server framework for building RESTful APIs and handling middleware.
+*   Prisma ORM: Type-safe database access layer connecting Node.js to PostgreSQL.
+*   PostgreSQL: Robust, relational database for handling customers, orders, products, and financial transactions.
+*   JSON Web Tokens (JWT) & Bcrypt: Secure authentication tokens and password hashing.
+
+### Infrastructure and Deployment
+
+*   Replit Hosting: All code, CI/CD, and deployment managed on Replit’s cloud platform with automatic SSL.
+*   Git Version Control: Source code hosted in a connected Git repository for collaboration and history.
+*   Replit’s Built-In CI: Automated testing and build steps triggered on commits.
+
+### Third-Party Integrations
+
+*   Google Maps API: Displays customer locations on the interactive map.
+*   SendGrid (or similar SMTP service): Sends password recovery emails reliably.
+*   Chart.js Plugins: Extend charts with tooltips, legends, and export capabilities.
+
+### Security and Performance Considerations
+
+*   HTTPS Everywhere: Enforced by Replit’s SSL.
+*   Rate Limiting: Express middleware to protect login and high-traffic endpoints.
+*   Input Validation & Sanitization: Prevents SQL injection and XSS attacks.
+*   Database Indexing: Index `data_de_exclusao`, foreign keys, and frequently searched columns.
+*   Code Splitting & Lazy Loading: Splits front-end bundles to speed up initial load.
+
+### Conclusion and Overall Tech Stack Summary
+
+The chosen stack—React + TypeScript and Node/Express + PostgreSQL—balances developer productivity, performance, and maintainability. Tailwind CSS and Chart.js accelerate UI delivery, while Prisma ensures type-safe data access. Replit’s seamless hosting and CI/CD simplify deployment and collaboration, allowing the team to focus on feature development and user value.
+
+## Frontend Guidelines Document
+
+### Frontend Architecture
+
+The project follows a component-based architecture using React with functional components and hooks. We organize code by feature directories (e.g., `dashboard/`, `orders/`, `products/`), each containing presentational and container components. Global concerns like theming, authentication context, and API services live in a top-level `core/` folder. This layout supports maintainability, easy testing, and clear separation of concerns.
+
+### Design Principles
+
+We prioritize usability, accessibility, and responsiveness. Every interactive element meets WCAG contrast guidelines, supports keyboard navigation, and includes appropriate ARIA labels. The UI scales fluidly across screen sizes, with breakpoints for mobile, tablet, and desktop. Feedback is immediate and contextual, guiding the user without overload.
+
+### Styling and Theming
+
+We use Tailwind CSS for a utility-first approach, applying consistent spacing (20px base), colors, and typography via configuration variables. The primary accent is #e73664, with white (#FFFFFF) and soft blue (#f0f7ff) for backgrounds. Fonts are from the Inter family. Theming leverages CSS variables to switch between light and dark modes in the admin interface, toggled via React context.
+
+### Component Structure
+
+Reusable UI elements (buttons, cards, inputs, modals) live in a `components/` folder. Feature-specific components reside under `features/`. Atoms, molecules, and organisms follow an atomic design pattern, promoting reuse and predictable styling. Each component has its own style and test file alongside its implementation.
+
+### State Management
+
+We manage global state with React Context and `useReducer` for authentication, user info, and theme. Local component state uses `useState`. For complex data flows (like cart contents), we keep state in context so any component can read or update it without prop drilling.
+
+### Routing and Navigation
+
+React Router defines top-level routes for `/painel`, `/novo-pedido`, `/meus-pedidos`, and `/minha-conta` in the customer portal, and `/admin/*` nested routes for admin modules. Navigation links use `<NavLink>` for active styling. A single `Routes` file imports route configurations for clarity.
+
+### Performance Optimization
+
+We lazy-load heavy modules (e.g., Admin Dashboard, Map view) using `React.lazy` and `<Suspense>`. Long lists (orders, products) use windowing via `react-window` or pagination. Images and icons are optimized as SVG or served through a CDN. We memoize pure components with `React.memo`.
+
+### Testing and Quality Assurance
+
+Unit tests use Jest and React Testing Library, focusing on component behavior and user interactions. Integration tests cover API service calls with mocked responses. End-to-end tests run in Cypress, simulating critical flows like login, order creation, and financial entry. ESLint with Prettier ensures consistent code style, and TypeScript checks prevent many runtime errors.
+
+### Conclusion and Overall Frontend Summary
+
+This frontend setup delivers a scalable, maintainable, and high-performance user interface. With a clear component hierarchy, utility-first styling, and robust state management, the team can quickly build and iterate on features while ensuring a consistent, accessible, and responsive experience.
+
+## Implementation Plan
+
+1.  Initialize the Git repository on Replit and configure CI/CD pipelines.
+2.  Define the PostgreSQL database schema and set up Prisma migrations.
+3.  Scaffold the Express.js server with authentication (JWT, Bcrypt) and RBAC middleware.
+4.  Implement core API endpoints: Users, Customers, Products, Orders, Finance, System Options.
+5.  Integrate SendGrid for password recovery emails and Google Maps for customer location data.
+6.  Create the React project with TypeScript, Tailwind CSS, and React Router.
+7.  Build authentication pages and set up Context for user sessions and theming.
+8.  Develop the Reseller Portal: Dashboard, New Order flow, Order History, Profile management.
+9.  Develop the Admin Backend: Dashboard metrics, Customer and Product modules, Order management.
+10. Implement the Financial module with tabs and automated revenue entries.
+11. Build System Options: user roles, backup/import interface, design theme toggle.
+12. Add Chart.js visualizations and optimize map pin rendering.
+13. Ensure mobile responsiveness and test on various devices.
+14. Write comprehensive tests (unit, integration, end-to-end) and fix any issues.
+15. Perform user acceptance testing with a small group of resellers and staff.
+16. Deploy to Replit production, monitor performance, and gather feedback.
+17. Plan iterative improvements based on real-world usage and metrics.
