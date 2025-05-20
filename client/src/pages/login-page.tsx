@@ -61,6 +61,11 @@ export default function LoginPage() {
     };
 
     loginMutation.mutate(loginData, {
+      onSuccess: (user) => {
+        // Redirecionar para o dashboard com base no papel do usuário
+        const path = user.role === 'admin' ? '/admin' : '/customer/dashboard';
+        navigate(path);
+      },
       onError: (err) => {
         setError("Credenciais inválidas. Tente novamente.");
       }

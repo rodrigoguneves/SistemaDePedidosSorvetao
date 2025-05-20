@@ -49,6 +49,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: "Login realizado com sucesso",
         description: `Bem-vindo(a), ${user.name}!`,
       });
+      
+      // Redirecionar para o dashboard com base no papel do usuário
+      const path = user.role === 'admin' ? '/admin' : '/customer/dashboard';
+      window.location.href = path;
     },
     onError: (error: Error) => {
       toast({
