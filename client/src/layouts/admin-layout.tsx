@@ -80,7 +80,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           <nav className="flex items-center space-x-2">
             {navigationItems.map((item, index) => (
               <Link key={index} href={item.href}>
-                <a className="flex flex-col items-center p-2">
+                <div className="flex flex-col items-center p-2">
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
                     location === item.href ? "bg-primary text-white" : item.bgColor + " text-gray-600"
                   }`}>
@@ -91,7 +91,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                   }`}>
                     {item.title}
                   </span>
-                </a>
+                </div>
               </Link>
             ))}
           </nav>

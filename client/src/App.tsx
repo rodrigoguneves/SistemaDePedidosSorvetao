@@ -27,6 +27,7 @@ function Router() {
       {/* Admin routes */}
       <ProtectedRoute path="/admin" component={AdminDashboard} />
       <ProtectedRoute path="/admin/dashboard-flowbite" component={AdminDashboardFlowbite} />
+      <ProtectedRoute path="/admin/products" component={() => import("@/pages/admin/products").then(module => module.default)} />
 
       {/* Customer routes */}
       <ProtectedRoute path="/" component={CustomerHome} />
