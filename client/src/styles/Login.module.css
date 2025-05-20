@@ -130,6 +130,13 @@
   font-family: 'Inter', sans-serif;
   font-size: 16px;
   color: #374151;
+  transition: border-color 0.2s ease;
+  outline: none;
+}
+
+.input:focus {
+  border-color: #E73664;
+  box-shadow: 0 0 0 2px rgba(231, 54, 100, 0.2);
 }
 
 .input::placeholder {
