@@ -1,0 +1,372 @@
+import { pgTable, text, serial, integer, boolean, timestamp, doublePrecision, json, foreignKey, pgEnum } from "drizzle-orm/pg-core";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import { z } from "zod";
+import { relations } from "drizzle-orm";
+
+// Enums
+export const userRoleEnum = pgEnum('user_role', ['admin', 'manager', 'customer']);
+export const orderStatusEnum = pgEnum('order_status', ['pending', 'processing', 'ready', 'delivered', 'cancelled']);
+export const orderFulfillmentEnum = pgEnum('order_fulfillment', ['pickup', 'delivery']);
+export const paymentStatusEnum = pgEnum('payment_status', ['pending', 'partial', 'paid']);
+export const transactionTypeEnum = pgEnum('transaction_type', ['revenue', 'expense', 'transfer']);
+
+// User model
+export const users = pgTable('users', {
+  id: serial('id').primaryKey(),
+  email: text('email').notNull().unique(),
+  password: text('password').notNull(),
+  name: text('name').notNull(),
+  role: userRoleEnum('role').notNull().default('customer'),
+  data_de_exclusao: timestamp('data_de_exclusao'),
+  created_at: timestamp('created_at').defaultNow(),
+  updated_at: timestamp('updated_at').defaultNow(),
+  dark_mode: boolean('dark_mode').default(false),
+});
+
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  data_de_exclusao: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const userRelations = relations(users, ({ one, many }) => ({
+  customer: one(customers, {
+    fields: [users.id],
+    references: [customers.user_id],
+  }),
+}));
+
+// Customer model
+export const customers = pgTable('customers', {
+  id: serial('id').primaryKey(),
+  user_id: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  company_name: text('company_name').notNull(),
+  contact_person: text('contact_person').notNull(),
+  phone: text('phone').notNull(),
+  address: text('address').notNull(),
+  city: text('city').notNull(),
+  state: text('state').notNull(),
+  postal_code: text('postal_code').notNull(),
+  latitude: doublePrecision('latitude'),
+  longitude: doublePrecision('longitude'),
+  enable_delivery: boolean('enable_delivery').default(false),
+  delivery_fee: integer('delivery_fee').default(0),
+  minimum_order_value: integer('minimum_order_value').default(0),
+  allowed_delivery_days: json('allowed_delivery_days').$type<boolean[]>().default([false, true, true, true, true, true, false]),
+  data_de_exclusao: timestamp('data_de_exclusao'),
+  created_at: timestamp('created_at').defaultNow(),
+  updated_at: timestamp('updated_at').defaultNow(),
+});
+
+export const insertCustomerSchema = createInsertSchema(customers).omit({
+  id: true,
+  data_de_exclusao: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const customerRelations = relations(customers, ({ many }) => ({
+  orders: many(orders),
+  customerCategories: many(customerCategories),
+  customerProducts: many(customerProducts),
+}));
+
+// Product Category model
+export const productCategories = pgTable('product_categories', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  data_de_exclusao: timestamp('data_de_exclusao'),
+  created_at: timestamp('created_at').defaultNow(),
+  updated_at: timestamp('updated_at').defaultNow(),
+});
+
+export const insertProductCategorySchema = createInsertSchema(productCategories).omit({
+  id: true,
+  data_de_exclusao: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const productCategoryRelations = relations(productCategories, ({ many }) => ({
+  products: many(products),
+  customerCategories: many(customerCategories),
+}));
+
+// Product model
+export const products = pgTable('products', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  category_id: integer('category_id').references(() => productCategories.id),
+  sku: text('sku').notNull().unique(),
+  description: text('description'),
+  unit_of_sale: text('unit_of_sale').notNull(),
+  price: integer('price').notNull(),
+  allow_decimal_quantities: boolean('allow_decimal_quantities').default(false),
+  data_de_exclusao: timestamp('data_de_exclusao'),
+  created_at: timestamp('created_at').defaultNow(),
+  updated_at: timestamp('updated_at').defaultNow(),
+});
+
+export const insertProductSchema = createInsertSchema(products).omit({
+  id: true,
+  data_de_exclusao: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const productRelations = relations(products, ({ one, many }) => ({
+  category: one(productCategories, {
+    fields: [products.category_id],
+    references: [productCategories.id],
+  }),
+  orderItems: many(orderItems),
+  customerProducts: many(customerProducts),
+}));
+
+// Customer-Category access model
+export const customerCategories = pgTable('customer_categories', {
+  id: serial('id').primaryKey(),
+  customer_id: integer('customer_id').notNull().references(() => customers.id, { onDelete: 'cascade' }),
+  category_id: integer('category_id').notNull().references(() => productCategories.id, { onDelete: 'cascade' }),
+  created_at: timestamp('created_at').defaultNow(),
+});
+
+export const customerCategoryRelations = relations(customerCategories, ({ one }) => ({
+  customer: one(customers, {
+    fields: [customerCategories.customer_id],
+    references: [customers.id],
+  }),
+  category: one(productCategories, {
+    fields: [customerCategories.category_id],
+    references: [productCategories.id],
+  }),
+}));
+
+// Customer-Product access model
+export const customerProducts = pgTable('customer_products', {
+  id: serial('id').primaryKey(),
+  customer_id: integer('customer_id').notNull().references(() => customers.id, { onDelete: 'cascade' }),
+  product_id: integer('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
+  created_at: timestamp('created_at').defaultNow(),
+});
+
+export const customerProductRelations = relations(customerProducts, ({ one }) => ({
+  customer: one(customers, {
+    fields: [customerProducts.customer_id],
+    references: [customers.id],
+  }),
+  product: one(products, {
+    fields: [customerProducts.product_id],
+    references: [products.id],
+  }),
+}));
+
+// Order model
+export const orders = pgTable('orders', {
+  id: serial('id').primaryKey(),
+  customer_id: integer('customer_id').notNull().references(() => customers.id),
+  order_date: timestamp('order_date').defaultNow().notNull(),
+  status: orderStatusEnum('status').notNull().default('pending'),
+  fulfillment_type: orderFulfillmentEnum('fulfillment_type').notNull().default('pickup'),
+  delivery_date: timestamp('delivery_date'),
+  subtotal: integer('subtotal').notNull(),
+  delivery_fee: integer('delivery_fee').default(0),
+  discount_amount: integer('discount_amount').default(0),
+  discount_reason: text('discount_reason'),
+  total: integer('total').notNull(),
+  payment_status: paymentStatusEnum('payment_status').notNull().default('pending'),
+  paid_amount: integer('paid_amount').default(0),
+  data_de_exclusao: timestamp('data_de_exclusao'),
+  created_at: timestamp('created_at').defaultNow(),
+  updated_at: timestamp('updated_at').defaultNow(),
+});
+
+export const insertOrderSchema = createInsertSchema(orders).omit({
+  id: true,
+  data_de_exclusao: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const orderRelations = relations(orders, ({ one, many }) => ({
+  customer: one(customers, {
+    fields: [orders.customer_id],
+    references: [customers.id],
+  }),
+  items: many(orderItems),
+  payments: many(payments),
+}));
+
+// Order Items model
+export const orderItems = pgTable('order_items', {
+  id: serial('id').primaryKey(),
+  order_id: integer('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
+  product_id: integer('product_id').notNull().references(() => products.id),
+  quantity: doublePrecision('quantity').notNull(),
+  unit_price: integer('unit_price').notNull(),
+  total_price: integer('total_price').notNull(),
+  created_at: timestamp('created_at').defaultNow(),
+});
+
+export const insertOrderItemSchema = createInsertSchema(orderItems).omit({
+  id: true,
+  created_at: true,
+});
+
+export const orderItemRelations = relations(orderItems, ({ one }) => ({
+  order: one(orders, {
+    fields: [orderItems.order_id],
+    references: [orders.id],
+  }),
+  product: one(products, {
+    fields: [orderItems.product_id],
+    references: [products.id],
+  }),
+}));
+
+// Payment model
+export const payments = pgTable('payments', {
+  id: serial('id').primaryKey(),
+  order_id: integer('order_id').notNull().references(() => orders.id),
+  amount: integer('amount').notNull(),
+  payment_date: timestamp('payment_date').defaultNow().notNull(),
+  payment_method: text('payment_method').notNull(),
+  notes: text('notes'),
+  created_at: timestamp('created_at').defaultNow(),
+});
+
+export const insertPaymentSchema = createInsertSchema(payments).omit({
+  id: true,
+  created_at: true,
+});
+
+export const paymentRelations = relations(payments, ({ one }) => ({
+  order: one(orders, {
+    fields: [payments.order_id],
+    references: [orders.id],
+  }),
+}));
+
+// Financial Account model
+export const financialAccounts = pgTable('financial_accounts', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  type: text('type').notNull(),
+  initial_balance: integer('initial_balance').default(0).notNull(),
+  created_at: timestamp('created_at').defaultNow(),
+  updated_at: timestamp('updated_at').defaultNow(),
+});
+
+export const insertFinancialAccountSchema = createInsertSchema(financialAccounts).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const financialAccountRelations = relations(financialAccounts, ({ many }) => ({
+  transactions: many(financialTransactions, { relationName: 'accountTransactions' }),
+  sourceTransfers: many(financialTransactions, { relationName: 'sourceTransfers' }),
+  destinationTransfers: many(financialTransactions, { relationName: 'destinationTransfers' }),
+}));
+
+// Financial Category model
+export const financialCategories = pgTable('financial_categories', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  type: transactionTypeEnum('type').notNull(),
+  parent_id: integer('parent_id').references(() => financialCategories.id),
+  created_at: timestamp('created_at').defaultNow(),
+  updated_at: timestamp('updated_at').defaultNow(),
+});
+
+export const insertFinancialCategorySchema = createInsertSchema(financialCategories).omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const financialCategoryRelations = relations(financialCategories, ({ one, many }) => ({
+  parent: one(financialCategories, {
+    fields: [financialCategories.parent_id],
+    references: [financialCategories.id],
+  }),
+  subcategories: many(financialCategories),
+  transactions: many(financialTransactions),
+}));
+
+// Financial Transaction model
+export const financialTransactions = pgTable('financial_transactions', {
+  id: serial('id').primaryKey(),
+  type: transactionTypeEnum('type').notNull(),
+  amount: integer('amount').notNull(),
+  date: timestamp('date').defaultNow().notNull(),
+  description: text('description').notNull(),
+  account_id: integer('account_id').references(() => financialAccounts.id),
+  category_id: integer('category_id').references(() => financialCategories.id),
+  transfer_to_account_id: integer('transfer_to_account_id').references(() => financialAccounts.id),
+  order_id: integer('order_id').references(() => orders.id),
+  data_de_exclusao: timestamp('data_de_exclusao'),
+  created_at: timestamp('created_at').defaultNow(),
+  updated_at: timestamp('updated_at').defaultNow(),
+});
+
+export const insertFinancialTransactionSchema = createInsertSchema(financialTransactions).omit({
+  id: true,
+  data_de_exclusao: true,
+  created_at: true,
+  updated_at: true,
+});
+
+export const financialTransactionRelations = relations(financialTransactions, ({ one }) => ({
+  account: one(financialAccounts, {
+    fields: [financialTransactions.account_id],
+    references: [financialAccounts.id],
+    relationName: 'accountTransactions',
+  }),
+  category: one(financialCategories, {
+    fields: [financialTransactions.category_id],
+    references: [financialCategories.id],
+  }),
+  transferToAccount: one(financialAccounts, {
+    fields: [financialTransactions.transfer_to_account_id],
+    references: [financialAccounts.id],
+    relationName: 'destinationTransfers',
+  }),
+  order: one(orders, {
+    fields: [financialTransactions.order_id],
+    references: [orders.id],
+  }),
+}));
+
+// Type exports
+export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+
+export type Customer = typeof customers.$inferSelect;
+export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
+
+export type ProductCategory = typeof productCategories.$inferSelect;
+export type InsertProductCategory = z.infer<typeof insertProductCategorySchema>;
+
+export type Product = typeof products.$inferSelect;
+export type InsertProduct = z.infer<typeof insertProductSchema>;
+
+export type Order = typeof orders.$inferSelect;
+export type InsertOrder = z.infer<typeof insertOrderSchema>;
+
+export type OrderItem = typeof orderItems.$inferSelect;
+export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;
+
+export type Payment = typeof payments.$inferSelect;
+export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+
+export type FinancialAccount = typeof financialAccounts.$inferSelect;
+export type InsertFinancialAccount = z.infer<typeof insertFinancialAccountSchema>;
+
+export type FinancialCategory = typeof financialCategories.$inferSelect;
+export type InsertFinancialCategory = z.infer<typeof insertFinancialCategorySchema>;
+
+export type FinancialTransaction = typeof financialTransactions.$inferSelect;
+export type InsertFinancialTransaction = z.infer<typeof insertFinancialTransactionSchema>;

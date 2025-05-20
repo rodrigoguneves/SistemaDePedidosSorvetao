@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 20 14.3% 4.1%;
+  --muted: 60 4.8% 95.9%;
+  --muted-foreground: 25 5.3% 44.7%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 20 14.3% 4.1%;
+  --card: 0 0% 100%;
+  --card-foreground: 20 14.3% 4.1%;
+  --border: 20 5.9% 90%;
+  --input: 20 5.9% 90%;
+  --primary: 342 79% 55%;  /* #e73664 */
+  --primary-foreground: 0 0% 100%;
+  --secondary: 217 100% 97%; /* #f0f7ff */
+  --secondary-foreground: 24 9.8% 10%;
+  --accent: 217 100% 97%; /* #f0f7ff */
+  --accent-foreground: 24 9.8% 10%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 60 9.1% 97.8%;
+  --ring: 342 79% 55%; /* #e73664 */
+  --radius: 1rem;
+  
+  /* Chart colors */
+  --chart-1: 342 79% 55%;  /* #e73664 - Primary */
+  --chart-2: 217 80% 65%;  /* Blue */
+  --chart-3: 130 50% 60%;  /* Green */
+  --chart-4: 45 90% 55%;   /* Yellow */
+  --chart-5: 280 60% 60%;  /* Purple */
+  
+  /* Sidebar colors (not needed initially) */
+  --sidebar-background: 0 0% 100%;
+  --sidebar-foreground: 20 14.3% 4.1%;
+  --sidebar-primary: 342 79% 55%;
+  --sidebar-primary-foreground: 0 0% 100%; 
+  --sidebar-accent: 217 100% 97%;
+  --sidebar-accent-foreground: 24 9.8% 10%;
+  --sidebar-border: 20 5.9% 90%;
+  --sidebar-ring: 342 79% 55%;
+}
+
+.dark {
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+  --muted: 240 3.7% 15.9%;
+  --muted-foreground: 240 5% 64.9%;
+  --popover: 240 10% 3.9%;
+  --popover-foreground: 0 0% 98%;
+  --card: 240 10% 3.9%;
+  --card-foreground: 0 0% 98%;
+  --border: 240 3.7% 15.9%;
+  --input: 240 3.7% 15.9%;
+  --primary: 342 79% 55%;  /* #e73664 - Keep same primary */
+  --primary-foreground: 0 0% 100%;
+  --secondary: 240 3.7% 15.9%;
+  --secondary-foreground: 0 0% 98%;
+  --accent: 240 3.7% 15.9%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 98%;
+  --ring: 342 79% 55%;  /* #e73664 */
+  
+  /* Chart colors - slightly lighter for dark mode */
+  --chart-1: 342 79% 65%;  /* Lighter primary */
+  --chart-2: 217 80% 75%;  /* Lighter blue */
+  --chart-3: 130 50% 70%;  /* Lighter green */
+  --chart-4: 45 90% 65%;   /* Lighter yellow */
+  --chart-5: 280 60% 70%;  /* Lighter purple */
+  
+  /* Sidebar colors (not needed initially) */
+  --sidebar-background: 240 10% 3.9%;
+  --sidebar-foreground: 0 0% 98%;
+  --sidebar-primary: 342 79% 55%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 240 3.7% 15.9%;
+  --sidebar-accent-foreground: 0 0% 98%;
+  --sidebar-border: 240 3.7% 15.9%;
+  --sidebar-ring: 342 79% 55%;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+}
