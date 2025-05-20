@@ -1,156 +1,185 @@
-import { ReactNode, useState } from "react";
-import { useLocation } from "wouter";
-import { HeaderNavItem } from "@/components/ui/header-nav-item";
+import { useState, useEffect } from "react";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
+import { UserNav } from "@/components/user-nav";
+import { ModeToggle } from "@/components/mode-toggle";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
-import { useTheme } from "@/hooks/use-theme";
-import { 
-  LayoutDashboard, 
-  Package, 
-  Users, 
-  ShoppingCart, 
-  DollarSign, 
-  Settings, 
+import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  LayoutGrid,
+  Users,
+  ShoppingCart,
+  Package,
+  DollarSign,
+  Settings,
   LogOut,
   Menu,
-  Sun,
-  Moon
+  X,
 } from "lucide-react";
 
-interface AdminLayoutProps {
-  children: ReactNode;
-}
-
-export function AdminLayout({ children }: AdminLayoutProps) {
-  const [location] = useLocation();
+export function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, logoutMutation } = useAuth();
-  const { isDarkMode, toggleTheme } = useTheme();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  
-  const navItems = [
-    { 
-      icon: <LayoutDashboard />, 
-      label: "Painel", 
-      to: "/admin",
-      isActive: location === "/admin" 
+  const [location] = useLocation();
+  const isMobile = useIsMobile();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Close sidebar when navigating on mobile
+  useEffect(() => {
+    if (isMobile) {
+      setIsSidebarOpen(false);
+    }
+  }, [location, isMobile]);
+
+  const navigationItems = [
+    {
+      title: "Dashboard",
+      href: "/admin",
+      icon: <LayoutGrid className="h-5 w-5" />,
     },
-    { 
-      icon: <Package />, 
-      label: "Produtos", 
-      to: "/admin/products",
-      isActive: location === "/admin/products" 
+    {
+      title: "Clientes",
+      href: "/admin/customers",
+      icon: <Users className="h-5 w-5" />,
     },
-    { 
-      icon: <Users />, 
-      label: "Clientes", 
-      to: "/admin/customers",
-      isActive: location === "/admin/customers" 
+    {
+      title: "Produtos",
+      href: "/admin/products",
+      icon: <ShoppingCart className="h-5 w-5" />,
     },
-    { 
-      icon: <ShoppingCart />, 
-      label: "Pedidos", 
-      to: "/admin/orders",
-      isActive: location === "/admin/orders" 
+    {
+      title: "Pedidos",
+      href: "/admin/orders",
+      icon: <Package className="h-5 w-5" />,
     },
-    { 
-      icon: <DollarSign />, 
-      label: "Financeiro", 
-      to: "/admin/financial",
-      isActive: location === "/admin/financial" 
+    {
+      title: "Financeiro",
+      href: "/admin/financial",
+      icon: <DollarSign className="h-5 w-5" />,
     },
-    { 
-      icon: <Settings />, 
-      label: "Opções", 
-      to: "/admin/settings",
-      isActive: location === "/admin/settings" 
+    {
+      title: "Configurações",
+      href: "/admin/settings",
+      icon: <Settings className="h-5 w-5" />,
     },
   ];
-
-  const toggleMobileMenu = () => {
-    setMobileMenuOpen(prev => !prev);
-  };
 
   const handleLogout = () => {
     logoutMutation.mutate();
   };
 
-  const navClassName = mobileMenuOpen
-    ? "flex flex-col absolute top-[72px] left-0 right-0 bg-background z-40 shadow-md p-4 space-y-4 md:static md:flex-row md:shadow-none md:p-0 md:space-y-0 md:space-x-8"
-    : "hidden md:flex md:items-center md:space-x-8";
+  const LogoSection = () => (
+    <div className="flex items-center gap-2 px-6 py-4">
+      <div className="rounded-lg w-8 h-8 bg-primary flex items-center justify-center text-white font-bold">
+        S
+      </div>
+      <span className="font-semibold text-lg">Sorvetão Admin</span>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="bg-background sticky top-0 z-40 border-b">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            {/* Logo */}
-            <div className="flex items-center">
-              <div className="w-32 h-10 bg-gray-200 dark:bg-gray-800 rounded-xl flex items-center justify-center mr-4">
-                <span className="text-gray-500 dark:text-gray-400 font-bold">Sorvetão Logo</span>
-              </div>
-              <button 
-                className="md:hidden rounded-xl p-2 text-muted-foreground hover:bg-secondary"
-                onClick={toggleMobileMenu}
-              >
-                <Menu size={24} />
-              </button>
-            </div>
+    <div className="flex h-screen bg-background">
+      {/* Mobile Sidebar Overlay */}
+      {isMobile && isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
 
-            {/* Navigation - Admin View */}
-            <nav className={navClassName}>
-              {navItems.map((item, index) => (
-                <HeaderNavItem 
-                  key={index}
-                  icon={item.icon}
-                  label={item.label}
-                  to={item.to}
-                  isActive={item.isActive}
-                  onClick={() => setMobileMenuOpen(false)}
-                />
-              ))}
-            </nav>
-
-            {/* User menu */}
-            <div className="flex items-center">
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r bg-card transition-transform duration-300 ease-in-out",
+          isMobile && !isSidebarOpen && "-translate-x-full"
+        )}
+      >
+        <div className="flex flex-col h-full">
+          <div className="flex items-center justify-between border-b">
+            <LogoSection />
+            {isMobile && (
               <Button
                 variant="ghost"
                 size="icon"
                 className="mr-2"
-                onClick={toggleTheme}
+                onClick={() => setIsSidebarOpen(false)}
               >
-                {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                <X className="h-5 w-5" />
               </Button>
-              <span className="text-sm font-medium text-foreground mr-3 hidden sm:inline">
-                {user?.name}
-              </span>
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary mr-2">
-                <span className="font-bold">
-                  {user?.name
-                    .split(' ')
-                    .map(part => part[0])
-                    .slice(0, 2)
-                    .join('')
-                    .toUpperCase()}
-                </span>
-              </div>
-              <Button
-                variant="outline"
-                size="icon"
-                className="rounded-full w-10 h-10 flex items-center justify-center text-muted-foreground hover:bg-secondary"
-                onClick={handleLogout}
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
-            </div>
+            )}
+          </div>
+          
+          <div className="flex-1 overflow-auto py-2">
+            <nav className="grid items-start px-2 gap-1">
+              {navigationItems.map((item, index) => (
+                <Link key={index} href={item.href}>
+                  <a
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground",
+                      location === item.href &&
+                        "bg-primary/10 text-primary font-medium"
+                    )}
+                  >
+                    {item.icon}
+                    <span>{item.title}</span>
+                  </a>
+                </Link>
+              ))}
+            </nav>
+          </div>
+          
+          <div className="border-t p-4">
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-2"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Sair</span>
+            </Button>
           </div>
         </div>
-      </header>
+      </aside>
 
-      <main className="flex-1 p-4 md:p-6 bg-gray-50 dark:bg-gray-900 pb-20">
-        <div className="container mx-auto">
-          {children}
-        </div>
-      </main>
+      {/* Main Content */}
+      <div
+        className={cn(
+          "flex flex-col flex-1 transition-all duration-300 ease-in-out",
+          !isMobile && "ml-64"
+        )}
+      >
+        {/* Header */}
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-6">
+          {isMobile && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="-ml-2"
+              onClick={() => setIsSidebarOpen(true)}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          )}
+          
+          <div className="ml-auto flex items-center gap-4">
+            <ModeToggle />
+            <UserNav 
+              user={{
+                name: user?.name || '',
+                email: user?.email || '',
+                image: 'https://github.com/shadcn.png'
+              }}
+            />
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main className="flex-1 overflow-auto">
+          <div className="container py-6 md:py-8 max-w-6xl">
+            {children}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
