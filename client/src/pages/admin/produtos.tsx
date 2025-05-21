@@ -38,6 +38,9 @@ export default function ProdutosPage() {
     sku: z.string().min(3, "SKU deve ter no mínimo 3 caracteres"),
     unit_of_sale: z.string().min(1, "Unidade de venda é obrigatória"),
     price: z.coerce.number().positive("Preço deve ser maior que zero"),
+    category_id: z.number().nullable().refine(val => val !== null, {
+      message: "Categoria é obrigatória"
+    }),
   });
 
   const categoryFormSchema = insertProductCategorySchema.extend({
@@ -55,7 +58,8 @@ export default function ProdutosPage() {
       unit_of_sale: "",
       price: 0,
       allow_decimal_quantities: false,
-    }
+    },
+    mode: "onChange" // Validação em tempo real
   });
 
   const categoryForm = useForm({
@@ -104,6 +108,12 @@ export default function ProdutosPage() {
   // Mutations para operações CRUD
   const createProductMutation = useMutation({
     mutationFn: async ({ data, saveAndContinue }: { data: typeof productFormSchema._type, saveAndContinue: boolean }) => {
+      console.log("Enviando dados para API:", data);
+      
+      if (!data.category_id) {
+        throw new Error('Categoria é obrigatória');
+      }
+      
       const res = await fetch('/api/products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -112,7 +122,12 @@ export default function ProdutosPage() {
           price: Math.round(parseFloat(data.price.toString()) * 100), // Convertendo para centavos
         }),
       });
-      if (!res.ok) throw new Error('Erro ao criar produto');
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Erro ao criar produto');
+      }
+      
       return { result: await res.json(), saveAndContinue };
     },
     onSuccess: (data) => {
@@ -329,12 +344,23 @@ export default function ProdutosPage() {
 
   // Funções para submissão dos formulários
   const onSubmitProduct = (data: typeof productFormSchema._type) => {
-    if (editingProduct) {
-      updateProductMutation.mutate({ id: editingProduct.id, ...data });
-    } else {
-      createProductMutation.mutate({
-        data,
-        saveAndContinue
+    try {
+      console.log("Dados a serem enviados:", data);
+      
+      if (editingProduct) {
+        updateProductMutation.mutate({ id: editingProduct.id, ...data });
+      } else {
+        createProductMutation.mutate({
+          data,
+          saveAndContinue
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao enviar formulário:", error);
+      toast({ 
+        title: "Erro ao processar formulário", 
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive" 
       });
     }
   };
