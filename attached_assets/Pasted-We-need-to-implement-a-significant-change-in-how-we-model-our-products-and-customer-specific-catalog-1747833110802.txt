@@ -1,0 +1,71 @@
+We need to implement a significant change in how we model our products and customer-specific catalogs to simplify management and reduce data redundancy. Please update the database schema and related backend logic according to the following:
+
+**Current Problem:** Managing individual SKUs for every product packaging variation is becoming cumbersome for catalog assignment and product listing.
+
+**New Approach:**
+We will define "Base Products" which can be sold in various pre-defined "Units of Sale" (Unidades de Venda), each combination having a specific price. Customers will be assigned access to Product Categories, and within those categories, to specific Units of Sale.
+
+**Database Schema Changes:**
+
+1.  **New Table: `UnidadesDeVendaDefinidas` (Defined Units of Sale)**
+    * `id_unidade_venda` (PK, Integer, AutoIncrement)
+    * `nome_unidade` (Text, Unique, e.g., "Unidade", "Meia Caixa 12un", "Caixa Completa 24un", "Meia Caixa 8un", "Caixa Completa 16un")
+    * `descricao_breve` (Text, Optional, e.g., "Caixa com 12 picolés de fruta/leite")
+    * `quantidade_base_equivalente` (Integer, Optional, e.g., 1, 12, 24, 8, 16 - useful for reference, not for stock currently)
+    * `aplicavel_a_tipos_produto` (Text/Array, Optional, e.g., "PICOLE_FRUTA_LEITE", "SORVETE_PALITO", "TODOS" - to help filter relevant units in admin forms)
+
+    * **Seed Data:** This table should be pre-populated with all standard units of sale:
+        * "Unidade" (for baldes, potes, itens avulsos, and individual picolés/sorvetes no palito)
+        * "Meia Caixa 12un" (for Picolé de Fruta, Picolés de Leite)
+        * "Caixa Completa 24un" (for Picolé de Fruta, Picolés de Leite)
+        * "Meia Caixa 8un" (for Sorvete no Palito)
+        * "Caixa Completa 16un" (for Sorvete no Palito)
+        * "Caixa Completa" (generic for Picolés Especiais, Picolés Premium - quantity might vary or be part of product base name, or we need specific versions like "Caixa Premium Xun") - *Clarify if "Caixa Completa" for Premium/Especial has a fixed count or if that count is part of the product base's understanding.*
+
+2.  **Modify/Replace `ProdutosSKUs` with `ProdutosBase`:**
+    * `id_produto_base` (PK, Integer, AutoIncrement)
+    * `id_categoria_produto` (FK to `CategoriasDeProdutos.id_categoria_produto`, Required)
+    * `nome_produto_base` (Text, Required, e.g., "Picolé de Fruta Sabor Abacaxi", "Balde Chocolate 10L")
+    * `codigo_interno_base` (Text, Optional, Unique)
+    * `descricao_longa` (Text, Optional)
+    * `ativo` (Boolean, default True)
+    * `permite_quantidade_decimal` (Boolean, default False) - *This might now belong more to the `UnidadeDeVendaDefinida` (e.g., 'kg') or stay here if a base product is inherently divisible.*
+    * `data_criacao` (Timestamp)
+    * `data_atualizacao` (Timestamp)
+    * `data_de_exclusao` (Timestamp, Nullable)
+
+3.  **New Table: `ProdutoVersoesUnidadeVenda` (Product Packaging Versions & Pricing)**
+    * `id_produto_versao` (PK, Integer, AutoIncrement)
+    * `id_produto_base` (FK to `ProdutosBase.id_produto_base`, Required)
+    * `id_unidade_venda` (FK to `UnidadesDeVendaDefinidas.id_unidade_venda`, Required)
+    * `preco` (Decimal, Required) - Price for the base product WHEN SOLD IN THIS specific unit of sale.
+    * `ativo` (Boolean, default True) - This specific packaging for this product can be active/inactive.
+    * UNIQUE constraint on (`id_produto_base`, `id_unidade_venda`)
+
+4.  **Modify Customer Catalog Assignment:**
+    * `ClienteCategoriasPermitidas` (CustomerID, CategoryID) remains useful to grant access to entire categories.
+    * **New Table: `ClienteCategoriaUnidadesPermitidas`** (Customer Category Allowed Units)
+        * `id_cliente` (FK to `Clientes.id_cliente`, PK Comp)
+        * `id_categoria_produto` (FK to `CategoriasDeProdutos.id_categoria_produto`, PK Comp)
+        * `id_unidade_venda` (FK to `UnidadesDeVendaDefinidas.id_unidade_venda`, PK Comp)
+        * *This table dictates that for a given category, a customer can only purchase products using the specified units of sale.*
+
+5.  **Modify `ItensDoPedido` (OrderItems):**
+    * Remove `id_produto_sku` FK.
+    * Add `id_produto_versao` (FK to `ProdutoVersoesUnidadeVenda.id_produto_versao`, Required). This implicitly links to the base product, the unit of sale, and the price.
+    * `preco_unitario_momento` will now be the `preco` from the `ProdutoVersoesUnidadeVenda` record at the time of order.
+    * `quantidade` remains, representing the number of these `ProdutoVersoesUnidadeVenda` units.
+
+**Backend Logic Changes:**
+* **Product Creation/Editing (Admin):**
+    * Admin creates a `ProdutosBase`.
+    * For this `ProdutosBase`, admin can add multiple `ProdutoVersoesUnidadeVenda` by selecting a pre-defined `UnidadeDeVendaDefinida` from a dropdown and setting a price for that combination.
+* **Customer Catalog Assignment (Admin):**
+    * Admin assigns `CategoriasDeProdutos` to a `Cliente`.
+    * For each assigned category, admin selects which `UnidadesDeVendaDefinidas` that `Cliente` is allowed to purchase for products within that category.
+* **Product Listing (Customer Portal & Admin creating order for customer):**
+    * Fetch `ProdutosBase` from categories the customer has access to (`ClienteCategoriasPermitidas`).
+    * For each `ProdutosBase`, list only the `ProdutoVersoesUnidadeVenda` where the `id_unidade_venda` is in the `ClienteCategoriaUnidadesPermitidas` for that customer and category.
+* **Order Creation:** When adding an item to the cart, it will be an instance of `ProdutoVersoesUnidadeVenda`.
+
+This refactor should significantly simplify product variation management. Please proceed with these changes. Let me know if you have questions.

@@ -1,0 +1,63 @@
+We're implementing a crucial refactor of our product and customer-specific catalog data model. This aims to simplify management, reduce data redundancy, and standardize on English for all table and field names. Please update the database schema and related backend logic as follows:
+
+**New Data Model Approach:**
+"Base Products" can be sold in various pre-defined "Sale Units," with each specific combination having its own price. Customers will be assigned access to `ProductCategories`, and within those categories, to specific `SaleUnits`.
+
+**Database Schema Changes (All names in English):**
+
+1.  **New Table: `SaleUnits` (replaces `UnidadesDeVendaDefinidas`)**
+    * `sale_unit_id` (PK, Integer, AutoIncrement)
+    * `unit_name` (Text, Unique, e.g., "Unidade", "Meia Caixa 12un", "Caixa Completa 24un")
+    * `short_description` (Text, Nullable, e.g., "Caixa com 12 picolés de fruta/leite")
+    * `base_equivalent_quantity` (Integer, Nullable, e.g., 1, 12, 24)
+    * `applicable_product_type_tags` (Text/Array, Nullable, e.g., "POPSICLE_FRUIT_MILK", "STICK_ICE_CREAM", "ALL")
+
+    * **Seed Data (values can remain in Portuguese for display if needed):** Pre-populate with standard units like "Unidade", "Meia Caixa 12un", "Caixa Completa 24un", "Meia Caixa 8un", "Caixa Completa 16un", "Caixa Completa Premium/Especial" (clarify counts for these if they are fixed per unit name or part of `BaseProduct` description).
+
+2.  **Modify/Replace `ProdutosSKUs` with `BaseProducts`**
+    * `base_product_id` (PK, Integer, AutoIncrement)
+    * `product_category_id` (FK to `ProductCategories.product_category_id`, Required)
+    * `base_product_name` (Text, Required, e.g., "Picolé de Fruta Sabor Abacaxi", "Balde Chocolate 10L")
+    * `internal_base_code` (Text, Nullable, Unique)
+    * `long_description` (Text, Nullable)
+    * `is_active` (Boolean, default True)
+    * `allows_decimal_quantity` (Boolean, default False) - *Review if this belongs here or better on `SaleUnits` like 'kg'.*
+    * `created_at` (Timestamp)
+    * `updated_at` (Timestamp)
+    * `deleted_at` (Timestamp, Nullable) - For soft delete.
+
+3.  **New Table: `ProductSaleVersions` (replaces `ProdutoVersoesUnidadeVenda`)**
+    * `product_version_id` (PK, Integer, AutoIncrement)
+    * `base_product_id` (FK to `BaseProducts.base_product_id`, Required)
+    * `sale_unit_id` (FK to `SaleUnits.sale_unit_id`, Required)
+    * `price` (Decimal, Required) - Price for the base product sold in this specific sale unit.
+    * `is_active` (Boolean, default True) - This specific packaging/price for this product can be active/inactive.
+    * UNIQUE constraint on (`base_product_id`, `sale_unit_id`)
+
+4.  **Modify Customer Catalog Assignment Tables:**
+    * `CustomerAllowedCategories` (remains, links `Customers.customer_id` to `ProductCategories.product_category_id`).
+    * **New Table: `CustomerCategoryAllowedSaleUnits`**
+        * `customer_id` (FK to `Customers.customer_id`, Composite PK)
+        * `product_category_id` (FK to `ProductCategories.product_category_id`, Composite PK)
+        * `sale_unit_id` (FK to `SaleUnits.sale_unit_id`, Composite PK)
+        * *This table dictates that for a given category a customer has access to, they can only purchase products using these specified sale units.*
+
+5.  **Modify `OrderItems` (replaces `ItensDoPedido`):**
+    * Rename `id_item_pedido` to `order_item_id` (PK).
+    * Rename `id_pedido` to `order_id` (FK).
+    * Remove `id_produto_sku`.
+    * Add `product_version_id` (FK to `ProductSaleVersions.product_version_id`, Required).
+    * Rename `preco_unitario_momento` to `price_at_purchase`.
+    * `quantity` (Decimal, Required).
+    * Rename `subtotal_item` to `item_subtotal`.
+
+**General Schema Naming Convention:**
+* Ensure all other existing tables (`Users`, `Customers`, `ProductCategories`, `Orders`, `Payments`, `FinancialAccounts`, `FinancialCategories`, `FinancialSubcategories`, `FinancialTransactions`, `SystemSettings`) and their respective fields also follow **snake_case English naming conventions**. For example, `id_cliente` becomes `customer_id`, `nome_empresa` becomes `company_name`, `data_pedido` becomes `order_date`, etc. Update all FK references accordingly.
+
+**Backend Logic Changes:**
+* **Product Creation/Editing (Admin):** Admin creates a `BaseProduct`. Then, for this `BaseProduct`, admin adds multiple `ProductSaleVersions` by selecting a `SaleUnit` from the pre-defined list (dropdown) and setting a `price` for that specific combination.
+* **Customer Catalog Assignment (Admin):** Admin assigns `ProductCategories` to a `Customer`. Then, for each assigned category, admin selects which `SaleUnits` that `Customer` is allowed to purchase for products within that category using the `CustomerCategoryAllowedSaleUnits` table.
+* **Product Listing (Customer Portal & Admin creating order):** Fetch `BaseProducts` from `ProductCategories` the customer has access to. For each `BaseProduct`, list only the `ProductSaleVersions` where its `sale_unit_id` is permitted for that customer within that specific category (via `CustomerCategoryAllowedSaleUnits`).
+* **Order Creation:** When adding an item, it will be an instance of a `ProductSaleVersions` record.
+
+This refactor is critical. Please apply these changes consistently across the entire backend database schema and related API endpoints/logic on Replit.
