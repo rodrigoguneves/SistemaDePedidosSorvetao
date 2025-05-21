@@ -756,7 +756,7 @@ export default function ProdutosPage() {
               </button>
               
               <button
-                className="px-4 py-2 text-white bg-pink-500 hover:bg-pink-600 rounded-lg flex items-center"
+                className="px-4 py-2 text-white bg-[#E73664] hover:bg-[#d82c59] rounded-lg flex items-center"
                 onClick={productForm.handleSubmit(onSubmitProduct)}
                 disabled={createProductMutation.isPending || updateProductMutation.isPending}
               >
