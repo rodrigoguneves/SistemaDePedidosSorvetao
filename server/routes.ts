@@ -171,6 +171,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/customers/:id/products/:productId", async (req, res, next) => {
     try {
       if (!req.isAuthenticated() || (req.user.role !== 'admin' && req.user.role !== 'manager')) {
+
+  app.post("/api/customers/:id/categories/:categoryId/units/:unitId", async (req, res, next) => {
+    try {
+      if (!req.isAuthenticated() || (req.user.role !== 'admin' && req.user.role !== 'manager')) {
+        return res.status(403).json({ message: "Acesso negado" });
+      }
+
+      const customerId = parseInt(req.params.id);
+      const categoryId = parseInt(req.params.categoryId);
+      const unitId = parseInt(req.params.unitId);
+
+      const success = await storage.addCategorySaleUnitToCustomer(customerId, categoryId, unitId);
+      if (!success) {
+        return res.status(400).json({ message: "Não foi possível adicionar a unidade de venda à categoria do cliente" });
+      }
+
+      res.status(201).json({ message: "Unidade de venda adicionada com sucesso" });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.delete("/api/customers/:id/categories/:categoryId/units/:unitId", async (req, res, next) => {
+    try {
+      if (!req.isAuthenticated() || (req.user.role !== 'admin' && req.user.role !== 'manager')) {
+        return res.status(403).json({ message: "Acesso negado" });
+      }
+
+      const customerId = parseInt(req.params.id);
+      const categoryId = parseInt(req.params.categoryId);
+      const unitId = parseInt(req.params.unitId);
+
+      const success = await storage.removeCategorySaleUnitFromCustomer(customerId, categoryId, unitId);
+      if (!success) {
+        return res.status(404).json({ message: "Relação cliente-categoria-unidade não encontrada" });
+      }
+
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  });
+
+
         return res.status(403).json({ message: "Acesso negado" });
       }
 

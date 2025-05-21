@@ -1,21 +1,55 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { AdminLayout } from "@/layouts/admin-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, User, Building, MapPin, KeyRound, Truck, Package } from "lucide-react";
+import { CheckCircle, User, Building, MapPin, KeyRound, Truck, Package, Tag, TagsIcon, ShoppingBag } from "lucide-react";
 import { insertCustomerSchema } from "@shared/schema";
+
+type Category = {
+  id: number;
+  name: string;
+  description?: string;
+};
+
+type SaleUnit = {
+  sale_unit_id: number;
+  unit_name: string;
+  short_description?: string;
+};
 
 export default function AddCustomerPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
+  const [categorySaleUnits, setCategorySaleUnits] = useState<Record<number, number[]>>({});
+
+  // Fetch categories
+  const { data: categories = [] } = useQuery({
+    queryKey: ['/api/categories'],
+    queryFn: async () => {
+      const res = await fetch('/api/categories');
+      if (!res.ok) throw new Error('Erro ao carregar categorias');
+      return res.json();
+    }
+  });
+
+  // Fetch sale units
+  const { data: saleUnits = [] } = useQuery({
+    queryKey: ['/api/sale-units'],
+    queryFn: async () => {
+      const res = await fetch('/api/sale-units');
+      if (!res.ok) throw new Error('Erro ao carregar unidades de venda');
+      return res.json();
+    }
+  });
 
   // Formulário para cadastro de cliente
   const customerForm = useForm({
@@ -28,6 +62,8 @@ export default function AddCustomerPage() {
       neighborhood: z.string().min(1, "Bairro é obrigatório"),
       cnpj: z.string().optional(),
       confirm_password: z.string().min(6, "A confirmação de senha deve ter pelo menos 6 caracteres"),
+      delivery_fee_reais: z.number().min(0, "Taxa não pode ser negativa"),
+      minimum_order_value_reais: z.number().min(0, "Valor mínimo não pode ser negativo"),
     })),
     defaultValues: {
       company_name: "",
@@ -48,11 +84,54 @@ export default function AddCustomerPage() {
       enable_delivery: false,
       delivery_fee: 0,
       minimum_order_value: 0,
+      delivery_fee_reais: 0,
+      minimum_order_value_reais: 0,
       allowed_delivery_days: [false, true, true, true, true, true, false],
       password: "",
       confirm_password: "",
     }
   });
+
+  // Watch enable_delivery to conditionally show delivery settings
+  const enableDelivery = useWatch({
+    control: customerForm.control,
+    name: "enable_delivery",
+  });
+
+  // Handle category selection
+  const handleCategoryChange = (categoryId: number, checked: boolean) => {
+    if (checked) {
+      setSelectedCategories(prev => [...prev, categoryId]);
+      // Initialize empty sale units array for this category
+      setCategorySaleUnits(prev => ({
+        ...prev,
+        [categoryId]: []
+      }));
+    } else {
+      setSelectedCategories(prev => prev.filter(id => id !== categoryId));
+      // Remove this category from sale units mapping
+      setCategorySaleUnits(prev => {
+        const newState = { ...prev };
+        delete newState[categoryId];
+        return newState;
+      });
+    }
+  };
+
+  // Handle sale unit selection for a category
+  const handleSaleUnitChange = (categoryId: number, unitId: number, checked: boolean) => {
+    if (checked) {
+      setCategorySaleUnits(prev => ({
+        ...prev,
+        [categoryId]: [...(prev[categoryId] || []), unitId]
+      }));
+    } else {
+      setCategorySaleUnits(prev => ({
+        ...prev,
+        [categoryId]: (prev[categoryId] || []).filter(id => id !== unitId)
+      }));
+    }
+  };
 
   // Mutation para criar cliente
   const createCustomerMutation = useMutation({
@@ -61,6 +140,9 @@ export default function AddCustomerPage() {
       const formattedData = {
         ...data,
         address: `${data.street}, ${data.number}${data.complement ? `, ${data.complement}` : ''}, ${data.neighborhood}`,
+        // Convert currency values from reais to centavos
+        delivery_fee: Math.round(data.delivery_fee_reais * 100),
+        minimum_order_value: Math.round(data.minimum_order_value_reais * 100),
       };
 
       delete formattedData.street;
@@ -69,9 +151,12 @@ export default function AddCustomerPage() {
       delete formattedData.neighborhood;
       delete formattedData.confirm_password;
       delete formattedData.cnpj;
+      delete formattedData.delivery_fee_reais;
+      delete formattedData.minimum_order_value_reais;
 
       console.log("Sending data to API:", formattedData);
 
+      // Step 1: Create the customer
       const res = await fetch('/api/customers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -83,7 +168,26 @@ export default function AddCustomerPage() {
         throw new Error(errorData.message || 'Erro ao criar cliente');
       }
 
-      return await res.json();
+      const customer = await res.json();
+
+      // Step 2: Set category access for the customer
+      for (const categoryId of selectedCategories) {
+        await fetch(`/api/customers/${customer.id}/categories/${categoryId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        // Step 3: Set sale unit access for each category
+        const unitIds = categorySaleUnits[categoryId] || [];
+        for (const unitId of unitIds) {
+          await fetch(`/api/customers/${customer.id}/categories/${categoryId}/units/${unitId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+      }
+
+      return customer;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/customers'] });
@@ -124,7 +228,11 @@ export default function AddCustomerPage() {
     console.log("Form data submitted:", data);
     if (validatePasswords()) {
       console.log("Passwords validated, submitting form");
-      createCustomerMutation.mutate(data);
+      createCustomerMutation.mutate({
+        ...data,
+        categories: selectedCategories,
+        categorySaleUnits: categorySaleUnits
+      });
     } else {
       console.log("Password validation failed");
       toast({
@@ -429,6 +537,77 @@ export default function AddCustomerPage() {
               </CardContent>
             </Card>
 
+            {/* Categorias e Unidades de Venda */}
+            <Card className="mb-4 shadow-sm">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-2 mb-4">
+                  <div className="bg-pink-100 p-2 rounded-full">
+                    <TagsIcon className="h-5 w-5 text-[#E73664]" />
+                  </div>
+                  <h2 className="text-lg font-medium">Acesso a Produtos</h2>
+                </div>
+
+                <div className="mb-6">
+                  <h3 className="text-sm font-medium text-gray-700 mb-2">Selecione as categorias de produtos que o cliente pode acessar:</h3>
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    {categories.map((category: Category) => (
+                      <div key={category.id} className="flex items-center p-3 border rounded-lg">
+                        <input
+                          type="checkbox"
+                          id={`category-${category.id}`}
+                          checked={selectedCategories.includes(category.id)}
+                          onChange={(e) => handleCategoryChange(category.id, e.target.checked)}
+                          className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664]"
+                        />
+                        <label htmlFor={`category-${category.id}`} className="ml-2 font-medium">
+                          {category.name}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {selectedCategories.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mb-3">Selecione as unidades de venda para cada categoria:</h3>
+                    
+                    {selectedCategories.map(categoryId => {
+                      const category = categories.find((c: Category) => c.id === categoryId);
+                      return (
+                        <div key={categoryId} className="mb-5 p-4 border rounded-lg bg-gray-50">
+                          <h4 className="font-semibold mb-2 flex items-center">
+                            <Tag className="h-4 w-4 mr-1 text-[#E73664]" />
+                            {category?.name}
+                          </h4>
+                          <div className="ml-2 grid grid-cols-2 gap-2">
+                            {saleUnits.map((unit: SaleUnit) => (
+                              <div key={unit.sale_unit_id} className="flex items-center p-2">
+                                <input
+                                  type="checkbox"
+                                  id={`unit-${categoryId}-${unit.sale_unit_id}`}
+                                  checked={(categorySaleUnits[categoryId] || []).includes(unit.sale_unit_id)}
+                                  onChange={(e) => handleSaleUnitChange(categoryId, unit.sale_unit_id, e.target.checked)}
+                                  className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664]"
+                                />
+                                <label htmlFor={`unit-${categoryId}-${unit.sale_unit_id}`} className="ml-2">
+                                  <span className="text-sm font-medium">{unit.unit_name}</span>
+                                  {unit.short_description && (
+                                    <span className="text-xs text-gray-500 block">
+                                      {unit.short_description}
+                                    </span>
+                                  )}
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Configurações de Entrega */}
             <Card className="mb-4 shadow-sm">
               <CardContent className="p-6">
@@ -453,49 +632,71 @@ export default function AddCustomerPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Taxa de Entrega (em centavos)
-                    </label>
-                    <input
-                      type="number"
-                      {...customerForm.register("delivery_fee", { valueAsNumber: true })}
-                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
-                      placeholder="0"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Pedido Mínimo para Entrega (em centavos)
-                    </label>
-                    <input
-                      type="number"
-                      {...customerForm.register("minimum_order_value", { valueAsNumber: true })}
-                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Dias Permitidos para Entrega
-                  </label>
-                  <div className="flex gap-2 flex-wrap">
-                    {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day, index) => (
-                      <label key={day} className="flex items-center p-2 border rounded-lg">
-                        <input
-                          type="checkbox"
-                          {...customerForm.register(`allowed_delivery_days.${index}`)}
-                          className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664]"
-                        />
-                        <span className="ml-2">{day}</span>
+                {enableDelivery && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Taxa de Entrega (R$)
                       </label>
-                    ))}
+                      <div className="relative">
+                        <span className="absolute inset-y-0 left-3 flex items-center text-gray-500">R$</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          {...customerForm.register("delivery_fee_reais", { valueAsNumber: true })}
+                          className="w-full pl-10 rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
+                          placeholder="0.00"
+                        />
+                      </div>
+                      {customerForm.formState.errors.delivery_fee_reais && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {customerForm.formState.errors.delivery_fee_reais.message}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Pedido Mínimo para Entrega (R$)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute inset-y-0 left-3 flex items-center text-gray-500">R$</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          {...customerForm.register("minimum_order_value_reais", { valueAsNumber: true })}
+                          className="w-full pl-10 rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
+                          placeholder="0.00"
+                        />
+                      </div>
+                      {customerForm.formState.errors.minimum_order_value_reais && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {customerForm.formState.errors.minimum_order_value_reais.message}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {enableDelivery && (
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Dias Permitidos para Entrega
+                    </label>
+                    <div className="flex gap-2 flex-wrap">
+                      {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day, index) => (
+                        <label key={day} className="flex items-center p-2 border rounded-lg">
+                          <input
+                            type="checkbox"
+                            {...customerForm.register(`allowed_delivery_days.${index}`)}
+                            className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664]"
+                          />
+                          <span className="ml-2">{day}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
