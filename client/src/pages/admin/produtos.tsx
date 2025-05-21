@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -785,18 +786,19 @@ export default function ProdutosPage() {
                 
                 <button
                   className="px-4 py-2 text-white bg-[#E73664] hover:bg-[#d82c59] rounded-lg flex items-center"
-                onClick={productForm.handleSubmit(onSubmitProduct)}
-                disabled={createProductMutation.isPending || updateProductMutation.isPending}
-              >
-                {createProductMutation.isPending || updateProductMutation.isPending ? (
-                  <>
-                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                    Processando...
-                  </>
-                ) : (
-                  <>{editingProduct ? "Atualizar Produto" : "Criar Produto"}</>
-                )}
-              </button>
+                  onClick={productForm.handleSubmit(onSubmitProduct)}
+                  disabled={createProductMutation.isPending || updateProductMutation.isPending}
+                >
+                  {createProductMutation.isPending || updateProductMutation.isPending ? (
+                    <>
+                      <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      Processando...
+                    </>
+                  ) : (
+                    <>{editingProduct ? "Atualizar Produto" : "Criar Produto"}</>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
