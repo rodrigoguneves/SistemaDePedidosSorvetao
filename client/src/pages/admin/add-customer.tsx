@@ -117,8 +117,17 @@ export default function AddCustomerPage() {
 
   // Handler para submit do formulário
   const onSubmitCustomer = (data: any) => {
+    console.log("Form data submitted:", data);
     if (validatePasswords()) {
+      console.log("Passwords validated, submitting form");
       createCustomerMutation.mutate(data);
+    } else {
+      console.log("Password validation failed");
+      toast({
+        title: "Erro na validação",
+        description: "As senhas não conferem. Por favor, verifique e tente novamente.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -470,15 +479,21 @@ export default function AddCustomerPage() {
                   <h2 className="text-lg font-medium">Catálogo de Produtos Permitidos</h2>
                 </div>
 
-                <div>
+                <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Categorias de Produtos Permitidas
                   </label>
-                  <div className="border rounded-lg p-3 flex items-center justify-between">
-                    <span>Potes e Copos</span>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M6 9L12 15L18 9" stroke="#111827" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
+                  <div className="flex flex-wrap gap-2">
+                    {['Potes e Copos', 'Picolés', 'Sorvetes Especiais', 'Sabores Tradicionais', 'Toppings'].map((category) => (
+                      <label key={category} className="flex items-center p-2 border rounded-lg">
+                        <input
+                          type="checkbox"
+                          name={`category_${category}`}
+                          className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664]"
+                        />
+                        <span className="ml-2">{category}</span>
+                      </label>
+                    ))}
                   </div>
                 </div>
 
@@ -486,8 +501,19 @@ export default function AddCustomerPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Produtos/SKUs Permitidos
                   </label>
-                  <div className="border rounded-lg h-32 bg-gray-50">
-                    {/* Lista de produtos permitidos - vazio por padrão */}
+                  <div className="border rounded-lg p-3 max-h-60 overflow-y-auto">
+                    <div className="flex flex-wrap gap-2">
+                      {['Pote 2L Chocolate', 'Pote 2L Morango', 'Pote 2L Creme', 'Pote 1L Chocolate', 'Pote 1L Morango', 'Picolé Chocolate', 'Picolé Morango'].map((product) => (
+                        <label key={product} className="flex items-center p-2 border rounded-lg">
+                          <input
+                            type="checkbox"
+                            name={`product_${product}`}
+                            className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664]"
+                          />
+                          <span className="ml-2">{product}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -507,6 +533,16 @@ export default function AddCustomerPage() {
                 type="submit" 
                 className="bg-[#E73664] hover:bg-[#d82c59] rounded-full px-5"
                 disabled={createCustomerMutation.isPending}
+                onClick={() => {
+                  if (Object.keys(customerForm.formState.errors).length > 0) {
+                    console.log("Form has errors:", customerForm.formState.errors);
+                    toast({
+                      title: "Erro no formulário",
+                      description: "Por favor, corrija os erros no formulário antes de continuar.",
+                      variant: "destructive",
+                    });
+                  }
+                }}
               >
                 {createCustomerMutation.isPending ? (
                   <>
