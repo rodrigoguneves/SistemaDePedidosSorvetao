@@ -391,4 +391,57 @@ The following files need to be modified:
 
 ## Code Changes
 
-See the attached code changes to implement these modifications.
+# Product Management System Integration Issues & Solutions
+
+## Problem Analysis
+
+After analyzing the codebase, I've identified two main issues with the product management system:
+
+1. **API Endpoint Function Missing**: The backend is missing implementation for some of the API endpoints required for the new database schema (`base_products` and `product_sale_versions`).
+
+2. **Error in Frontend-Backend Integration**: The frontend in `produtos.tsx` is attempting to use these missing functions when creating or fetching product data.
+
+## Specific Issues Found
+
+### Backend Issues:
+1. In the error logs: `TypeError: storage.getProductVersions is not a function`
+2. In the error logs: `TypeError: storage.createProductVersion is not a function`
+
+These errors indicate that while the API endpoints for `/api/product-versions` are defined in `routes.ts`, the corresponding functions in `storage.ts` are named differently.
+
+### Core Issue:
+The function names in `storage.ts` do not match what's being called in `routes.ts`:
+- `getProductVersions` should be `getProductSaleVersions` 
+- `createProductVersion` should be `createProductSaleVersion`
+
+## Solution Plan
+
+### 1. Correct the Storage Methods in routes.ts
+
+Update the function calls in `routes.ts` to match the actual method names defined in `storage.ts`:
+
+- Replace `storage.getProductVersions()` with `storage.getProductSaleVersions()`
+- Replace `storage.createProductVersion()` with `storage.createProductSaleVersion()`
+
+### 2. Ensure Type Consistency
+
+Make sure we're using the correct TypeScript types across the codebase, particularly in the frontend component `produtos.tsx`.
+
+## Implementation Steps
+
+1. Modify `server/routes.ts` to use the correct function names for product version operations
+2. Verify the frontend is using the proper interfaces and types 
+3. Test the product creation flow to ensure both the base product and its sale versions are correctly saved
+
+## Expected Results
+
+After these changes:
+1. The product listing page will successfully load both base products and their associated sale versions
+2. The product creation form will properly save new products to both the `base_products` and `product_sale_versions` tables
+3. All CRUD operations will function correctly with the new database schema
+
+## Long-term Recommendations
+
+1. Consider standardizing naming conventions across the codebase (e.g., `productSaleVersions` vs `productVersions`)
+2. Add more comprehensive error handling to provide clearer feedback when API failures occur
+3. Consider adding integration tests to catch these types of mismatches earlier

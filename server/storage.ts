@@ -423,6 +423,17 @@ export class DatabaseStorage implements IStorage {
     return version;
   }
   
+  // Alias method for backward compatibility
+  async getProductVersions(): Promise<ProductSaleVersion[]> {
+    return this.getProductSaleVersions();
+  }
+  
+  // Get all product sale versions
+  async getProductSaleVersions(): Promise<ProductSaleVersion[]> {
+    return db.select().from(productSaleVersions)
+      .orderBy(productSaleVersions.product_version_id);
+  }
+  
   async getProductSaleVersionsByBaseProduct(baseProductId: number, onlyActive: boolean = true): Promise<ProductSaleVersion[]> {
     let query = db.select().from(productSaleVersions)
       .where(eq(productSaleVersions.base_product_id, baseProductId));
@@ -448,6 +459,11 @@ export class DatabaseStorage implements IStorage {
   async createProductSaleVersion(productSaleVersion: InsertProductSaleVersion): Promise<ProductSaleVersion> {
     const [createdVersion] = await db.insert(productSaleVersions).values(productSaleVersion).returning();
     return createdVersion;
+  }
+  
+  // Alias method for backward compatibility
+  async createProductVersion(productSaleVersion: InsertProductSaleVersion): Promise<ProductSaleVersion> {
+    return this.createProductSaleVersion(productSaleVersion);
   }
   
   async updateProductSaleVersion(id: number, productSaleVersion: Partial<ProductSaleVersion>): Promise<ProductSaleVersion | undefined> {
