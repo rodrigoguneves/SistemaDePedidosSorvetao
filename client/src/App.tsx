@@ -38,6 +38,11 @@ function Router() {
       <ProtectedRoute path="/admin/products" component={React.lazy(() => import("@/pages/admin/produtos"))} />
       <ProtectedRoute path="/admin/customers" component={React.lazy(() => import("@/pages/admin/customers"))} />
       <ProtectedRoute path="/admin/add-customer" component={AddCustomerPage} />
+      
+      {/* Catalog Management - New Routes */}
+      <ProtectedRoute path="/admin/sale-units" component={React.lazy(() => import("@/pages/admin/sale-units"))} />
+      <ProtectedRoute path="/admin/base-products" component={React.lazy(() => import("@/pages/admin/base-products"))} />
+      <ProtectedRoute path="/admin/product-versions" component={React.lazy(() => import("@/pages/admin/product-versions"))} />
 
       {/* Customer routes */}
       <ProtectedRoute path="/" component={CustomerHome} />

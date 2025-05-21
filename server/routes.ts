@@ -5,7 +5,8 @@ import { storage } from "./storage";
 import { 
   insertProductCategorySchema, insertProductSchema, insertCustomerSchema,
   insertOrderSchema, insertOrderItemSchema, insertPaymentSchema,
-  insertFinancialAccountSchema, insertFinancialCategorySchema, insertFinancialTransactionSchema
+  insertFinancialAccountSchema, insertFinancialCategorySchema, insertFinancialTransactionSchema,
+  insertSaleUnitSchema, insertBaseProductSchema, insertProductSaleVersionSchema
 } from "@shared/schema";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
