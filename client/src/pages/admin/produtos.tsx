@@ -897,7 +897,7 @@ export default function ProdutosPage() {
                         {...productForm.register("sale_unit_id", { valueAsNumber: true })}
                       >
                         <option value="">Selecionar Unidade de Venda</option>
-                        {saleUnits.map((unit: any) => (
+                        {saleUnits.map((unit: SaleUnit) => (
                           <option key={unit.sale_unit_id} value={unit.sale_unit_id}>
                             {unit.unit_name} {unit.short_description ? `(${unit.short_description})` : ''}
                           </option>
