@@ -469,7 +469,7 @@ export default function ProdutosPage() {
               <button 
                 className={`px-4 py-2 rounded-full text-sm font-medium ${
                   activeTab === "products" 
-                    ? "bg-pink-500 text-white" 
+                    ? "bg-[#E73664] text-white" 
                     : "text-gray-500 hover:text-gray-700"
                 }`}
                 onClick={() => setActiveTab("products")}
@@ -479,7 +479,7 @@ export default function ProdutosPage() {
               <button 
                 className={`px-4 py-2 rounded-full text-sm font-medium ${
                   activeTab === "categories" 
-                    ? "bg-pink-500 text-white" 
+                    ? "bg-[#E73664] text-white" 
                     : "text-gray-500 hover:text-gray-700"
                 }`}
                 onClick={() => setActiveTab("categories")}
