@@ -89,7 +89,8 @@ export default function AddCustomerPage() {
       allowed_delivery_days: [false, true, true, true, true, true, false],
       password: "",
       confirm_password: "",
-    }
+    },
+    mode: "onSubmit" // Use onSubmit validation mode to avoid premature validation
   });
 
   // Watch enable_delivery to conditionally show delivery settings
@@ -136,58 +137,76 @@ export default function AddCustomerPage() {
   // Mutation para criar cliente
   const createCustomerMutation = useMutation({
     mutationFn: async (data: any) => {
-      // Combina os campos de endereço antes de enviar
-      const formattedData = {
-        ...data,
-        address: `${data.street}, ${data.number}${data.complement ? `, ${data.complement}` : ''}, ${data.neighborhood}`,
-        // Convert currency values from reais to centavos
-        delivery_fee: Math.round(data.delivery_fee_reais * 100),
-        minimum_order_value: Math.round(data.minimum_order_value_reais * 100),
-      };
+      try {
+        // Combina os campos de endereço antes de enviar
+        const formattedData = {
+          ...data,
+          address: `${data.street}, ${data.number}${data.complement ? `, ${data.complement}` : ''}, ${data.neighborhood}`,
+          // Convert currency values from reais to centavos with safe conversion
+          delivery_fee: Math.round((parseFloat(data.delivery_fee_reais) || 0) * 100),
+          minimum_order_value: Math.round((parseFloat(data.minimum_order_value_reais) || 0) * 100),
+        };
 
-      delete formattedData.street;
-      delete formattedData.number;
-      delete formattedData.complement;
-      delete formattedData.neighborhood;
-      delete formattedData.confirm_password;
-      delete formattedData.cnpj;
-      delete formattedData.delivery_fee_reais;
-      delete formattedData.minimum_order_value_reais;
+        // Remove unnecessary fields
+        delete formattedData.street;
+        delete formattedData.number;
+        delete formattedData.complement;
+        delete formattedData.neighborhood;
+        delete formattedData.confirm_password;
+        delete formattedData.cnpj;
+        delete formattedData.delivery_fee_reais;
+        delete formattedData.minimum_order_value_reais;
+        delete formattedData.categories;
+        delete formattedData.categorySaleUnits;
 
-      console.log("Sending data to API:", formattedData);
+        console.log("Sending data to API:", formattedData);
 
-      // Step 1: Create the customer
-      const res = await fetch('/api/customers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formattedData),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || 'Erro ao criar cliente');
-      }
-
-      const customer = await res.json();
-
-      // Step 2: Set category access for the customer
-      for (const categoryId of selectedCategories) {
-        await fetch(`/api/customers/${customer.id}/categories/${categoryId}`, {
+        // Step 1: Create the customer
+        const res = await fetch('/api/customers', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formattedData),
         });
 
-        // Step 3: Set sale unit access for each category
-        const unitIds = categorySaleUnits[categoryId] || [];
-        for (const unitId of unitIds) {
-          await fetch(`/api/customers/${customer.id}/categories/${categoryId}/units/${unitId}`, {
+        if (!res.ok) {
+          const errorData = await res.json();
+          console.error("API error response:", errorData);
+          throw new Error(errorData.message || 'Erro ao criar cliente');
+        }
+
+        const customer = await res.json();
+        console.log("Customer created successfully:", customer);
+
+        // Step 2: Set category access for the customer
+        for (const categoryId of selectedCategories) {
+          const categoryRes = await fetch(`/api/customers/${customer.id}/categories/${categoryId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
           });
-        }
-      }
+          
+          if (!categoryRes.ok) {
+            console.warn(`Failed to add category ${categoryId} to customer ${customer.id}`);
+          }
 
-      return customer;
+          // Step 3: Set sale unit access for each category
+          const unitIds = categorySaleUnits[categoryId] || [];
+          for (const unitId of unitIds) {
+            const unitRes = await fetch(`/api/customers/${customer.id}/categories/${categoryId}/units/${unitId}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+            });
+            
+            if (!unitRes.ok) {
+              console.warn(`Failed to add unit ${unitId} for category ${categoryId} to customer ${customer.id}`);
+            }
+          }
+        }
+
+        return customer;
+      } catch (error) {
+        console.error("Error in customer creation:", error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/customers'] });
@@ -199,9 +218,10 @@ export default function AddCustomerPage() {
       setLocation("/admin/customers");
     },
     onError: (error: Error) => {
+      console.error("Mutation error:", error);
       toast({
         title: "Erro ao criar cliente",
-        description: error.message,
+        description: error.message || "Ocorreu um erro ao criar o cliente. Verifique os dados e tente novamente.",
         variant: "destructive",
       });
     }
@@ -226,13 +246,56 @@ export default function AddCustomerPage() {
   // Handler para submit do formulário
   const onSubmitCustomer = (data: any) => {
     console.log("Form data submitted:", data);
+    
+    // Validate that at least one category is selected if categories are available
+    if (categories.length > 0 && selectedCategories.length === 0) {
+      toast({
+        title: "Erro na validação",
+        description: "Selecione pelo menos uma categoria de produto.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Check all selected categories have at least one sale unit selected
+    for (const categoryId of selectedCategories) {
+      if (!categorySaleUnits[categoryId] || categorySaleUnits[categoryId].length === 0) {
+        toast({
+          title: "Erro na validação",
+          description: "Selecione pelo menos uma unidade de venda para cada categoria.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
+    // Ensure currency values are proper numbers
+    const delivery_fee_reais = parseFloat(data.delivery_fee_reais || 0);
+    const minimum_order_value_reais = parseFloat(data.minimum_order_value_reais || 0);
+    
+    if (isNaN(delivery_fee_reais) || isNaN(minimum_order_value_reais)) {
+      toast({
+        title: "Erro nos valores de entrega",
+        description: "Os valores de taxa de entrega e pedido mínimo devem ser números válidos.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (validatePasswords()) {
       console.log("Passwords validated, submitting form");
-      createCustomerMutation.mutate({
+      
+      // Create a copy of data with corrected number formats
+      const submissionData = {
         ...data,
+        delivery_fee_reais: delivery_fee_reais,
+        minimum_order_value_reais: minimum_order_value_reais,
         categories: selectedCategories,
         categorySaleUnits: categorySaleUnits
-      });
+      };
+      
+      console.log("Submitting data to API:", submissionData);
+      createCustomerMutation.mutate(submissionData);
     } else {
       console.log("Password validation failed");
       toast({

@@ -197,12 +197,13 @@ interface CustomerFormData {
 5. Integration and testing: 1 day
 
 Total: Approximately 6 days for full implementation
-1:# Product Catalog Data Model Refactoring Plan
-2:# Plan to Remove SKU from Products Table and Project
-3:# Backend to Frontend Integration Plan: Migrating to New Product Data Model
-4:# Product Management System Integration Issues & Solutions
-5:# Customer Management - Implementation Instructions
-6:# Customer Form Enhancement Plan
+
+# Product Catalog Data Model Refactoring Plan
+# Plan to Remove SKU from Products Table and Project
+# Backend to Frontend Integration Plan: Migrating to New Product Data Model
+# Product Management System Integration Issues & Solutions
+# Customer Management - Implementation Instructions
+# Customer Form Enhancement Plan
 
 ## Overview of Required Changes
 
@@ -371,3 +372,84 @@ interface CustomerFormData {
   delivery_fee_reais: number;
   minimum_order_value_reais: number;
 }
+```
+
+## Testing Strategy
+
+1. Test category selection
+   - Verify categories load correctly
+   - Check that selected categories are saved
+
+2. Test sale unit selection
+   - Verify sale units load per category
+   - Ensure selections are saved correctly
+
+3. Test currency handling
+   - Verify display of values in R$
+   - Check correct conversion between cents and reais
+
+4. End-to-end tests
+   - Create a customer with categories and sale units
+   - Verify access is properly saved
+   - Test editing a customer's categories and sale units
+
+## Timeline Estimate
+
+1. Backend review and testing: 1 day
+2. Category selection implementation: 1 day
+3. Sale unit selection implementation: 2 days
+4. Currency handling updates: 1 day
+5. Integration and testing: 1 day
+
+Total: Approximately 6 days for full implementation
+
+# Customer Creation Error Analysis and Fix
+
+## Problem Overview
+When clicking "Criar Cliente" on the add customer form, an error message appears, and the customer is not created. The error indicates form validation issues, but the form appears to be filled correctly according to the screenshot.
+
+## Root Causes Identified
+
+### 1. Form Validation Issues
+- The error handling for `delivery_fee_reais` and `minimum_order_value_reais` may be problematic
+- These fields require numeric values, but empty inputs or formatting issues might cause validation errors
+- The conversion between decimal currency values (R$) and cents (stored in the database) may have issues
+
+### 2. Empty Required Fields
+- Some fields marked as required in the validation schema may be empty or incorrectly formatted
+- The error message indicates form validation issues, suggesting some validation rules aren't being met
+
+### 3. Category and Sale Unit Selection
+- There might be issues with the category and sale unit selection functionality
+- The validation might require at least one category to be selected
+
+## Solution Plan
+
+### 1. Fix Currency Value Handling
+- Ensure the delivery fee and minimum order values are properly initialized to 0
+- Improve handling of empty or invalid numeric inputs
+
+### 2. Improve Form Validation
+- Add better error logging to identify which specific fields are failing validation
+- Ensure the form correctly validates before attempting submission
+
+### 3. Fix the submission function
+- The main issue appears to be in the currency conversion and form submission flow
+- Update the `onSubmitCustomer` function to properly handle the form data
+
+### 4. Implementation Steps
+1. Modify the add-customer.tsx file to:
+   - Fix form default values for currency fields
+   - Add better error handling and debugging
+   - Ensure proper conversion between currency formats
+
+2. Update the form submission handling to properly validate all fields and show more specific error messages
+
+3. Ensure the API call properly formats the data before sending to the server
+
+## Expected Outcome
+After implementing these fixes, the form should:
+- Properly validate all inputs
+- Correctly convert currency values between decimal (R$) and integers (cents)
+- Successfully create new customers
+- Provide clear error messages when validation fails
