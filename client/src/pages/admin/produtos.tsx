@@ -384,8 +384,8 @@ export default function ProdutosPage() {
         <div className="flex items-center gap-8">
           <Link href="/admin">
             <div className="flex flex-col items-center cursor-pointer">
-              <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center">
-                <LayoutGrid className="w-5 h-5 text-pink-500" />
+              <div className="w-10 h-10 rounded-full bg-[#E73664]/10 flex items-center justify-center">
+                <LayoutGrid className="w-5 h-5 text-[#E73664]" />
               </div>
               <span className="text-xs mt-1">Painel</span>
             </div>
@@ -393,17 +393,17 @@ export default function ProdutosPage() {
           
           <Link href="/admin/produtos">
             <div className="flex flex-col items-center cursor-pointer">
-              <div className="w-10 h-10 rounded-full bg-pink-500 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-[#E73664] flex items-center justify-center">
                 <Package2 className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xs mt-1 text-pink-500 font-bold">Produtos</span>
+              <span className="text-xs mt-1 text-[#E73664] font-bold">Produtos</span>
             </div>
           </Link>
           
           <Link href="/admin/customers">
             <div className="flex flex-col items-center cursor-pointer">
-              <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center">
-                <Users className="w-5 h-5 text-pink-500" />
+              <div className="w-10 h-10 rounded-full bg-[#E73664]/10 flex items-center justify-center">
+                <Users className="w-5 h-5 text-[#E73664]" />
               </div>
               <span className="text-xs mt-1">Clientes</span>
             </div>
@@ -411,8 +411,8 @@ export default function ProdutosPage() {
           
           <Link href="/admin/orders">
             <div className="flex flex-col items-center cursor-pointer">
-              <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center">
-                <FileStack className="w-5 h-5 text-pink-500" />
+              <div className="w-10 h-10 rounded-full bg-[#E73664]/10 flex items-center justify-center">
+                <FileStack className="w-5 h-5 text-[#E73664]" />
               </div>
               <span className="text-xs mt-1">Pedidos</span>
             </div>
@@ -420,8 +420,8 @@ export default function ProdutosPage() {
           
           <Link href="/admin/financial">
             <div className="flex flex-col items-center cursor-pointer">
-              <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center">
-                <DollarSign className="w-5 h-5 text-pink-500" />
+              <div className="w-10 h-10 rounded-full bg-[#E73664]/10 flex items-center justify-center">
+                <DollarSign className="w-5 h-5 text-[#E73664]" />
               </div>
               <span className="text-xs mt-1">Financeiro</span>
             </div>
@@ -761,16 +761,30 @@ export default function ProdutosPage() {
               </form>
             </div>
             
-            <div className="flex justify-end gap-2 p-4 border-t">
-              <button
-                className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg"
-                onClick={() => setShowAddProductModal(false)}
-              >
-                Cancelar
-              </button>
+            <div className="flex justify-between items-center p-4 border-t">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="saveAndContinue"
+                  className="w-4 h-4 text-[#E73664] border-gray-300 rounded focus:ring-[#E73664]"
+                  checked={saveAndContinue}
+                  onChange={(e) => setSaveAndContinue(e.target.checked)}
+                />
+                <label htmlFor="saveAndContinue" className="ml-2 text-sm font-medium">
+                  Salvar e continuar
+                </label>
+              </div>
               
-              <button
-                className="px-4 py-2 text-white bg-[#E73664] hover:bg-[#d82c59] rounded-lg flex items-center"
+              <div className="flex gap-2">
+                <button
+                  className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg"
+                  onClick={() => setShowAddProductModal(false)}
+                >
+                  Cancelar
+                </button>
+                
+                <button
+                  className="px-4 py-2 text-white bg-[#E73664] hover:bg-[#d82c59] rounded-lg flex items-center"
                 onClick={productForm.handleSubmit(onSubmitProduct)}
                 disabled={createProductMutation.isPending || updateProductMutation.isPending}
               >
