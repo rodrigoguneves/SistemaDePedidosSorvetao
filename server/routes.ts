@@ -864,6 +864,281 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Sale Units endpoints
+  app.get("/api/sale-units", async (req, res, next) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(403).json({ message: "Acesso negado" });
+      }
+      
+      const saleUnits = await storage.getSaleUnits();
+      res.json(saleUnits);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/sale-units/:id", async (req, res, next) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(403).json({ message: "Acesso negado" });
+      }
+      
+      const saleUnit = await storage.getSaleUnit(parseInt(req.params.id));
+      if (!saleUnit) {
+        return res.status(404).json({ message: "Unidade de venda não encontrada" });
+      }
+      
+      res.json(saleUnit);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/sale-units", async (req, res, next) => {
+    try {
+      if (!req.isAuthenticated() || (req.user.role !== 'admin' && req.user.role !== 'manager')) {
+        return res.status(403).json({ message: "Acesso negado" });
+      }
+      
+      const validatedData = insertSaleUnitSchema.parse(req.body);
+      const saleUnit = await storage.createSaleUnit(validatedData);
+      res.status(201).json(saleUnit);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch("/api/sale-units/:id", async (req, res, next) => {
+    try {
+      if (!req.isAuthenticated() || (req.user.role !== 'admin' && req.user.role !== 'manager')) {
+        return res.status(403).json({ message: "Acesso negado" });
+      }
+      
+      const saleUnitId = parseInt(req.params.id);
+      const saleUnit = await storage.updateSaleUnit(saleUnitId, req.body);
+      if (!saleUnit) {
+        return res.status(404).json({ message: "Unidade de venda não encontrada" });
+      }
+      
+      res.json(saleUnit);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.delete("/api/sale-units/:id", async (req, res, next) => {
+    try {
+      if (!req.isAuthenticated() || req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Acesso negado" });
+      }
+      
+      const saleUnitId = parseInt(req.params.id);
+      const success = await storage.deleteSaleUnit(saleUnitId);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Unidade de venda não encontrada ou não pode ser excluída" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Base Products endpoints
+  app.get("/api/base-products", async (req, res, next) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(403).json({ message: "Acesso negado" });
+      }
+      
+      const includeDeleted = req.query.includeDeleted === 'true' && 
+        (req.user.role === 'admin' || req.user.role === 'manager');
+      
+      const categoryId = req.query.categoryId ? parseInt(req.query.categoryId as string) : undefined;
+      
+      let baseProducts;
+      if (categoryId) {
+        baseProducts = await storage.getBaseProductsByCategory(categoryId, includeDeleted);
+      } else {
+        baseProducts = await storage.getBaseProducts(includeDeleted);
+      }
+      
+      res.json(baseProducts);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/base-products/:id", async (req, res, next) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(403).json({ message: "Acesso negado" });
+      }
+      
+      const baseProduct = await storage.getBaseProduct(parseInt(req.params.id));
+      if (!baseProduct) {
+        return res.status(404).json({ message: "Produto base não encontrado" });
+      }
+      
+      res.json(baseProduct);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/base-products", async (req, res, next) => {
+    try {
+      if (!req.isAuthenticated() || (req.user.role !== 'admin' && req.user.role !== 'manager')) {
+        return res.status(403).json({ message: "Acesso negado" });
+      }
+      
+      const validatedData = insertBaseProductSchema.parse(req.body);
+      const baseProduct = await storage.createBaseProduct(validatedData);
+      res.status(201).json(baseProduct);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch("/api/base-products/:id", async (req, res, next) => {
+    try {
+      if (!req.isAuthenticated() || (req.user.role !== 'admin' && req.user.role !== 'manager')) {
+        return res.status(403).json({ message: "Acesso negado" });
+      }
+      
+      const baseProductId = parseInt(req.params.id);
+      const baseProduct = await storage.updateBaseProduct(baseProductId, req.body);
+      if (!baseProduct) {
+        return res.status(404).json({ message: "Produto base não encontrado" });
+      }
+      
+      res.json(baseProduct);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.delete("/api/base-products/:id", async (req, res, next) => {
+    try {
+      if (!req.isAuthenticated() || req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Acesso negado" });
+      }
+      
+      const baseProductId = parseInt(req.params.id);
+      const hardDelete = req.query.hard === 'true';
+      
+      let success = false;
+      if (hardDelete) {
+        success = await storage.hardDeleteBaseProduct(baseProductId);
+      } else {
+        success = await storage.softDeleteBaseProduct(baseProductId);
+      }
+      
+      if (!success) {
+        return res.status(404).json({ message: "Produto base não encontrado" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Product Sale Version endpoints
+  app.get("/api/product-versions", async (req, res, next) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(403).json({ message: "Acesso negado" });
+      }
+      
+      const baseProductId = req.query.baseProductId ? parseInt(req.query.baseProductId as string) : undefined;
+      const saleUnitId = req.query.saleUnitId ? parseInt(req.query.saleUnitId as string) : undefined;
+      
+      let productVersions;
+      if (baseProductId && saleUnitId) {
+        productVersions = await storage.getProductVersionByProductAndUnit(baseProductId, saleUnitId);
+      } else if (baseProductId) {
+        productVersions = await storage.getProductVersionsByBaseProduct(baseProductId);
+      } else {
+        productVersions = await storage.getProductVersions();
+      }
+      
+      res.json(productVersions);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/product-versions/:id", async (req, res, next) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(403).json({ message: "Acesso negado" });
+      }
+      
+      const productVersion = await storage.getProductVersion(parseInt(req.params.id));
+      if (!productVersion) {
+        return res.status(404).json({ message: "Versão de produto não encontrada" });
+      }
+      
+      res.json(productVersion);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/product-versions", async (req, res, next) => {
+    try {
+      if (!req.isAuthenticated() || (req.user.role !== 'admin' && req.user.role !== 'manager')) {
+        return res.status(403).json({ message: "Acesso negado" });
+      }
+      
+      const validatedData = insertProductSaleVersionSchema.parse(req.body);
+      const productVersion = await storage.createProductVersion(validatedData);
+      res.status(201).json(productVersion);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch("/api/product-versions/:id", async (req, res, next) => {
+    try {
+      if (!req.isAuthenticated() || (req.user.role !== 'admin' && req.user.role !== 'manager')) {
+        return res.status(403).json({ message: "Acesso negado" });
+      }
+      
+      const productVersionId = parseInt(req.params.id);
+      const productVersion = await storage.updateProductVersion(productVersionId, req.body);
+      if (!productVersion) {
+        return res.status(404).json({ message: "Versão de produto não encontrada" });
+      }
+      
+      res.json(productVersion);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.delete("/api/product-versions/:id", async (req, res, next) => {
+    try {
+      if (!req.isAuthenticated() || req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Acesso negado" });
+      }
+      
+      const productVersionId = parseInt(req.params.id);
+      const success = await storage.deleteProductVersion(productVersionId);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Versão de produto não encontrada" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  });
+
   // Create HTTP server
   const httpServer = createServer(app);
   return httpServer;
