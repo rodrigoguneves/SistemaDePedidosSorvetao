@@ -252,21 +252,21 @@ export class DatabaseStorage implements IStorage {
 
   async getProducts(includeDeleted: boolean = false): Promise<Product[]> {
     if (includeDeleted) {
-      return db.select().from(products).orderBy([asc(products.price), asc(products.name)]);
+      return db.select().from(products).orderBy(products.price, products.name);
     }
-    return db.select().from(products).where(isNull(products.data_de_exclusao)).orderBy([asc(products.price), asc(products.name)]);
+    return db.select().from(products).where(isNull(products.data_de_exclusao)).orderBy(products.price, products.name);
   }
 
   async getProductsByCategory(categoryId: number, includeDeleted: boolean = false): Promise<Product[]> {
     if (includeDeleted) {
-      return db.select().from(products).where(eq(products.category_id, categoryId)).orderBy([asc(products.price), asc(products.name)]);
+      return db.select().from(products).where(eq(products.category_id, categoryId)).orderBy(products.price, products.name);
     }
     return db.select().from(products)
       .where(and(
         eq(products.category_id, categoryId),
         isNull(products.data_de_exclusao)
       ))
-      .orderBy([asc(products.price), asc(products.name)]);
+      .orderBy(products.price, products.name);
   }
 
   async createProduct(product: InsertProduct): Promise<Product> {
