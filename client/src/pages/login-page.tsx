@@ -104,7 +104,8 @@ export default function LoginPage() {
                     id="email"
                     type="email"
                     placeholder="seu@email.com"
-                    className={styles.input}
+                    className={`${styles.input}`}
+                    style={{borderRadius: "30px", paddingLeft: "65px"}}
                     {...register("email")}
                   />
                 </div>
@@ -119,7 +120,8 @@ export default function LoginPage() {
                     id="password"
                     type="password"
                     placeholder="••••••••"
-                    className={styles.input}
+                    className={`${styles.input}`}
+                    style={{borderRadius: "30px", paddingLeft: "65px"}}
                     {...register("password")}
                   />
                 </div>

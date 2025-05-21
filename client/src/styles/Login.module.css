@@ -120,18 +120,18 @@
 }
 
 .input {
-  box-sizing: border-box;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 30px;
-  width: 100%;
-  height: 58px;
-  padding: 0 48px 0 65px;
-  font-family: 'Inter', sans-serif;
-  font-size: 16px;
-  color: #374151;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-  outline: none;
+  box-sizing: border-box !important;
+  background: #f9fafb !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 30px !important;
+  width: 100% !important;
+  height: 58px !important;
+  padding: 0 48px 0 65px !important;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 16px !important;
+  color: #374151 !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+  outline: none !important;
 }
 
 .input:focus {
@@ -144,12 +144,13 @@
 }
 
 .inputIcon {
-  position: absolute;
-  left: 30px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #9ca3af;
-  pointer-events: none; /* Ensures the icon doesn't interfere with input interaction */
+  position: absolute !important;
+  left: 30px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  color: #9ca3af !important;
+  pointer-events: none !important; /* Ensures the icon doesn't interfere with input interaction */
+  z-index: 2 !important;
 }
 
 .loginButton {
