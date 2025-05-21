@@ -1,9 +1,8 @@
 /**
- * Script to launch Drizzle Studio - a UI for database management
+ * Script to inspect database schema
  */
 
 import { drizzle } from 'drizzle-orm/postgres-js';
-import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 import * as schema from '../shared/schema';
 
@@ -17,20 +16,24 @@ const sql = postgres(connectionString, { max: 1 });
 const db = drizzle(sql, { schema });
 
 async function main() {
-  console.log("Starting Drizzle Studio...")
-  console.log("You can use this UI to view and manage your database tables")
+  console.log("Connecting to database and inspecting tables...");
   
-  // This will make Drizzle Studio available on a local port
-  // In Replit, this should open in a new Webview
-  const { createServer } = await import('drizzle-studio/server');
-  await createServer({
-    driver: 'pg',
-    dbCredentials: {
-      connectionString: process.env.DATABASE_URL,
-    },
-    schema: './shared/schema.ts',
-    port: 3333
-  }).start();
+  try {
+    // Query database tables
+    const tableQuery = await sql`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name`;
+    
+    console.log("\nAvailable tables in database:");
+    for (const row of tableQuery) {
+      console.log(`- ${row.table_name}`);
+    }
+    
+    console.log("\nDatabase connection successful!");
+    console.log("You can now run the migration script to update the schema.");
+  } catch (error) {
+    console.error("Error connecting to database:", error);
+  } finally {
+    await sql.end();
+  }
 }
 
 main();
