@@ -1,6 +1,5 @@
-
 import { useState } from "react";
-import { useNavigate } from "wouter";
+import { useLocation } from "wouter";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
@@ -13,10 +12,10 @@ import { CheckCircle, User, Building, MapPin, KeyRound, Truck, Package } from "l
 import { insertCustomerSchema } from "@shared/schema";
 
 export default function AddCustomerPage() {
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
+
   // Formulário para cadastro de cliente
   const customerForm = useForm({
     resolver: zodResolver(insertCustomerSchema.extend({
@@ -62,13 +61,13 @@ export default function AddCustomerPage() {
         ...data,
         address: `${data.street}, ${data.number}${data.complement ? `, ${data.complement}` : ''}, ${data.neighborhood}`,
       };
-      
+
       delete formattedData.street;
       delete formattedData.number;
       delete formattedData.complement;
       delete formattedData.neighborhood;
       delete formattedData.confirm_password;
-      
+
       const res = await fetch('/api/customers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -89,7 +88,7 @@ export default function AddCustomerPage() {
         description: "O novo cliente foi adicionado ao sistema.",
         variant: "default",
       });
-      navigate("/admin/customers");
+      setLocation("/admin/customers");
     },
     onError: (error: Error) => {
       toast({
@@ -104,7 +103,7 @@ export default function AddCustomerPage() {
   const validatePasswords = () => {
     const password = customerForm.getValues("password");
     const confirmPassword = customerForm.getValues("confirm_password");
-    
+
     if (password !== confirmPassword) {
       customerForm.setError("confirm_password", {
         type: "validate",
@@ -112,7 +111,7 @@ export default function AddCustomerPage() {
       });
       return false;
     }
-    
+
     return true;
   };
 
@@ -133,7 +132,7 @@ export default function AddCustomerPage() {
             </div>
             <Button 
               variant="destructive" 
-              onClick={() => navigate("/admin/customers")}
+              onClick={() => setLocation("/admin/customers")}
               className="rounded-full px-5"
             >
               Voltar
@@ -498,7 +497,7 @@ export default function AddCustomerPage() {
               <Button 
                 type="button" 
                 variant="outline"
-                onClick={() => navigate("/admin/customers")}
+                onClick={() => setLocation("/admin/customers")}
                 className="rounded-full px-5"
               >
                 Cancelar
