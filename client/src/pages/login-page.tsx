@@ -19,7 +19,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const { login, isAuthenticated } = useAuth();
+  const { isAuthenticated, loginMutation } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [logoPath, setLogoPath] = useState<string | null>(null);
 
@@ -69,12 +69,17 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormData) => {
     try {
       setIsLoading(true);
-      await login(data.email, data.password);
+      await loginMutation.mutateAsync({
+        email: data.email,
+        password: data.password
+      });
+      
       toast({
         title: "Login realizado com sucesso",
         description: "Você será redirecionado para o painel",
       });
-      setLocation("/admin/dashboard");
+      
+      // O redirecionamento já ocorre dentro do hook useAuth no sucesso do login
     } catch (error) {
       toast({
         title: "Erro ao fazer login",
@@ -160,9 +165,9 @@ export default function LoginPage() {
               <button
                 type="submit"
                 className={styles.loginButton}
-                disabled={isLoading}
+                disabled={isLoading || loginMutation.isLoading}
               >
-                {isLoading ? "Processando..." : "Logar"}
+                {isLoading || loginMutation.isLoading ? "Processando..." : "Logar"}
               </button>
             </form>
             <a href="#" className={styles.forgotPassword}>
