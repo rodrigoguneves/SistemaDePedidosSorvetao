@@ -80,6 +80,7 @@
   font-size: 26.667px;
   font-weight: 700;
   line-height: 26.667px;
+  margin-bottom: 20px;
 }
 
 .form {
@@ -135,8 +136,9 @@
 }
 
 .input:focus {
-  border-color: #E73664;
-  box-shadow: 0 0 0 2px rgba(231, 54, 100, 0.2);
+  border-color: #E73664 !important;
+  box-shadow: 0 0 0 2px rgba(231, 54, 100, 0.2) !important;
+  outline-color: #E73664 !important;
 }
 
 .input::placeholder {
