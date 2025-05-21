@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, doublePrecision, json, foreignKey, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, doublePrecision, json, foreignKey, pgEnum, primaryKey, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -94,7 +94,69 @@ export const productCategoryRelations = relations(productCategories, ({ many }) 
   customerCategories: many(customerCategories),
 }));
 
-// Product model
+// Sale Units model
+export const saleUnits = pgTable('sale_units', {
+  sale_unit_id: serial('sale_unit_id').primaryKey(),
+  unit_name: text('unit_name').notNull().unique(),
+  short_description: text('short_description'),
+  base_equivalent_quantity: integer('base_equivalent_quantity'),
+  applicable_product_type_tags: text('applicable_product_type_tags').array(),
+  created_at: timestamp('created_at').defaultNow(),
+  updated_at: timestamp('updated_at').defaultNow(),
+});
+
+export const insertSaleUnitSchema = createInsertSchema(saleUnits).omit({
+  sale_unit_id: true,
+  created_at: true,
+  updated_at: true,
+});
+
+// Base Products model (replacing the previous products table)
+export const baseProducts = pgTable('base_products', {
+  base_product_id: serial('base_product_id').primaryKey(),
+  product_category_id: integer('product_category_id').references(() => productCategories.id),
+  base_product_name: text('base_product_name').notNull(),
+  internal_base_code: text('internal_base_code').unique(),
+  long_description: text('long_description'),
+  is_active: boolean('is_active').default(true),
+  allows_decimal_quantity: boolean('allows_decimal_quantity').default(false),
+  created_at: timestamp('created_at').defaultNow(),
+  updated_at: timestamp('updated_at').defaultNow(),
+  deleted_at: timestamp('deleted_at'),
+});
+
+export const insertBaseProductSchema = createInsertSchema(baseProducts).omit({
+  base_product_id: true,
+  deleted_at: true,
+  created_at: true,
+  updated_at: true,
+});
+
+// Product Sale Versions model
+export const productSaleVersions = pgTable('product_sale_versions', {
+  product_version_id: serial('product_version_id').primaryKey(),
+  base_product_id: integer('base_product_id').notNull().references(() => baseProducts.base_product_id),
+  sale_unit_id: integer('sale_unit_id').notNull().references(() => saleUnits.sale_unit_id),
+  price: integer('price').notNull(),
+  is_active: boolean('is_active').default(true),
+  created_at: timestamp('created_at').defaultNow(),
+  updated_at: timestamp('updated_at').defaultNow(),
+},
+(table) => {
+  return {
+    // Each base product can only have one version per sale unit
+    uniqueProductUnit: uniqueIndex('unique_product_unit_idx').on(table.base_product_id, table.sale_unit_id),
+  };
+});
+
+export const insertProductSaleVersionSchema = createInsertSchema(productSaleVersions).omit({
+  product_version_id: true,
+  created_at: true,
+  updated_at: true,
+});
+
+// For backward compatibility during migration - keeping the products table reference
+// This will be removed after migration is complete
 export const products = pgTable('products', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
@@ -133,7 +195,7 @@ export const customerCategories = pgTable('customer_categories', {
   created_at: timestamp('created_at').defaultNow(),
 });
 
-export const customerCategoryRelations = relations(customerCategories, ({ one }) => ({
+export const customerCategoryRelations = relations(customerCategories, ({ one, many }) => ({
   customer: one(customers, {
     fields: [customerCategories.customer_id],
     references: [customers.id],
@@ -141,6 +203,34 @@ export const customerCategoryRelations = relations(customerCategories, ({ one })
   category: one(productCategories, {
     fields: [customerCategories.category_id],
     references: [productCategories.id],
+  }),
+  allowedSaleUnits: many(customerCategoryAllowedSaleUnits),
+}));
+
+// Customer-Category-SaleUnit access model
+export const customerCategoryAllowedSaleUnits = pgTable('customer_category_allowed_sale_units', {
+  customer_id: integer('customer_id').notNull().references(() => customers.id, { onDelete: 'cascade' }),
+  product_category_id: integer('product_category_id').notNull().references(() => productCategories.id, { onDelete: 'cascade' }),
+  sale_unit_id: integer('sale_unit_id').notNull().references(() => saleUnits.sale_unit_id, { onDelete: 'cascade' }),
+  created_at: timestamp('created_at').defaultNow(),
+}, (table) => {
+  return {
+    pk: primaryKey({ columns: [table.customer_id, table.product_category_id, table.sale_unit_id] }),
+  };
+});
+
+export const customerCategoryAllowedSaleUnitsRelations = relations(customerCategoryAllowedSaleUnits, ({ one }) => ({
+  customer: one(customers, {
+    fields: [customerCategoryAllowedSaleUnits.customer_id],
+    references: [customers.id],
+  }),
+  category: one(productCategories, {
+    fields: [customerCategoryAllowedSaleUnits.product_category_id],
+    references: [productCategories.id],
+  }),
+  saleUnit: one(saleUnits, {
+    fields: [customerCategoryAllowedSaleUnits.sale_unit_id],
+    references: [saleUnits.sale_unit_id],
   }),
 }));
 
