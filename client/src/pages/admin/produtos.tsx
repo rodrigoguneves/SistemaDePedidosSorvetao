@@ -52,7 +52,6 @@ export default function ProdutosPage() {
     defaultValues: {
       name: "",
       category_id: null as number | null,
-      sku: "",
       description: "",
       unit_of_sale: "",
       price: 0,
