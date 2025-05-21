@@ -29,6 +29,7 @@ export default function ProdutosPage() {
   const [editingCategory, setEditingCategory] = useState<ProductCategory | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [saveAndContinue, setSaveAndContinue] = useState(false);
 
   // Schemas para validação de formulários
   const productFormSchema = insertProductSchema.extend({
@@ -100,7 +101,7 @@ export default function ProdutosPage() {
 
   // Mutations para operações CRUD
   const createProductMutation = useMutation({
-    mutationFn: async (data: typeof productFormSchema._type) => {
+    mutationFn: async ({ data, saveAndContinue }: { data: typeof productFormSchema._type, saveAndContinue: boolean }) => {
       const res = await fetch('/api/products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -110,13 +111,23 @@ export default function ProdutosPage() {
         }),
       });
       if (!res.ok) throw new Error('Erro ao criar produto');
-      return res.json();
+      return { result: await res.json(), saveAndContinue };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/products'] });
       toast({ title: "Produto criado com sucesso" });
-      setShowAddProductModal(false);
-      productForm.reset();
+      
+      if (!data.saveAndContinue) {
+        setShowAddProductModal(false);
+        productForm.reset();
+      } else {
+        // Se "Salvar e continuar" estiver marcado, apenas limpe o nome do produto
+        const currentValues = productForm.getValues();
+        productForm.reset({
+          ...currentValues,
+          name: ""
+        });
+      }
     },
     onError: (error: Error) => {
       toast({ 
@@ -319,7 +330,10 @@ export default function ProdutosPage() {
     if (editingProduct) {
       updateProductMutation.mutate({ id: editingProduct.id, ...data });
     } else {
-      createProductMutation.mutate(data);
+      createProductMutation.mutate({
+        data,
+        saveAndContinue
+      });
     }
   };
 
