@@ -167,7 +167,6 @@ async function migrateProducts() {
       const [baseProduct] = await db.insert(baseProducts).values({
         product_category_id: product.category_id,
         base_product_name: product.name,
-        internal_base_code: product.sku,
         long_description: product.description,
         is_active: true,
         allows_decimal_quantity: product.allow_decimal_quantities

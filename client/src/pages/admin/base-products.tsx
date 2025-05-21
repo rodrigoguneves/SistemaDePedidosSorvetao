@@ -45,7 +45,6 @@ export default function BaseProductsPage() {
   const baseProductFormSchema = z.object({
     base_product_name: z.string().min(3, "Nome do produto deve ter no mínimo 3 caracteres"),
     product_category_id: z.coerce.number().optional().nullable(),
-    internal_base_code: z.string().optional(),
     long_description: z.string().optional(),
     is_active: z.boolean().default(true),
     allows_decimal_quantity: z.boolean().default(false),
@@ -57,7 +56,6 @@ export default function BaseProductsPage() {
     defaultValues: {
       base_product_name: "",
       product_category_id: null,
-      internal_base_code: "",
       long_description: "",
       is_active: true,
       allows_decimal_quantity: false,
@@ -184,7 +182,6 @@ export default function BaseProductsPage() {
     productForm.reset({
       base_product_name: "",
       product_category_id: null,
-      internal_base_code: "",
       long_description: "",
       is_active: true,
       allows_decimal_quantity: false,
@@ -197,7 +194,6 @@ export default function BaseProductsPage() {
     productForm.reset({
       base_product_name: product.base_product_name,
       product_category_id: product.product_category_id,
-      internal_base_code: product.internal_base_code || "",
       long_description: product.long_description || "",
       is_active: product.is_active !== false,
       allows_decimal_quantity: product.allows_decimal_quantity === true,
@@ -223,8 +219,7 @@ export default function BaseProductsPage() {
   // Filtragem de produtos base
   const filteredProducts = baseProducts.filter((product: any) => {
     const matchesSearch = searchQuery 
-      ? product.base_product_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (product.internal_base_code && product.internal_base_code.toLowerCase().includes(searchQuery.toLowerCase()))
+      ? product.base_product_name.toLowerCase().includes(searchQuery.toLowerCase())
       : true;
 
     const matchesCategory = selectedCategory === "all" 
@@ -391,7 +386,6 @@ export default function BaseProductsPage() {
           <Table>
             <Table.Head>
               <Table.HeadCell>Nome do Produto</Table.HeadCell>
-              <Table.HeadCell>Código Interno</Table.HeadCell>
               <Table.HeadCell>Categoria</Table.HeadCell>
               <Table.HeadCell>Status</Table.HeadCell>
               <Table.HeadCell>Ações</Table.HeadCell>
@@ -416,9 +410,6 @@ export default function BaseProductsPage() {
                   <Table.Row key={product.base_product_id} className="bg-white hover:bg-gray-50">
                     <Table.Cell className="font-medium">
                       {product.base_product_name}
-                    </Table.Cell>
-                    <Table.Cell>
-                      {product.internal_base_code || "-"}
                     </Table.Cell>
                     <Table.Cell>
                       {getCategoryName(product.product_category_id)}
@@ -470,9 +461,6 @@ export default function BaseProductsPage() {
                         className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
                       >
                         <h3 className="font-bold">{product.base_product_name}</h3>
-                        <p className="text-gray-500 text-sm mt-1">
-                          {product.internal_base_code || "Sem código"}
-                        </p>
                         <div className="mt-3 flex justify-between items-center">
                           <Badge
                             color={product.is_active ? "success" : "gray"}
@@ -549,19 +537,7 @@ export default function BaseProductsPage() {
                 )}
               </div>
 
-              <div>
-                <label htmlFor="internal_base_code" className="block text-sm font-medium text-gray-700 mb-1">
-                  Código Interno
-                </label>
-                <TextInput
-                  id="internal_base_code"
-                  placeholder="Ex: SORV-MOR"
-                  {...productForm.register("internal_base_code")}
-                />
-                <p className="mt-1 text-sm text-gray-500">
-                  Um código opcional para identificação interna do produto
-                </p>
-              </div>
+              
 
               <div>
                 <label htmlFor="product_category_id" className="block text-sm font-medium text-gray-700 mb-1">

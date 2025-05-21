@@ -285,7 +285,6 @@ export default function ProductsPage() {
     productForm.reset({
       name: "",
       category_id: null,
-      sku: "",
       description: "",
       unit_of_sale: "",
       price: 0,

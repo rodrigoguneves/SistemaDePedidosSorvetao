@@ -286,3 +286,64 @@ The critical challenge will be ensuring data integrity during the migration, esp
 4. Perform a final migration on the production database
 
 This refactoring will significantly improve the flexibility of the product catalog system, allowing for different sale units and pricing for the same base product while providing fine-grained control over what customers can access.
+
+# Plan to Remove SKU from Products Table and Project
+
+## Overview
+The project currently uses the `sku` field in the `products` table and the `internal_base_code` field (which serves the same purpose) in the `base_products` table. Based on your request to completely remove this field and all references to it, I've identified the key areas that need modification.
+
+## Analysis of Current Usage
+
+### Database Schema
+- In `shared/schema.ts`, the `sku` field is defined in the `products` table
+- In `baseProducts` table, there's a field called `internal_base_code` which serves the same purpose
+
+### User Interface
+- In `client/src/pages/admin/produtos.tsx`, the UI includes form fields for SKU input and display
+- In `client/src/pages/admin/products.tsx`, SKU is also referenced
+- In `client/src/pages/admin/base-products.tsx`, the equivalent `internal_base_code` is used
+
+### API and Server Logic
+- The schema validations in `shared/schema.ts` require SKU
+- Server storage functions may be using this field for operations
+
+## Implementation Plan
+
+### 1. Update Database Schema
+- Modify `shared/schema.ts` to remove the `sku` field from the `products` table
+- Remove the `internal_base_code` from the `baseProducts` table
+- Update related validation schemas
+
+### 2. Update UI Components
+- Remove SKU field from product creation/editing forms in `produtos.tsx` and other related files
+- Remove SKU from display tables and cards
+
+### 3. Update Server Logic
+- Check and update any server-side functions that might be using the SKU field
+- Update migration scripts if necessary
+
+### 4. Test Changes
+After implementing these changes, make sure to test:
+- Product creation without SKU
+- Existing products still display correctly
+- Search and filtering functionality works properly
+- Any imports/exports that might have used SKU
+
+## Potential Issues
+- Database migrations: If there are existing products, removing the column might require a separate migration
+- Code relying on SKU: There might be logic that depends on SKU uniqueness that needs to be adjusted
+- External integrations: If the system integrates with other systems using SKU, these integrations need updating
+
+## Execution Steps
+1. Backup data if needed
+2. Implement schema changes
+3. Update UI components
+4. Test thoroughly
+5. Deploy changes
+
+## Files to Modify
+1. `shared/schema.ts`
+2. `client/src/pages/admin/produtos.tsx`
+3. `client/src/pages/admin/products.tsx`
+4. `client/src/pages/admin/base-products.tsx`
+5. Any other files that might reference SKU or internal_base_code
