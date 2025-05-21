@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,6 +20,16 @@ import {
   Plus
 } from "lucide-react";
 import { ProductCategory, Product, insertProductSchema, insertProductCategorySchema } from "@shared/schema";
+
+// Importando componentes do Flowbite
+import { 
+  Button, 
+  TextInput, 
+  Textarea, 
+  Select, 
+  Table, 
+  Modal
+} from "flowbite-react";
 
 export default function ProductsPage() {
   const { toast } = useToast();
@@ -363,7 +374,7 @@ export default function ProductsPage() {
       <header className="bg-white p-4 flex justify-between items-center shadow-sm">
         <Link href="/">
           <div className="cursor-pointer">
-            <img src="/logo.png" alt="Sorvetão" className="h-10" />
+            <img src="/assets/logo.png" alt="Sorvetão" className="h-10" />
           </div>
         </Link>
         
@@ -547,7 +558,7 @@ export default function ProductsPage() {
                                     color="light"
                                     onClick={() => handleEditProduct(product)}
                                   >
-                                    <PencilIcon className="h-4 w-4 text-pink-500" />
+                                    <Pencil className="h-4 w-4 text-pink-500" />
                                   </Button>
                                   
                                   <Button
@@ -604,7 +615,7 @@ export default function ProductsPage() {
                             color="light"
                             onClick={() => handleEditCategory(category)}
                           >
-                            <PencilIcon className="h-4 w-4 text-pink-500" />
+                            <Pencil className="h-4 w-4 text-pink-500" />
                           </Button>
                           
                           <Button

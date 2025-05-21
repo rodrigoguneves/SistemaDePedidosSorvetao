@@ -23,7 +23,7 @@ export interface IStorage {
   updateUser(id: number, user: Partial<User>): Promise<User | undefined>;
   softDeleteUser(id: number): Promise<boolean>;
   hardDeleteUser(id: number): Promise<boolean>;
-  
+
   // Customers
   getCustomer(id: number): Promise<Customer | undefined>;
   getCustomerByUserId(userId: number): Promise<Customer | undefined>;
@@ -32,7 +32,7 @@ export interface IStorage {
   updateCustomer(id: number, customer: Partial<Customer>): Promise<Customer | undefined>;
   softDeleteCustomer(id: number): Promise<boolean>;
   hardDeleteCustomer(id: number): Promise<boolean>;
-  
+
   // Product Categories
   getProductCategory(id: number): Promise<ProductCategory | undefined>;
   getProductCategories(includeDeleted?: boolean): Promise<ProductCategory[]>;
@@ -40,7 +40,7 @@ export interface IStorage {
   updateProductCategory(id: number, category: Partial<ProductCategory>): Promise<ProductCategory | undefined>;
   softDeleteProductCategory(id: number): Promise<boolean>;
   hardDeleteProductCategory(id: number): Promise<boolean>;
-  
+
   // Products
   getProduct(id: number): Promise<Product | undefined>;
   getProducts(includeDeleted?: boolean): Promise<Product[]>;
@@ -49,7 +49,7 @@ export interface IStorage {
   updateProduct(id: number, product: Partial<Product>): Promise<Product | undefined>;
   softDeleteProduct(id: number): Promise<boolean>;
   hardDeleteProduct(id: number): Promise<boolean>;
-  
+
   // Customer Product Access
   getCustomerProducts(customerId: number): Promise<Product[]>;
   getCustomerCategories(customerId: number): Promise<ProductCategory[]>;
@@ -57,7 +57,7 @@ export interface IStorage {
   removeProductFromCustomer(customerId: number, productId: number): Promise<boolean>;
   addCategoryToCustomer(customerId: number, categoryId: number): Promise<boolean>;
   removeCategoryFromCustomer(customerId: number, categoryId: number): Promise<boolean>;
-  
+
   // Orders
   getOrder(id: number): Promise<Order | undefined>;
   getOrders(includeDeleted?: boolean): Promise<Order[]>;
@@ -67,25 +67,25 @@ export interface IStorage {
   softDeleteOrder(id: number): Promise<boolean>;
   hardDeleteOrder(id: number): Promise<boolean>;
   getOrderItems(orderId: number): Promise<OrderItem[]>;
-  
+
   // Payments
   getPayment(id: number): Promise<Payment | undefined>;
   getOrderPayments(orderId: number): Promise<Payment[]>;
   createPayment(payment: InsertPayment): Promise<Payment>;
-  
+
   // Financial Accounts
   getFinancialAccount(id: number): Promise<FinancialAccount | undefined>;
   getFinancialAccounts(): Promise<FinancialAccount[]>;
   createFinancialAccount(account: InsertFinancialAccount): Promise<FinancialAccount>;
   updateFinancialAccount(id: number, account: Partial<FinancialAccount>): Promise<FinancialAccount | undefined>;
-  
+
   // Financial Categories
   getFinancialCategory(id: number): Promise<FinancialCategory | undefined>;
   getFinancialCategories(): Promise<FinancialCategory[]>;
   getFinancialCategoriesByType(type: string): Promise<FinancialCategory[]>;
   createFinancialCategory(category: InsertFinancialCategory): Promise<FinancialCategory>;
   updateFinancialCategory(id: number, category: Partial<FinancialCategory>): Promise<FinancialCategory | undefined>;
-  
+
   // Financial Transactions
   getFinancialTransaction(id: number): Promise<FinancialTransaction | undefined>;
   getFinancialTransactions(includeDeleted?: boolean): Promise<FinancialTransaction[]>;
@@ -327,7 +327,7 @@ export class DatabaseStorage implements IStorage {
     // Combine and deduplicate results
     const allProducts = [...directProducts.map(p => p.product), ...categoryProducts.map(p => p.product)];
     const uniqueProducts = Array.from(new Map(allProducts.map(p => [p.id, p])).values());
-    
+
     return uniqueProducts.sort((a, b) => {
       if (a.price === b.price) {
         return a.name.localeCompare(b.name);
@@ -418,7 +418,7 @@ export class DatabaseStorage implements IStorage {
     return await db.transaction(async (tx) => {
       // Create the order
       const [createdOrder] = await tx.insert(orders).values(order).returning();
-      
+
       // Add order items
       for (const item of items) {
         await tx.insert(orderItems).values({
@@ -426,7 +426,7 @@ export class DatabaseStorage implements IStorage {
           order_id: createdOrder.id
         });
       }
-      
+
       return createdOrder;
     });
   }
@@ -475,21 +475,21 @@ export class DatabaseStorage implements IStorage {
     return await db.transaction(async (tx) => {
       // Create the payment
       const [createdPayment] = await tx.insert(payments).values(payment).returning();
-      
+
       // Update the order's payment status and paid amount
       const [order] = await tx.select().from(orders).where(eq(orders.id, payment.order_id));
       if (!order) throw new Error('Order not found');
-      
+
       const allPayments = await tx.select({ amount: payments.amount }).from(payments).where(eq(payments.order_id, payment.order_id));
       const totalPaid = allPayments.reduce((sum, p) => sum + p.amount, 0);
-      
+
       let paymentStatus: 'pending' | 'partial' | 'paid' = 'pending';
       if (totalPaid >= order.total) {
         paymentStatus = 'paid';
       } else if (totalPaid > 0) {
         paymentStatus = 'partial';
       }
-      
+
       await tx.update(orders)
         .set({ 
           payment_status: paymentStatus, 
@@ -497,7 +497,7 @@ export class DatabaseStorage implements IStorage {
           updated_at: new Date()
         })
         .where(eq(orders.id, payment.order_id));
-      
+
       // Record revenue transaction if configured
       const [defaultAccount] = await tx.select().from(financialAccounts).orderBy(financialAccounts.id);
       if (defaultAccount) {
@@ -506,7 +506,7 @@ export class DatabaseStorage implements IStorage {
             eq(financialCategories.name, 'Venda Atacado'),
             eq(financialCategories.type, 'revenue')
           ));
-        
+
         if (revenueCategory) {
           await tx.insert(financialTransactions).values({
             type: 'revenue',
@@ -519,7 +519,7 @@ export class DatabaseStorage implements IStorage {
           });
         }
       }
-      
+
       return createdPayment;
     });
   }
@@ -618,7 +618,7 @@ export class DatabaseStorage implements IStorage {
   async createFinancialTransaction(transaction: InsertFinancialTransaction): Promise<FinancialTransaction> {
     return await db.transaction(async (tx) => {
       const [createdTransaction] = await tx.insert(financialTransactions).values(transaction).returning();
-      
+
       // If it's a transfer, create the corresponding transaction in the destination account
       if (transaction.type === 'transfer' && transaction.transfer_to_account_id) {
         await tx.insert(financialTransactions).values({
@@ -631,7 +631,7 @@ export class DatabaseStorage implements IStorage {
           transfer_to_account_id: transaction.account_id,
         });
       }
-      
+
       return createdTransaction;
     });
   }
