@@ -3,10 +3,13 @@ import {
   InsertProductCategory, Product, InsertProduct, Order, InsertOrder,
   OrderItem, InsertOrderItem, Payment, InsertPayment, FinancialAccount, 
   InsertFinancialAccount, FinancialCategory, InsertFinancialCategory,
-  FinancialTransaction, InsertFinancialTransaction,
+  FinancialTransaction, InsertFinancialTransaction, SaleUnit, InsertSaleUnit,
+  BaseProduct, InsertBaseProduct, ProductSaleVersion, InsertProductSaleVersion,
+  CustomerCategoryAllowedSaleUnit,
   users, customers, productCategories, products, customerCategories, 
   customerProducts, orders, orderItems, payments, financialAccounts,
-  financialCategories, financialTransactions
+  financialCategories, financialTransactions, saleUnits, baseProducts,
+  productSaleVersions, customerCategoryAllowedSaleUnits
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, isNull, and, desc, sql, gt, lte, asc } from "drizzle-orm";
@@ -40,8 +43,30 @@ export interface IStorage {
   updateProductCategory(id: number, category: Partial<ProductCategory>): Promise<ProductCategory | undefined>;
   softDeleteProductCategory(id: number): Promise<boolean>;
   hardDeleteProductCategory(id: number): Promise<boolean>;
+  
+  // Sale Units
+  getSaleUnit(id: number): Promise<SaleUnit | undefined>;
+  getSaleUnits(): Promise<SaleUnit[]>;
+  getSaleUnitsByProductType(productTypeTag: string): Promise<SaleUnit[]>;
+  createSaleUnit(saleUnit: InsertSaleUnit): Promise<SaleUnit>;
+  updateSaleUnit(id: number, saleUnit: Partial<SaleUnit>): Promise<SaleUnit | undefined>;
+  
+  // Base Products
+  getBaseProduct(id: number): Promise<BaseProduct | undefined>;
+  getBaseProducts(includeDeleted?: boolean): Promise<BaseProduct[]>;
+  getBaseProductsByCategory(categoryId: number, includeDeleted?: boolean): Promise<BaseProduct[]>;
+  createBaseProduct(baseProduct: InsertBaseProduct): Promise<BaseProduct>;
+  updateBaseProduct(id: number, baseProduct: Partial<BaseProduct>): Promise<BaseProduct | undefined>;
+  softDeleteBaseProduct(id: number): Promise<boolean>;
+  
+  // Product Sale Versions
+  getProductSaleVersion(id: number): Promise<ProductSaleVersion | undefined>;
+  getProductSaleVersionsByBaseProduct(baseProductId: number, onlyActive?: boolean): Promise<ProductSaleVersion[]>;
+  getProductSaleVersionsBySaleUnit(saleUnitId: number, onlyActive?: boolean): Promise<ProductSaleVersion[]>;
+  createProductSaleVersion(productSaleVersion: InsertProductSaleVersion): Promise<ProductSaleVersion>;
+  updateProductSaleVersion(id: number, productSaleVersion: Partial<ProductSaleVersion>): Promise<ProductSaleVersion | undefined>;
 
-  // Products
+  // Legacy Products (for backward compatibility)
   getProduct(id: number): Promise<Product | undefined>;
   getProducts(includeDeleted?: boolean): Promise<Product[]>;
   getProductsByCategory(categoryId: number, includeDeleted?: boolean): Promise<Product[]>;
@@ -50,13 +75,17 @@ export interface IStorage {
   softDeleteProduct(id: number): Promise<boolean>;
   hardDeleteProduct(id: number): Promise<boolean>;
 
-  // Customer Product Access
+  // Customer Catalog Access
   getCustomerProducts(customerId: number): Promise<Product[]>;
   getCustomerCategories(customerId: number): Promise<ProductCategory[]>;
+  getCustomerAllowedSaleUnits(customerId: number, categoryId: number): Promise<SaleUnit[]>;
+  getCustomerProductVersions(customerId: number): Promise<ProductSaleVersion[]>;
   addProductToCustomer(customerId: number, productId: number): Promise<boolean>;
   removeProductFromCustomer(customerId: number, productId: number): Promise<boolean>;
   addCategoryToCustomer(customerId: number, categoryId: number): Promise<boolean>;
   removeCategoryFromCustomer(customerId: number, categoryId: number): Promise<boolean>;
+  addCategorySaleUnitToCustomer(customerId: number, categoryId: number, saleUnitId: number): Promise<boolean>;
+  removeCategorySaleUnitFromCustomer(customerId: number, categoryId: number, saleUnitId: number): Promise<boolean>;
 
   // Orders
   getOrder(id: number): Promise<Order | undefined>;
