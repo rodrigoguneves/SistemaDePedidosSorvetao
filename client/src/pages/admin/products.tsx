@@ -40,6 +40,7 @@ export default function ProductsPage() {
   const [editingCategory, setEditingCategory] = useState<ProductCategory | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [saveAndContinue, setSaveAndContinue] = useState(false);
 
   // Schemas para validação de formulários
   const productFormSchema = insertProductSchema.extend({
@@ -126,8 +127,11 @@ export default function ProductsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/products'] });
       toast({ title: "Produto criado com sucesso" });
-      setShowAddProductModal(false);
-      productForm.reset();
+      
+      if (!saveAndContinue) {
+        setShowAddProductModal(false);
+        productForm.reset();
+      }
     },
     onError: (error: Error) => {
       toast({ 
@@ -330,7 +334,15 @@ export default function ProductsPage() {
     if (editingProduct) {
       updateProductMutation.mutate({ id: editingProduct.id, ...data });
     } else {
-      createProductMutation.mutate(data);
+      createProductMutation.mutate(data, {
+        onSuccess: () => {
+          if (saveAndContinue) {
+            // Manter a janela aberta e resetar apenas o nome
+            productForm.setValue("name", "");
+            setShowAddProductModal(true);
+          }
+        }
+      });
     }
   };
 
@@ -747,21 +759,36 @@ export default function ProductsPage() {
         </Modal.Body>
         
         <Modal.Footer>
-          <div className="flex justify-end gap-2 w-full">
-            <Button
-              color="gray"
-              onClick={() => setShowAddProductModal(false)}
-            >
-              Cancelar
-            </Button>
+          <div className="flex justify-between items-center w-full">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="saveAndContinue"
+                checked={saveAndContinue}
+                onChange={(e) => setSaveAndContinue(e.target.checked)}
+                className="w-4 h-4 text-pink-500 border-gray-300 rounded focus:ring-pink-500"
+              />
+              <label htmlFor="saveAndContinue" className="text-sm text-gray-700">
+                Salvar e continuar
+              </label>
+            </div>
             
-            <Button
-              color="failure"
-              onClick={productForm.handleSubmit(onSubmitProduct)}
-              isProcessing={createProductMutation.isPending || updateProductMutation.isPending}
-            >
-              {editingProduct ? "Atualizar Produto" : "Criar Produto"}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                color="gray"
+                onClick={() => setShowAddProductModal(false)}
+              >
+                Cancelar
+              </Button>
+              
+              <Button
+                color="failure"
+                onClick={productForm.handleSubmit(onSubmitProduct)}
+                isProcessing={createProductMutation.isPending || updateProductMutation.isPending}
+              >
+                {editingProduct ? "Atualizar Produto" : "Criar Produto"}
+              </Button>
+            </div>
           </div>
         </Modal.Footer>
       </Modal>
