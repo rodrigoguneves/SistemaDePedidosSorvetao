@@ -1,3 +1,4 @@
+typescript
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
@@ -1109,7 +1110,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const productVersionId = parseInt(req.params.id);
-      const productVersion = await storage.updateProductVersion(productVersionId, req.body);
+      const productVersion = await storage.updateProductSaleVersion(productVersionId, req.body);
       if (!productVersion) {
         return res.status(404).json({ message: "Versão de produto não encontrada" });
       }

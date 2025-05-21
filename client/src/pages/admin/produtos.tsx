@@ -219,16 +219,21 @@ export default function ProdutosPage() {
 
   // Mutations para operações CRUD
   const createProductMutation = useMutation({
-    mutationFn: async ({ data, saveAndContinue }: { data: typeof productFormSchema._type, saveAndContinue: boolean }) => {
+    mutationFn: async (data: typeof productFormSchema._type) => {
       console.log("Enviando dados para API:", data);
 
-      if (!data.category_id) {
+      // Make sure category_id is properly handled
+      const categoryId = typeof data.category_id === 'string' 
+        ? parseInt(data.category_id) 
+        : data.category_id;
+
+      if (!categoryId) {
         throw new Error('Categoria é obrigatória');
       }
 
       // Step 1: Create base product
       const baseProductData = {
-        product_category_id: data.category_id,
+        product_category_id: categoryId,
         base_product_name: data.name,
         long_description: data.description,
         is_active: true,
