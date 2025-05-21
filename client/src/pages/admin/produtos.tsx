@@ -35,6 +35,7 @@ export default function ProdutosPage() {
   // Schemas para validação de formulários
   const productFormSchema = insertProductSchema.extend({
     name: z.string().min(3, "Nome do produto deve ter no mínimo 3 caracteres"),
+    sku: z.string().min(3, "SKU deve ter no mínimo 3 caracteres"),
     unit_of_sale: z.string().min(1, "Unidade de venda é obrigatória"),
     price: z.coerce.number().positive("Preço deve ser maior que zero"),
   });
@@ -279,7 +280,7 @@ export default function ProdutosPage() {
     productForm.reset({
       name: "",
       category_id: null,
-      sku: "",
+      sku: `SKU-${Math.floor(Math.random() * 10000)}`, // Generate a random SKU to avoid duplication
       description: "",
       unit_of_sale: "",
       price: 0,
@@ -673,6 +674,23 @@ export default function ProdutosPage() {
                     {productForm.formState.errors.name && (
                       <p className="text-red-500 text-sm mt-1">
                         {productForm.formState.errors.name.message as string}
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="sku" className="block mb-1 font-medium">
+                      SKU<span className="text-[#E73664]">*</span>
+                    </label>
+                    <input
+                      id="sku"
+                      placeholder="ex: PICO-ABAC-24"
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-[#E73664] focus:border-[#E73664]"
+                      {...productForm.register("sku")}
+                    />
+                    {productForm.formState.errors.sku && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {productForm.formState.errors.sku.message as string}
                       </p>
                     )}
                   </div>
