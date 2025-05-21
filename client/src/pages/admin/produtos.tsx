@@ -429,8 +429,8 @@ export default function ProdutosPage() {
           
           <Link href="/admin/settings">
             <div className="flex flex-col items-center cursor-pointer">
-              <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center">
-                <Settings className="w-5 h-5 text-pink-500" />
+              <div className="w-10 h-10 rounded-full bg-[#E73664]/10 flex items-center justify-center">
+                <Settings className="w-5 h-5 text-[#E73664]" />
               </div>
               <span className="text-xs mt-1">Opções</span>
             </div>
@@ -453,7 +453,7 @@ export default function ProdutosPage() {
           </h1>
           
           <button
-            className="bg-pink-500 hover:bg-pink-600 text-white font-medium px-4 py-2 rounded-full flex items-center"
+            className="bg-[#E73664] hover:bg-[#d82c59] text-white font-medium px-4 py-2 rounded-full flex items-center"
             onClick={activeTab === "products" ? handleAddProduct : handleAddCategory}
           >
             <Plus className="mr-2 h-4 w-4" />
