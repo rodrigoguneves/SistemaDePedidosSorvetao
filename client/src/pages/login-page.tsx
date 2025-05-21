@@ -1,161 +1,153 @@
+
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useAuth } from "@/hooks/use-auth";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Mail, Lock, HelpCircle } from "lucide-react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import styles from "../styles/Login.module.css";
 
 const loginSchema = z.object({
-  email: z.string().email({ message: "Email inválido" }),
-  password: z.string().min(6, {
-    message: "A senha deve conter pelo menos 6 caracteres",
-  }),
+  email: z.string().email("E-mail inválido"),
+  password: z.string().min(1, "Senha é obrigatória"),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-  const { user, loginMutation } = useAuth();
-  const [, navigate] = useLocation();
-  const [error, setError] = useState<string | null>(null);
-  const [imagePaths, setImagePaths] = useState<string[]>([
-    "/attached_assets/logo.png",
-    "./attached_assets/logo.png",
-    "../attached_assets/logo.png",
-    "/logo.png",
-    "./logo.png"
-  ]);
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const { login, isAuthenticated } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [logoPath, setLogoPath] = useState<string | null>(null);
 
-  useEffect(() => {
-    console.log("Tentando encontrar a imagem do logo nos seguintes caminhos:");
-    imagePaths.forEach(path => {
-      const img = new Image();
-      img.onload = () => console.log(`Imagem carregou com sucesso em: ${path}`);
-      img.onerror = () => console.log(`Imagem falhou ao carregar em: ${path}`);
-      img.src = path;
-    });
-  }, []);
-
-  // Redirect if already logged in
-  if (user) {
-    navigate("/");
-    return null;
-  }
-
-  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
       password: "",
-    }
+    },
   });
 
-  const onSubmit = (data: LoginFormData) => {
-    setError(null);
-    // Convertendo para o formato esperado pela API
-    const loginData = {
-      email: data.email,
-      password: data.password
-    };
-
-    loginMutation.mutate(loginData, {
-      onSuccess: (user) => {
-        // Redirecionar para o dashboard com base no papel do usuário
-        const path = user.role === 'admin' ? '/admin' : '/customer/dashboard';
-        navigate(path);
-      },
-      onError: (err) => {
-        setError("Credenciais inválidas. Tente novamente.");
-      }
+  // Verifica se o usuário já está autenticado
+  useEffect(() => {
+    if (isAuthenticated) {
+      setLocation("/admin/dashboard");
+    }
+    
+    // Tenta carregar o logo de diferentes fontes possíveis
+    const possiblePaths = [
+      '/logo.png',
+      './logo.png',
+      '../attached_assets/logo.png',
+      '/attached_assets/logo.png',
+      './attached_assets/logo.png'
+    ];
+    
+    console.log("Tentando encontrar a imagem do logo nos seguintes caminhos:");
+    
+    // Para cada caminho possível, tenta carregar a imagem
+    possiblePaths.forEach(path => {
+      const img = new Image();
+      img.onload = () => {
+        console.log(`Imagem carregou com sucesso em: ${path}`);
+        setLogoPath(path);
+      };
+      img.onerror = () => {
+        console.log(`Imagem falhou ao carregar em: ${path}`);
+      };
+      img.src = path;
     });
+  }, [isAuthenticated, setLocation]);
+
+  const onSubmit = async (data: LoginFormData) => {
+    try {
+      setIsLoading(true);
+      await login(data.email, data.password);
+      toast({
+        title: "Login realizado com sucesso",
+        description: "Você será redirecionado para o painel",
+      });
+      setLocation("/admin/dashboard");
+    } catch (error) {
+      toast({
+        title: "Erro ao fazer login",
+        description: "Verifique seu e-mail e senha",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className={styles.loginContainer}>
-      <div className={styles.loginBody}>
-        <div className={styles.loginContent}>
-          <div className={styles.logoContainer}>
-            <img 
-              src="/assets/logo.png" 
-              className={styles.logo} 
-              alt="Sorvetão Logo"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                console.log("Image failed to load:", target.src);
-                // Tentativa com caminho alternativo
-                target.src = "./assets/logo.png";
-              }}
+      <div className={styles.loginCard}>
+        <div className={styles.logoSection}>
+          {logoPath && (
+            <img
+              src={logoPath}
+              alt="Logo Sorvetão"
+              className={styles.logo}
             />
-          </div>
+          )}
+          <h1 className={styles.title}>Pedidos Sorvetão</h1>
+          <p className={styles.subtitle}>Plataforma B2B de Gestão de Pedidos</p>
+        </div>
 
-          <div className={styles.cardContainer}>
-            <div className={styles.titleContainer}>
-              <h1 className={styles.title}>Sistema de Pedidos</h1>
+        <div className={styles.formSection}>
+          <h2 className={styles.formTitle}>Acesse sua conta</h2>
+          <form onSubmit={handleSubmit(onSubmit)} className={styles.form}>
+            <div className={styles.formGroup}>
+              <label htmlFor="email" className={styles.label}>
+                E-mail
+              </label>
+              <input
+                id="email"
+                type="email"
+                className={styles.input}
+                placeholder="seu@email.com"
+                {...register("email")}
+              />
+              {errors.email && (
+                <p className={styles.errorText}>{errors.email.message}</p>
+              )}
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className={styles.form}>
-              <div className={styles.inputGroup}>
-                <label htmlFor="email" className={styles.label}>Email</label>
-                <div className={styles.inputContainer}>
-                  <Mail className={styles.inputIcon} size={16} />
-                  <input
-                    id="email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    className={`${styles.input}`}
-                    style={{borderRadius: "30px", paddingLeft: "65px"}}
-                    {...register("email")}
-                  />
-                </div>
-                {errors.email && <p className="text-sm text-red-500 mt-1">{errors.email.message}</p>}
-              </div>
-
-              <div className={styles.inputGroup}>
-                <label htmlFor="password" className={styles.label}>Senha</label>
-                <div className={styles.inputContainer}>
-                  <Lock className={styles.inputIcon} size={16} />
-                  <input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    className={`${styles.input}`}
-                    style={{borderRadius: "30px", paddingLeft: "65px"}}
-                    {...register("password")}
-                  />
-                </div>
-                {errors.password && <p className="text-sm text-red-500 mt-1">{errors.password.message}</p>}
-              </div>
-
-              {error && (
-                <div className="w-full p-3 rounded-md bg-red-50 text-red-500 text-sm">
-                  {error}
-                </div>
+            <div className={styles.formGroup}>
+              <label htmlFor="password" className={styles.label}>
+                Senha
+              </label>
+              <input
+                id="password"
+                type="password"
+                className={styles.input}
+                placeholder="********"
+                {...register("password")}
+              />
+              {errors.password && (
+                <p className={styles.errorText}>{errors.password.message}</p>
               )}
+            </div>
 
-              <button 
-                type="submit" 
-                className={styles.loginButton}
-                disabled={loginMutation.isPending}
-              >
-                {loginMutation.isPending ? "Entrando..." : "Logar"}
-              </button>
-
-              <a href="#" className={styles.forgotPassword}>
-                Esqueceu sua senha?
-              </a>
-            </form>
-          </div>
-
-          <p className={styles.infoText}>
-            Para cadastramento no sistema procure nossa equipe
-          </p>
-
-          <a href="#" className={styles.supportLink}>
-            <HelpCircle size={16} />
-            <span>Suporte</span>
-          </a>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className={styles.button}
+            >
+              {isLoading ? (
+                <span>Processando...</span>
+              ) : (
+                <span>Entrar</span>
+              )}
+            </button>
+          </form>
         </div>
       </div>
     </div>
