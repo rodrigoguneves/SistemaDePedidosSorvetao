@@ -647,12 +647,12 @@ export default function ProdutosPage() {
                 <div className="space-y-4">
                   <div>
                     <label htmlFor="name" className="block mb-1 font-medium">
-                      Nome do Produto<span className="text-pink-500">*</span>
+                      Nome do Produto<span className="text-[#E73664]">*</span>
                     </label>
                     <input
                       id="name"
                       placeholder="ex: Picolé de Fruta Sabor Abacaxi - Caixa Completa 24un"
-                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-pink-500"
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-[#E73664] focus:border-[#E73664]"
                       {...productForm.register("name")}
                     />
                     {productForm.formState.errors.name && (
@@ -664,7 +664,7 @@ export default function ProdutosPage() {
                   
                   <div>
                     <label htmlFor="category_id" className="block mb-1 font-medium">
-                      Categoria<span className="text-pink-500">*</span>
+                      Categoria<span className="text-[#E73664]">*</span>
                     </label>
                     <select
                       id="category_id"
@@ -717,12 +717,12 @@ export default function ProdutosPage() {
                   
                   <div>
                     <label htmlFor="unit_of_sale" className="block mb-1 font-medium">
-                      Unidade de Venda<span className="text-pink-500">*</span>
+                      Unidade de Venda<span className="text-[#E73664]">*</span>
                     </label>
                     <input
                       id="unit_of_sale"
                       placeholder="ex: Caixa de 24un, caixa de 12un, kg, Unidade"
-                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-pink-500"
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-[#E73664] focus:border-[#E73664]"
                       {...productForm.register("unit_of_sale")}
                     />
                     {productForm.formState.errors.unit_of_sale && (
@@ -730,6 +730,18 @@ export default function ProdutosPage() {
                         {productForm.formState.errors.unit_of_sale.message as string}
                       </p>
                     )}
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="allow_decimal_quantities"
+                      className="w-4 h-4 text-[#E73664] border-gray-300 rounded focus:ring-[#E73664]"
+                      {...productForm.register("allow_decimal_quantities")}
+                    />
+                    <label htmlFor="allow_decimal_quantities" className="text-sm font-medium">
+                      Permitir quantidades decimais
+                    </label>
                   </div>
                 </div>
               </form>
