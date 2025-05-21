@@ -18,28 +18,56 @@ import {
   Trash2,
   Plus
 } from "lucide-react";
-import { ProductCategory, Product, insertProductSchema, insertProductCategorySchema } from "@shared/schema";
+import { 
+  ProductCategory, 
+  Product, 
+  insertProductSchema, 
+  insertProductCategorySchema, 
+  insertBaseProductSchema,
+  insertProductSaleVersionSchema,
+  BaseProduct,
+  ProductSaleVersion,
+  SaleUnit
+} from "@shared/schema";
 import { AdminLayout } from "@/layouts/admin-layout";
+
+// Product data structure for UI display
+interface ProductWithUnit {
+  baseProductId: number;
+  productVersionId: number;
+  name: string;
+  category_id: number;
+  description: string;
+  unit_name: string;
+  saleUnitId: number;
+  price: number;
+  allows_decimal_quantity: boolean;
+}
 
 export default function ProdutosPage() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("products");
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editingProduct, setEditingProduct] = useState<ProductWithUnit | null>(null);
   const [editingCategory, setEditingCategory] = useState<ProductCategory | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [saveAndContinue, setSaveAndContinue] = useState(false);
 
-  // Schemas para validação de formulários
-  const productFormSchema = insertProductSchema.extend({
+  // Updated schema for the new product form
+  const productFormSchema = z.object({
     name: z.string().min(3, "Nome do produto deve ter no mínimo 3 caracteres"),
-    unit_of_sale: z.string().min(1, "Unidade de venda é obrigatória"),
-    price: z.coerce.number().positive("Preço deve ser maior que zero"),
     category_id: z.number().nullable().refine(val => val !== null, {
       message: "Categoria é obrigatória"
     }),
+    description: z.string().optional(),
+    sale_unit_id: z.number({
+      required_error: "Unidade de venda é obrigatória",
+      invalid_type_error: "Selecione uma unidade de venda válida"
+    }),
+    price: z.coerce.number().positive("Preço deve ser maior que zero"),
+    allows_decimal_quantity: z.boolean().default(false),
   });
 
   const categoryFormSchema = insertProductCategorySchema.extend({
@@ -53,9 +81,9 @@ export default function ProdutosPage() {
       name: "",
       category_id: null as number | null,
       description: "",
-      unit_of_sale: "",
+      sale_unit_id: 0,
       price: 0,
-      allow_decimal_quantities: false,
+      allows_decimal_quantity: false,
     },
     mode: "onChange" // Validação em tempo real
   });
@@ -69,6 +97,60 @@ export default function ProdutosPage() {
   });
 
   // Consultas para obter dados do servidor
+  // Fetch base products and product versions
+  const { 
+    data: baseProducts = [], 
+    isLoading: baseProductsLoading 
+  } = useQuery({
+    queryKey: ['/api/base-products'],
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/base-products');
+        if (!res.ok) throw new Error('Erro ao carregar produtos base');
+        return res.json();
+      } catch (error) {
+        console.error("Erro ao buscar produtos base:", error);
+        return [];
+      }
+    }
+  });
+
+  const { 
+    data: productVersions = [], 
+    isLoading: productVersionsLoading 
+  } = useQuery({
+    queryKey: ['/api/product-versions'],
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/product-versions');
+        if (!res.ok) throw new Error('Erro ao carregar versões de produtos');
+        return res.json();
+      } catch (error) {
+        console.error("Erro ao buscar versões de produtos:", error);
+        return [];
+      }
+    }
+  });
+
+  // Fetch sale units
+  const { 
+    data: saleUnits = [], 
+    isLoading: saleUnitsLoading 
+  } = useQuery({
+    queryKey: ['/api/sale-units'],
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/sale-units');
+        if (!res.ok) throw new Error('Erro ao carregar unidades de venda');
+        return res.json();
+      } catch (error) {
+        console.error("Erro ao buscar unidades de venda:", error);
+        return [];
+      }
+    }
+  });
+
+  // Backward compatibility - still fetch products from old endpoint for transition
   const { 
     data: products = [], 
     isLoading: productsLoading 
@@ -103,6 +185,38 @@ export default function ProdutosPage() {
     }
   });
 
+  // Create a merged list of products with their sale units
+  const mergedProducts: ProductWithUnit[] = [];
+  
+  if (baseProducts.length > 0 && productVersions.length > 0 && saleUnits.length > 0) {
+    baseProducts.forEach((baseProduct: BaseProduct) => {
+      // Find all versions for this base product
+      const versions = productVersions.filter(
+        (version: ProductSaleVersion) => version.base_product_id === baseProduct.base_product_id
+      );
+      
+      versions.forEach((version: ProductSaleVersion) => {
+        const saleUnit = saleUnits.find(
+          (unit: SaleUnit) => unit.sale_unit_id === version.sale_unit_id
+        );
+        
+        if (saleUnit) {
+          mergedProducts.push({
+            baseProductId: baseProduct.base_product_id,
+            productVersionId: version.product_version_id,
+            name: baseProduct.base_product_name,
+            category_id: baseProduct.product_category_id || 0,
+            description: baseProduct.long_description || "",
+            unit_name: saleUnit.unit_name,
+            saleUnitId: saleUnit.sale_unit_id,
+            price: version.price,
+            allows_decimal_quantity: baseProduct.allows_decimal_quantity || false
+          });
+        }
+      });
+    });
+  }
+
   // Mutations para operações CRUD
   const createProductMutation = useMutation({
     mutationFn: async ({ data, saveAndContinue }: { data: typeof productFormSchema._type, saveAndContinue: boolean }) => {
@@ -112,24 +226,58 @@ export default function ProdutosPage() {
         throw new Error('Categoria é obrigatória');
       }
 
-      const res = await fetch('/api/products', {
+      // Step 1: Create base product
+      const baseProductData = {
+        product_category_id: data.category_id,
+        base_product_name: data.name,
+        long_description: data.description,
+        is_active: true,
+        allows_decimal_quantity: data.allows_decimal_quantity
+      };
+
+      const baseProductRes = await fetch('/api/base-products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...data,
-          price: Math.round(parseFloat(data.price.toString()) * 100), // Convertendo para centavos
-        }),
+        body: JSON.stringify(baseProductData),
       });
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Erro ao criar produto');
+      if (!baseProductRes.ok) {
+        const errorData = await baseProductRes.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Erro ao criar produto base');
       }
 
-      return { result: await res.json(), saveAndContinue };
+      const baseProduct = await baseProductRes.json();
+
+      // Step 2: Create product version with sale unit
+      const productVersionData = {
+        base_product_id: baseProduct.base_product_id,
+        sale_unit_id: data.sale_unit_id,
+        price: Math.round(parseFloat(data.price.toString()) * 100), // Convert to cents
+        is_active: true
+      };
+
+      const productVersionRes = await fetch('/api/product-versions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(productVersionData),
+      });
+
+      if (!productVersionRes.ok) {
+        const errorData = await productVersionRes.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Erro ao criar versão do produto');
+      }
+
+      const productVersion = await productVersionRes.json();
+
+      return { 
+        baseProduct, 
+        productVersion, 
+        saveAndContinue 
+      };
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/products'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/base-products'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/product-versions'] });
       toast({ title: "Produto criado com sucesso" });
 
       if (!data.saveAndContinue) {
@@ -154,20 +302,49 @@ export default function ProdutosPage() {
   });
 
   const updateProductMutation = useMutation({
-    mutationFn: async (data: { id: number } & typeof productFormSchema._type) => {
-      const res = await fetch(`/api/products/${data.id}`, {
+    mutationFn: async (data: { baseProductId: number, productVersionId: number } & typeof productFormSchema._type) => {
+      // Step 1: Update base product
+      const baseProductData = {
+        product_category_id: data.category_id,
+        base_product_name: data.name,
+        long_description: data.description,
+        allows_decimal_quantity: data.allows_decimal_quantity
+      };
+
+      const baseProductRes = await fetch(`/api/base-products/${data.baseProductId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...data,
-          price: Math.round(parseFloat(data.price.toString()) * 100), // Convertendo para centavos
-        }),
+        body: JSON.stringify(baseProductData),
       });
-      if (!res.ok) throw new Error('Erro ao atualizar produto');
-      return res.json();
+
+      if (!baseProductRes.ok) {
+        throw new Error('Erro ao atualizar produto base');
+      }
+
+      // Step 2: Update product version
+      const productVersionData = {
+        sale_unit_id: data.sale_unit_id,
+        price: Math.round(parseFloat(data.price.toString()) * 100), // Convert to cents
+      };
+
+      const productVersionRes = await fetch(`/api/product-versions/${data.productVersionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(productVersionData),
+      });
+
+      if (!productVersionRes.ok) {
+        throw new Error('Erro ao atualizar versão do produto');
+      }
+
+      return {
+        baseProduct: await baseProductRes.json(),
+        productVersion: await productVersionRes.json()
+      };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/products'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/base-products'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/product-versions'] });
       toast({ title: "Produto atualizado com sucesso" });
       setShowAddProductModal(false);
       setEditingProduct(null);
@@ -182,15 +359,26 @@ export default function ProdutosPage() {
   });
 
   const deleteProductMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await fetch(`/api/products/${id}`, {
+    mutationFn: async ({ baseProductId, productVersionId }: { baseProductId: number, productVersionId: number }) => {
+      // First delete the product version
+      const versionRes = await fetch(`/api/product-versions/${productVersionId}`, {
         method: 'DELETE',
       });
-      if (!res.ok) throw new Error('Erro ao excluir produto');
+      
+      if (!versionRes.ok) throw new Error('Erro ao excluir versão do produto');
+
+      // Then delete the base product
+      const baseRes = await fetch(`/api/base-products/${baseProductId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!baseRes.ok) throw new Error('Erro ao excluir produto base');
+      
       return true;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/products'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/base-products'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/product-versions'] });
       toast({ title: "Produto excluído com sucesso" });
     },
     onError: (error: Error) => {
@@ -294,25 +482,32 @@ export default function ProdutosPage() {
       name: "",
       category_id: null,
       description: "",
-      unit_of_sale: "",
+      sale_unit_id: 0,
       price: 0,
-      allow_decimal_quantities: false,
+      allows_decimal_quantity: false,
     });
     setShowAddProductModal(true);
   };
 
-  const handleEditProduct = (product: Product) => {
+  const handleEditProduct = (product: ProductWithUnit) => {
     setEditingProduct(product);
     productForm.reset({
-      ...product,
+      name: product.name,
+      category_id: product.category_id,
+      description: product.description || "",
+      sale_unit_id: product.saleUnitId,
       price: product.price / 100, // Convertendo centavos para reais para exibição
+      allows_decimal_quantity: product.allows_decimal_quantity,
     });
     setShowAddProductModal(true);
   };
 
-  const handleDeleteProduct = (product: Product) => {
+  const handleDeleteProduct = (product: ProductWithUnit) => {
     if (confirm(`Tem certeza que deseja excluir o produto "${product.name}"?`)) {
-      deleteProductMutation.mutate(product.id);
+      deleteProductMutation.mutate({
+        baseProductId: product.baseProductId,
+        productVersionId: product.productVersionId
+      });
     }
   };
 
@@ -345,7 +540,11 @@ export default function ProdutosPage() {
       console.log("Dados a serem enviados:", data);
 
       if (editingProduct) {
-        updateProductMutation.mutate({ id: editingProduct.id, ...data });
+        updateProductMutation.mutate({ 
+          baseProductId: editingProduct.baseProductId,
+          productVersionId: editingProduct.productVersionId,
+          ...data 
+        });
       } else {
         createProductMutation.mutate({
           data,
@@ -371,7 +570,7 @@ export default function ProdutosPage() {
   };
 
   // Filtragem de produtos
-  const filteredProducts = products.filter((product: Product) => {
+  const filteredProducts = mergedProducts.filter((product: ProductWithUnit) => {
     const matchesSearch = searchQuery 
       ? product.name.toLowerCase().includes(searchQuery.toLowerCase())
       : true;
@@ -384,10 +583,10 @@ export default function ProdutosPage() {
   });
 
   // Agrupamento de produtos por categoria para exibição
-  const groupedProducts: { [key: string]: Product[] } = {};
+  const groupedProducts: { [key: string]: ProductWithUnit[] } = {};
 
   if (filteredProducts.length > 0) {
-    filteredProducts.forEach((product: Product) => {
+    filteredProducts.forEach((product: ProductWithUnit) => {
       const categoryName = getCategoryName(product.category_id);
       if (!groupedProducts[categoryName]) {
         groupedProducts[categoryName] = [];
@@ -478,7 +677,7 @@ export default function ProdutosPage() {
                 </div>
 
                 {/* Exibição de produtos */}
-                {productsLoading ? (
+                {baseProductsLoading || productVersionsLoading || saleUnitsLoading ? (
                   <div className="flex justify-center py-12">
                     <div className="animate-spin h-8 w-8 border-4 border-pink-500 rounded-full border-t-transparent"></div>
                   </div>
@@ -507,11 +706,11 @@ export default function ProdutosPage() {
                             </thead>
 
                             <tbody>
-                              {groupedProducts[categoryName].map((product: Product) => (
-                                <tr key={product.id} className="border-b">
+                              {groupedProducts[categoryName].map((product: ProductWithUnit) => (
+                                <tr key={`${product.baseProductId}-${product.productVersionId}`} className="border-b">
                                   <td className="p-3">{product.name}</td>
                                   <td className="p-3">{getCategoryName(product.category_id)}</td>
-                                  <td className="p-3">{product.unit_of_sale}</td>
+                                  <td className="p-3">{product.unit_name}</td>
                                   <td className="p-3">{formatCurrency(product.price)}</td>
                                   <td className="p-3">
                                     <div className="flex space-x-2">
@@ -689,18 +888,24 @@ export default function ProdutosPage() {
                     </div>
 
                     <div>
-                      <label htmlFor="unit_of_sale" className="block mb-1 font-medium">
+                      <label htmlFor="sale_unit_id" className="block mb-1 font-medium">
                         Unidade de Venda<span className="text-[#E73664]">*</span>
                       </label>
-                      <input
-                        id="unit_of_sale"
-                        placeholder="ex: Caixa de 24un, caixa de 12un, kg, Unidade"
+                      <select
+                        id="sale_unit_id"
                         className="w-full p-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-[#E73664] focus:border-[#E73664]"
-                        {...productForm.register("unit_of_sale")}
-                      />
-                      {productForm.formState.errors.unit_of_sale && (
+                        {...productForm.register("sale_unit_id", { valueAsNumber: true })}
+                      >
+                        <option value="">Selecionar Unidade de Venda</option>
+                        {saleUnits.map((unit: any) => (
+                          <option key={unit.sale_unit_id} value={unit.sale_unit_id}>
+                            {unit.unit_name} {unit.short_description ? `(${unit.short_description})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                      {productForm.formState.errors.sale_unit_id && (
                         <p className="text-red-500 text-sm mt-1">
-                          {productForm.formState.errors.unit_of_sale.message as string}
+                          {productForm.formState.errors.sale_unit_id.message as string}
                         </p>
                       )}
                     </div>
@@ -708,11 +913,11 @@ export default function ProdutosPage() {
                     <div className="flex items-center gap-2">
                       <input
                         type="checkbox"
-                        id="allow_decimal_quantities"
+                        id="allows_decimal_quantity"
                         className="w-4 h-4 text-[#E73664] border-gray-300 rounded focus:ring-[#E73664]"
-                        {...productForm.register("allow_decimal_quantities")}
+                        {...productForm.register("allows_decimal_quantity")}
                       />
-                      <label htmlFor="allow_decimal_quantities" className="text-sm font-medium">
+                      <label htmlFor="allows_decimal_quantity" className="text-sm font-medium">
                         Permitir quantidades decimais
                       </label>
                     </div>

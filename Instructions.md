@@ -347,3 +347,48 @@ After implementing these changes, make sure to test:
 3. `client/src/pages/admin/products.tsx`
 4. `client/src/pages/admin/base-products.tsx`
 5. Any other files that might reference SKU or internal_base_code
+# Backend to Frontend Integration Plan: Migrating to New Product Data Model
+
+## Problem Analysis
+
+The application is transitioning from a simple product model to a more flexible model with:
+1. `base_products` - Core product information
+2. `sale_units` - Standardized units of sale
+3. `product_sale_versions` - Combinations of products and sale units with specific prices
+
+Currently, the product form in `produtos.tsx` is still using the old model and submitting to the old API endpoints. The "Unidade de Venda" field is a free-text input instead of being connected to the sale_units table.
+
+## Solution Steps
+
+### 1. Update Product Form in produtos.tsx
+
+- Modify the product form schema to align with the new data model
+- Change the "Unidade de Venda" field to be a dropdown populated with sale_units from the API
+- Update form submission logic to create both a base product and a product sale version
+
+### 2. Add API Query for Sale Units
+
+- Add a query to fetch sale units from the `/api/sale-units` endpoint
+- Populate the dropdown with these units
+
+### 3. Update Form Submission Logic
+
+- When creating/editing a product, submit to both the base_products and product_sale_versions endpoints
+- For editing, handle the relationship between the two tables properly
+
+### 4. Modify Product Display Logic
+
+- Update how products are displayed in the UI to reflect the new data model
+- Show the associated sale unit information from the product_sale_versions table
+
+## Implementation
+
+The following files need to be modified:
+
+1. `client/src/pages/admin/produtos.tsx` - The main product management page
+2. `server/routes.ts` - Ensure backend routes support the new model interactions
+3. Additional API client functions as needed
+
+## Code Changes
+
+See the attached code changes to implement these modifications.
