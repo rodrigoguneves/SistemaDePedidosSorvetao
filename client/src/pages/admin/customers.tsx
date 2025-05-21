@@ -135,25 +135,8 @@ export default function CustomersPage() {
 
   // Funções para manipulação de clientes
   const handleAddCustomer = () => {
-    setCurrentCustomer(null);
-    customerForm.reset({
-      company_name: "",
-      contact_person: "",
-      phone: "",
-      address: "",
-      city: "",
-      state: "",
-      postal_code: "",
-      latitude: null,
-      longitude: null,
-      enable_delivery: false,
-      delivery_fee: 0,
-      minimum_order_value: 0,
-      allowed_delivery_days: [false, true, true, true, true, true, false],
-      email: "",
-      password: "",
-    });
-    setShowAddCustomerModal(true);
+    // Navegação para a página de adicionar cliente
+    window.location.href = "/admin/add-customer";
   };
 
   const handleEditCustomer = (customer: Customer) => {

@@ -19,6 +19,7 @@ import AdminDashboardFlowbite from "@/pages/admin/dashboard-flowbite";
 
 // Customer pages
 import CustomerHome from "@/pages/customer/home";
+import AddCustomerPage from './pages/admin/add-customer';
 
 function Router() {
   return (
@@ -36,6 +37,7 @@ function Router() {
       <ProtectedRoute path="/admin/dashboard-flowbite" component={AdminDashboardFlowbite} />
       <ProtectedRoute path="/admin/products" component={React.lazy(() => import("@/pages/admin/produtos"))} />
       <ProtectedRoute path="/admin/customers" component={React.lazy(() => import("@/pages/admin/customers"))} />
+      <ProtectedRoute path="/admin/add-customer" component={AddCustomerPage} />
 
       {/* Customer routes */}
       <ProtectedRoute path="/" component={CustomerHome} />
