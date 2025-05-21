@@ -70,32 +70,32 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#EDF4FB]">
       <header className="bg-white px-6 py-2 flex items-center justify-between shadow-sm">
+        {/* Logo e seção esquerda */}
         <div className="flex items-center">
-          {/* Logo */}
-          <div className="mr-4">
+          <div>
             <img src="/assets/logo.png" alt="Sorvetão" className="h-10" />
           </div>
-          
-          {/* Navigation */}
-          <nav className="flex items-center space-x-2">
-            {navigationItems.map((item, index) => (
-              <Link key={index} href={item.href}>
-                <div className="flex flex-col items-center p-2">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                    location === item.href ? "bg-primary text-white" : item.bgColor + " text-gray-600"
-                  }`}>
-                    {item.icon}
-                  </div>
-                  <span className={`text-xs mt-1 font-medium ${
-                    location === item.href ? "text-primary" : "text-gray-600"
-                  }`}>
-                    {item.title}
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </nav>
         </div>
+        
+        {/* Navigation centralizada */}
+        <nav className="flex items-center space-x-4 justify-center flex-1">
+          {navigationItems.map((item, index) => (
+            <Link key={index} href={item.href}>
+              <div className="flex flex-col items-center p-2">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                  location === item.href ? "bg-primary text-white" : item.bgColor + " text-gray-600"
+                }`}>
+                  {item.icon}
+                </div>
+                <span className={`text-xs mt-1 font-medium ${
+                  location === item.href ? "text-primary" : "text-gray-600"
+                }`}>
+                  {item.title}
+                </span>
+              </div>
+            </Link>
+          ))}
+        </nav>
 
         {/* User section */}
         <div className="flex items-center gap-2">
