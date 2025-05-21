@@ -187,19 +187,19 @@ export default function ProdutosPage() {
 
   // Create a merged list of products with their sale units
   const mergedProducts: ProductWithUnit[] = [];
-  
+
   if (baseProducts.length > 0 && productVersions.length > 0 && saleUnits.length > 0) {
     baseProducts.forEach((baseProduct: BaseProduct) => {
       // Find all versions for this base product
       const versions = productVersions.filter(
         (version: ProductSaleVersion) => version.base_product_id === baseProduct.base_product_id
       );
-      
+
       versions.forEach((version: ProductSaleVersion) => {
         const saleUnit = saleUnits.find(
           (unit: SaleUnit) => unit.sale_unit_id === version.sale_unit_id
         );
-        
+
         if (saleUnit) {
           mergedProducts.push({
             baseProductId: baseProduct.base_product_id,
@@ -364,16 +364,16 @@ export default function ProdutosPage() {
       const versionRes = await fetch(`/api/product-versions/${productVersionId}`, {
         method: 'DELETE',
       });
-      
+
       if (!versionRes.ok) throw new Error('Erro ao excluir versão do produto');
 
       // Then delete the base product
       const baseRes = await fetch(`/api/base-products/${baseProductId}`, {
         method: 'DELETE',
       });
-      
+
       if (!baseRes.ok) throw new Error('Erro ao excluir produto base');
-      
+
       return true;
     },
     onSuccess: () => {
@@ -535,29 +535,24 @@ export default function ProdutosPage() {
   };
 
   // Funções para submissão dos formulários
-  const onSubmitProduct = (data: typeof productFormSchema._type) => {
-    try {
-      console.log("Dados a serem enviados:", data);
+  const onSubmitProduct = (data: z.infer<typeof productFormSchema>) => {
+    if (editingProduct) {
+      // Make sure our IDs are numbers
+      const baseProductId = typeof editingProduct.baseProductId === 'string' 
+        ? parseInt(editingProduct.baseProductId) 
+        : editingProduct.baseProductId;
 
-      if (editingProduct) {
-        updateProductMutation.mutate({ 
-          baseProductId: editingProduct.baseProductId,
-          productVersionId: editingProduct.productVersionId,
-          ...data 
-        });
-      } else {
-        createProductMutation.mutate({
-          data,
-          saveAndContinue
-        });
-      }
-    } catch (error) {
-      console.error("Erro ao enviar formulário:", error);
-      toast({ 
-        title: "Erro ao processar formulário", 
-        description: error instanceof Error ? error.message : "Erro desconhecido",
-        variant: "destructive" 
+      const productVersionId = typeof editingProduct.productVersionId === 'string' 
+        ? parseInt(editingProduct.productVersionId) 
+        : editingProduct.productVersionId;
+
+      updateProductMutation.mutate({
+        ...data,
+        baseProductId,
+        productVersionId,
       });
+    } else {
+      createProductMutation.mutate(data);
     }
   };
 
@@ -596,7 +591,7 @@ export default function ProdutosPage() {
   }
 
   return (
-    
+
     <AdminLayout>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100">
         {/* Cabeçalho da página */}
@@ -832,7 +827,7 @@ export default function ProdutosPage() {
                       )}
                     </div>
 
-                    
+
 
                     <div>
                       <label htmlFor="category_id" className="block mb-1 font-medium">
@@ -891,7 +886,7 @@ export default function ProdutosPage() {
                       <label htmlFor="sale_unit_id" className="block mb-1 font-medium">
                         Unidade de Venda<span className="text-[#E73664]">*</span>
                       </label>
-                      <select
+<select
                         id="sale_unit_id"
                         className="w-full p-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-[#E73664] focus:border-[#E73664]"
                         {...productForm.register("sale_unit_id", { valueAsNumber: true })}
