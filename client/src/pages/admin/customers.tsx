@@ -22,7 +22,7 @@ import {
   Truck,
   Filter
 } from "lucide-react";
-import { Customer } from "@shared/schema";
+import { Customer, insertCustomerSchema } from "@shared/schema";
 
 export default function CustomersPage() {
   const { toast } = useToast();
