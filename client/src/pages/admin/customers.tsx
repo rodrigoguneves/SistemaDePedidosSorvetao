@@ -5,7 +5,7 @@ import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Filter } from "lucide-react";
+import { Filter, PlusCircle, Edit, Trash2, MapPin, List, Truck, Users } from "lucide-react";
 import { Customer, insertCustomerSchema } from "@shared/schema";
 import { AdminLayout } from "@/layouts/admin-layout";
 
