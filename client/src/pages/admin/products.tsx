@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -128,7 +127,7 @@ export default function ProductsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/products'] });
       toast({ title: "Produto criado com sucesso" });
-      
+
       if (!saveAndContinue) {
         setShowAddProductModal(false);
         productForm.reset();
@@ -355,17 +354,17 @@ export default function ProductsPage() {
     const matchesSearch = searchQuery 
       ? product.name.toLowerCase().includes(searchQuery.toLowerCase())
       : true;
-    
+
     const matchesCategory = selectedCategory === "all" 
       ? true 
       : product.category_id === parseInt(selectedCategory);
-    
+
     return matchesSearch && matchesCategory;
   });
 
   // Agrupamento de produtos por categoria para exibição
   const groupedProducts: { [key: string]: Product[] } = {};
-  
+
   if (filteredProducts.length > 0) {
     filteredProducts.forEach((product: Product) => {
       const categoryName = getCategoryName(product.category_id);
@@ -385,7 +384,7 @@ export default function ProductsPage() {
             <img src="/assets/logo.png" alt="Sorvetão" className="h-10" />
           </div>
         </Link>
-        
+
         <div className="flex items-center gap-8">
           <Link href="/admin">
             <div className="flex flex-col items-center cursor-pointer">
@@ -395,7 +394,7 @@ export default function ProductsPage() {
               <span className="text-xs mt-1">Painel</span>
             </div>
           </Link>
-          
+
           <Link href="/admin/products">
             <div className="flex flex-col items-center cursor-pointer">
               <div className="w-10 h-10 rounded-full bg-pink-500 flex items-center justify-center">
@@ -404,7 +403,7 @@ export default function ProductsPage() {
               <span className="text-xs mt-1 text-pink-500 font-bold">Produtos</span>
             </div>
           </Link>
-          
+
           <Link href="/admin/customers">
             <div className="flex flex-col items-center cursor-pointer">
               <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center">
@@ -413,7 +412,7 @@ export default function ProductsPage() {
               <span className="text-xs mt-1">Clientes</span>
             </div>
           </Link>
-          
+
           <Link href="/admin/orders">
             <div className="flex flex-col items-center cursor-pointer">
               <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center">
@@ -422,7 +421,7 @@ export default function ProductsPage() {
               <span className="text-xs mt-1">Pedidos</span>
             </div>
           </Link>
-          
+
           <Link href="/admin/financial">
             <div className="flex flex-col items-center cursor-pointer">
               <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center">
@@ -431,7 +430,7 @@ export default function ProductsPage() {
               <span className="text-xs mt-1">Financeiro</span>
             </div>
           </Link>
-          
+
           <Link href="/admin/settings">
             <div className="flex flex-col items-center cursor-pointer">
               <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center">
@@ -441,7 +440,7 @@ export default function ProductsPage() {
             </div>
           </Link>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <span className="text-sm">João Administrador</span>
           <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center">
@@ -449,14 +448,14 @@ export default function ProductsPage() {
           </div>
         </div>
       </header>
-      
+
       <main className="max-w-6xl mx-auto px-4 py-8">
         {/* Cabeçalho da página */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">
             {activeTab === "products" ? "Produtos" : "Categorias"}
           </h1>
-          
+
           <Button
             color="failure"
             pill
@@ -466,7 +465,7 @@ export default function ProductsPage() {
             {activeTab === "products" ? "Novo Produto" : "Nova Categoria"}
           </Button>
         </div>
-        
+
         {/* Conteúdo principal */}
         <div className="bg-white rounded-lg p-6 shadow">
           {/* Tabs de navegação entre produtos e categorias */}
@@ -494,7 +493,7 @@ export default function ProductsPage() {
               </button>
             </div>
           </div>
-          
+
           {activeTab === "products" ? (
             <>
               {/* Barra de pesquisa e filtro */}
@@ -511,7 +510,7 @@ export default function ProductsPage() {
                     className="pl-10"
                   />
                 </div>
-                
+
                 <Select
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
@@ -525,7 +524,7 @@ export default function ProductsPage() {
                   ))}
                 </Select>
               </div>
-              
+
               {/* Exibição de produtos */}
               {productsLoading ? (
                 <div className="flex justify-center py-12">
@@ -542,7 +541,7 @@ export default function ProductsPage() {
                       <div className="bg-blue-100 p-2 rounded-t-lg text-center font-medium">
                         {categoryName}
                       </div>
-                      
+
                       <Table>
                         <Table.Head className="bg-pink-50">
                           <Table.HeadCell className="text-pink-500">Produto</Table.HeadCell>
@@ -551,7 +550,7 @@ export default function ProductsPage() {
                           <Table.HeadCell className="text-pink-500">Preço</Table.HeadCell>
                           <Table.HeadCell className="text-pink-500">Ações</Table.HeadCell>
                         </Table.Head>
-                        
+
                         <Table.Body>
                           {groupedProducts[categoryName].map((product: Product) => (
                             <Table.Row key={product.id}>
@@ -568,7 +567,7 @@ export default function ProductsPage() {
                                   >
                                     <Pencil className="h-4 w-4 text-pink-500" />
                                   </Button>
-                                  
+
                                   <Button
                                     size="xs"
                                     color="light"
@@ -606,17 +605,17 @@ export default function ProductsPage() {
                       className="bg-gray-50 rounded-lg overflow-hidden border border-gray-100"
                     >
                       <div className="flex items-center p-4">
-                        <div className="bg-pink-100 p-3 rounded-full mr-3">
-                          <Package2 className="h-5 w-5 text-pink-500" />
+                        <div className="bg-[#E73664]/10 p-3 rounded-full mr-3">
+                          <Package2 className="h-5 w-5 text-[#E73664]" />
                         </div>
-                        
+
                         <div className="flex-1">
                           <h3 className="font-medium">{category.name}</h3>
                           <p className="text-sm text-gray-500 truncate">
                             {category.description || "Sorvete em massa"}
                           </p>
                         </div>
-                        
+
                         <div className="flex gap-1">
                           <Button
                             size="xs"
@@ -625,7 +624,7 @@ export default function ProductsPage() {
                           >
                             <Pencil className="h-4 w-4 text-pink-500" />
                           </Button>
-                          
+
                           <Button
                             size="xs"
                             color="light"
@@ -643,7 +642,7 @@ export default function ProductsPage() {
           )}
         </div>
       </main>
-      
+
       {/* Modal para adicionar/editar produto */}
       {showAddProductModal && (
         <Modal
@@ -653,8 +652,8 @@ export default function ProductsPage() {
         >
           <Modal.Header>
             <div className="flex items-center">
-              <div className="bg-pink-100 p-3 rounded-full mr-3">
-                <Plus className="h-5 w-5 text-pink-500" />
+              <div className="bg-[#E73664]/10 p-3 rounded-full mr-3">
+                <Plus className="h-5 w-5 text-[#E73664]" />
               </div>
               <div>
                 <h3 className="text-xl font-bold">
@@ -666,7 +665,7 @@ export default function ProductsPage() {
               </div>
             </div>
           </Modal.Header>
-          
+
           <Modal.Body>
             <form id="productForm" onSubmit={productForm.handleSubmit(onSubmitProduct)}>
               <div className="space-y-4">
@@ -685,7 +684,7 @@ export default function ProductsPage() {
                     </p>
                   )}
                 </div>
-                
+
                 <div>
                   <label htmlFor="category_id" className="block mb-1 font-medium">
                     Categoria<span className="text-pink-500">*</span>
@@ -707,7 +706,7 @@ export default function ProductsPage() {
                     </p>
                   )}
                 </div>
-                
+
                 <div>
                   <label htmlFor="description" className="block mb-1 font-medium">
                     Descrição
@@ -719,7 +718,7 @@ export default function ProductsPage() {
                     {...productForm.register("description")}
                   />
                 </div>
-                
+
                 <div>
                   <label htmlFor="price" className="block mb-1 font-medium">
                     Preço<span className="text-pink-500">*</span>
@@ -735,7 +734,7 @@ export default function ProductsPage() {
                     </p>
                   )}
                 </div>
-                
+
                 <div>
                   <label htmlFor="unit_of_sale" className="block mb-1 font-medium">
                     Unidade de Venda<span className="text-pink-500">*</span>
@@ -754,7 +753,7 @@ export default function ProductsPage() {
               </div>
             </form>
           </Modal.Body>
-          
+
           <Modal.Footer>
             <div className="flex justify-between items-center w-full">
               <div className="flex items-center gap-2">
@@ -768,7 +767,7 @@ export default function ProductsPage() {
                   Salvar e continuar
                 </label>
               </div>
-              
+
               <div className="flex gap-2">
                 <Button
                   color="gray"
@@ -776,7 +775,7 @@ export default function ProductsPage() {
                 >
                   Cancelar
                 </Button>
-                
+
                 <Button
                   color="failure"
                   onClick={productForm.handleSubmit(onSubmitProduct)}
@@ -789,7 +788,7 @@ export default function ProductsPage() {
           </Modal.Footer>
         </Modal>
       )}
-      
+
       {/* Modal para adicionar/editar categoria */}
       {showAddCategoryModal && (
         <Modal
@@ -799,8 +798,8 @@ export default function ProductsPage() {
         >
           <Modal.Header>
             <div className="flex items-center">
-              <div className="bg-pink-100 p-3 rounded-full mr-3">
-                <Plus className="h-5 w-5 text-pink-500" />
+              <div className="bg-[#E73664]/10 p-3 rounded-full mr-3">
+                <Plus className="h-5 w-5 text-[#E73664]" />
               </div>
               <div>
                 <h3 className="text-xl font-bold">
@@ -812,7 +811,7 @@ export default function ProductsPage() {
               </div>
             </div>
           </Modal.Header>
-          
+
           <Modal.Body>
             <form id="categoryForm" onSubmit={categoryForm.handleSubmit(onSubmitCategory)}>
               <div className="space-y-4">
@@ -831,7 +830,7 @@ export default function ProductsPage() {
                     </p>
                   )}
                 </div>
-                
+
                 <div>
                   <label htmlFor="description" className="block mb-1 font-medium">
                     Descrição
@@ -846,7 +845,7 @@ export default function ProductsPage() {
               </div>
             </form>
           </Modal.Body>
-          
+
           <Modal.Footer>
             <div className="flex justify-end gap-2 w-full">
               <Button
@@ -855,7 +854,7 @@ export default function ProductsPage() {
               >
                 Cancelar
               </Button>
-              
+
               <Button
                 color="failure"
                 onClick={categoryForm.handleSubmit(onSubmitCategory)}
