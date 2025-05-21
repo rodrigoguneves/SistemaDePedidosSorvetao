@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from "react";
+
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
@@ -11,6 +12,7 @@ import { AdminLayout } from "@/layouts/admin-layout";
 
 export default function CustomersPage() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [activeView, setActiveView] = useState("list"); // "list" ou "map"
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCity, setSelectedCity] = useState("all");
@@ -22,18 +24,14 @@ export default function CustomersPage() {
   // Consulta para obter clientes
   const { 
     data: customers = [], 
-    isLoading: customersLoading 
+    isLoading: customersLoading,
+    isError: customersError
   } = useQuery({
     queryKey: ['/api/customers'],
     queryFn: async () => {
-      try {
-        const res = await fetch('/api/customers');
-        if (!res.ok) throw new Error('Erro ao carregar clientes');
-        return res.json();
-      } catch (error) {
-        console.error("Erro ao buscar clientes:", error);
-        return [];
-      }
+      const res = await fetch('/api/customers');
+      if (!res.ok) throw new Error('Erro ao carregar clientes');
+      return res.json();
     }
   });
 
@@ -123,6 +121,7 @@ export default function CustomersPage() {
       });
       setShowAddCustomerModal(false);
       customerForm.reset();
+      setCurrentCustomer(null);
     },
     onError: (error: Error) => {
       toast({
@@ -202,7 +201,7 @@ export default function CustomersPage() {
   // Mutation para alternar status de entrega
   const toggleDeliveryMutation = useMutation({
     mutationFn: async ({ id, enable_delivery }: { id: number, enable_delivery: boolean }) => {
-      const res = await fetch(`/api/customers/${id}/delivery`, {
+      const res = await fetch(`/api/customers/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enable_delivery }),
@@ -242,37 +241,43 @@ export default function CustomersPage() {
   // Filtragem de clientes
   const filteredCustomers = customers.filter((customer: Customer) => {
     const matchesSearch = searchQuery
-      ? customer.name.toLowerCase().includes(searchQuery.toLowerCase())
+      ? customer.company_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        customer.contact_person.toLowerCase().includes(searchQuery.toLowerCase())
       : true;
 
     const matchesCity = selectedCity === "all"
       ? true
       : customer.city === selectedCity;
 
+    // Status field doesn't exist in the schema, using data_de_exclusao as a proxy
     const matchesStatus = selectedStatus === "all"
       ? true
-      : customer.active === (selectedStatus === "active");
+      : (selectedStatus === "active" ? !customer.data_de_exclusao : !!customer.data_de_exclusao);
 
     const matchesDelivery = selectedDelivery === "all"
       ? true
-      : customer.delivery_enabled === (selectedDelivery === "enabled");
+      : (selectedDelivery === "enabled" ? customer.enable_delivery : !customer.enable_delivery);
 
     return matchesSearch && matchesCity && matchesStatus && matchesDelivery;
   });
 
-  // Simulação de marcadores do mapa (em uma aplicação real, seriam coordenadas reais)
-  const mapMarkers = filteredCustomers.map((customer: Customer) => ({
-    id: customer.id,
-    name: customer.name,
-    lat: Math.random() * 10 - 5 + (-15), // Simulando latitude no Brasil
-    lng: Math.random() * 10 - 5 + (-50), // Simulando longitude no Brasil
-    active: customer.active
-  }));
+  // Extract available cities for filtering
+  const availableCities = Array.from(
+    new Set(customers.map((customer: Customer) => customer.city))
+  ).filter(Boolean);
 
-  // Lista de cidades disponíveis (em uma aplicação real, viria do backend)
-  const availableCities = ["São Paulo", "Rio de Janeiro", "Belo Horizonte", "Curitiba", "Porto Alegre"];
+  // Simulated map markers using customer data
+  const mapMarkers = filteredCustomers
+    .filter((customer: Customer) => customer.latitude && customer.longitude)
+    .map((customer: Customer) => ({
+      id: customer.id,
+      name: customer.company_name,
+      lat: customer.latitude || 0,
+      lng: customer.longitude || 0,
+      active: !customer.data_de_exclusao
+    }));
 
-  // Handler para submit do formulário
+  // Handler for form submission
   const onSubmitCustomer = (data: any) => {
     if (currentCustomer) {
       updateCustomerMutation.mutate({
@@ -531,7 +536,11 @@ export default function CustomersPage() {
                   <button
                     type="button"
                     className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg"
-                    onClick={() => setShowAddCustomerModal(false)}
+                    onClick={() => {
+                      setShowAddCustomerModal(false);
+                      setCurrentCustomer(null);
+                      customerForm.reset();
+                    }}
                   >
                     Cancelar
                   </button>
@@ -603,58 +612,74 @@ export default function CustomersPage() {
             </div>
 
             {/* Filtros e pesquisa */}
-            {activeView === "map" && (
-              <div className="grid grid-cols-4 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Cidade/Região</label>
-                  <select
+            <div className="mb-6">
+              <div className="flex gap-4 mb-4">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    placeholder="Buscar clientes..."
                     className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                
+                <div>
+                  <select
+                    className="rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
                     value={selectedCity}
                     onChange={(e) => setSelectedCity(e.target.value)}
                   >
-                    <option value="all">Todas</option>
+                    <option value="all">Todas as cidades</option>
                     {availableCities.map((city) => (
                       <option key={city} value={city}>{city}</option>
                     ))}
                   </select>
                 </div>
+                
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                   <select
-                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
+                    className="rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
                     value={selectedStatus}
                     onChange={(e) => setSelectedStatus(e.target.value)}
                   >
-                    <option value="all">Todos</option>
+                    <option value="all">Todos os status</option>
                     <option value="active">Ativo</option>
                     <option value="inactive">Inativo</option>
                   </select>
                 </div>
+                
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Entrega Habilitada</label>
                   <select
-                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
+                    className="rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
                     value={selectedDelivery}
                     onChange={(e) => setSelectedDelivery(e.target.value)}
                   >
-                    <option value="all">Todos</option>
-                    <option value="enabled">Habilitada</option>
-                    <option value="disabled">Desabilitada</option>
+                    <option value="all">Todas as entregas</option>
+                    <option value="enabled">Entrega ativa</option>
+                    <option value="disabled">Entrega inativa</option>
                   </select>
                 </div>
-                <div className="flex items-end">
-                  <button 
-                    className="px-4 py-2 bg-[#E73664] text-white rounded-lg flex items-center"
-                  >
-                    <Filter className="mr-2 h-4 w-4" />
-                    Filtrar
-                  </button>
-                </div>
+              </div>
+            </div>
+
+            {/* Loading state */}
+            {customersLoading && (
+              <div className="text-center py-8">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#E73664] border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+                <p className="mt-2 text-gray-600">Carregando clientes...</p>
+              </div>
+            )}
+
+            {/* Error state */}
+            {customersError && (
+              <div className="text-center py-8 text-red-600">
+                <p>Erro ao carregar os clientes. Por favor, tente novamente.</p>
               </div>
             )}
 
             {/* Visualização de Lista */}
-            {activeView === "list" && (
+            {!customersLoading && !customersError && activeView === "list" && (
               <div>
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
@@ -667,7 +692,7 @@ export default function CustomersPage() {
                           Responsável
                         </th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-[#E73664] uppercase tracking-wider">
-                          E-mail
+                          Cidade
                         </th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-[#E73664] uppercase tracking-wider">
                           Status
@@ -681,125 +706,74 @@ export default function CustomersPage() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {/* Exemplo de dados */}
-                      <tr>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          Sorvetes Paraíso Ltda
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          Ana Paula Lima
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          ana.paula@sorvpara.com
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-[#E73664]/10 text-[#E73664]">
-                            Ativo
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Truck className="h-5 w-5 text-[#E73664]" />
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <div className="flex gap-2">
-                            <button className="p-1 text-[#E73664] hover:bg-[#E73664]/10 rounded-full">
-                              <Edit className="h-4 w-4" />
-                            </button>
-                            <button className="p-1 text-[#E73664] hover:bg-[#E73664]/10 rounded-full">
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          Delícias Geladas ME
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          Carlos Silva
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          carlos@deliciasgeladas.com
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                            Inativo
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Truck className="h-5 w-5 text-gray-300" />
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <div className="flex gap-2">
-                            <button className="p-1 text-[#E73664] hover:bg-[#E73664]/10 rounded-full">
-                              <Edit className="h-4 w-4" />
-                            </button>
-                            <button className="p-1 text-[#E73664] hover:bg-[#E73664]/10 rounded-full">
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                      {/* Mais itens de exemplo */}
-                      {[1, 2, 3, 4, 5].map((index) => (
-                        <tr key={index}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            Sorvetes GelaTudo
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            Beatriz Souza
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            beatriz@gela.com
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-[#E73664]/10 text-[#E73664]">
-                              Ativo
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <Truck className="h-5 w-5 text-[#E73664]" />
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <div className="flex gap-2">
-                              <button className="p-1 text-[#E73664] hover:bg-[#E73664]/10 rounded-full">
-                                <Edit className="h-4 w-4" />
-                              </button>
-                              <button className="p-1 text-[#E73664] hover:bg-[#E73664]/10 rounded-full">
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </div>
+                      {filteredCustomers.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                            Nenhum cliente encontrado
                           </td>
                         </tr>
-                      ))}
+                      ) : (
+                        filteredCustomers.map((customer: Customer) => (
+                          <tr key={customer.id}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {customer.company_name}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {customer.contact_person}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {customer.city}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                customer.data_de_exclusao 
+                                  ? "bg-gray-100 text-gray-800" 
+                                  : "bg-[#E73664]/10 text-[#E73664]"
+                              }`}>
+                                {customer.data_de_exclusao ? "Inativo" : "Ativo"}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <Truck className={`h-5 w-5 ${
+                                customer.enable_delivery 
+                                  ? "text-[#E73664]" 
+                                  : "text-gray-300"
+                              }`} />
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <div className="flex gap-2">
+                                <button 
+                                  className="p-1 text-[#E73664] hover:bg-[#E73664]/10 rounded-full"
+                                  onClick={() => handleEditCustomer(customer)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </button>
+                                <button 
+                                  className="p-1 text-[#E73664] hover:bg-[#E73664]/10 rounded-full"
+                                  onClick={() => handleDeleteCustomer(customer)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                                <button 
+                                  className="p-1 text-[#E73664] hover:bg-[#E73664]/10 rounded-full"
+                                  onClick={() => handleToggleDelivery(customer)}
+                                  title={customer.enable_delivery ? "Desativar entrega" : "Ativar entrega"}
+                                >
+                                  <Truck className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
-                </div>
-                {/* Paginação */}
-                <div className="flex justify-center mt-6">
-                  <nav className="flex items-center gap-1">
-                    <button className="p-2 rounded-md border hover:bg-gray-50">
-                      &lt;
-                    </button>
-                    <button className="p-2 w-10 rounded-md border bg-[#E73664] text-white">
-                      1
-                    </button>
-                    <button className="p-2 w-10 rounded-md border hover:bg-gray-50">
-                      2
-                    </button>
-                    <button className="p-2 w-10 rounded-md border hover:bg-gray-50">
-                      3
-                    </button>
-                    <button className="p-2 rounded-md border hover:bg-gray-50">
-                      &gt;
-                    </button>
-                  </nav>
                 </div>
               </div>
             )}
 
             {/* Visualização de Mapa */}
-            {activeView === "map" && (
+            {!customersLoading && !customersError && activeView === "map" && (
               <div>
                 <div className="bg-purple-100 rounded-lg h-[500px] p-4 relative overflow-hidden">
                   {/* Simulação de um mapa do Brasil */}

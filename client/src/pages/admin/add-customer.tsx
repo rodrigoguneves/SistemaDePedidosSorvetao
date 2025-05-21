@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
@@ -67,6 +68,9 @@ export default function AddCustomerPage() {
       delete formattedData.complement;
       delete formattedData.neighborhood;
       delete formattedData.confirm_password;
+      delete formattedData.cnpj;
+
+      console.log("Sending data to API:", formattedData);
 
       const res = await fetch('/api/customers', {
         method: 'POST',
@@ -449,6 +453,32 @@ export default function AddCustomerPage() {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Taxa de Entrega (em centavos)
+                    </label>
+                    <input
+                      type="number"
+                      {...customerForm.register("delivery_fee", { valueAsNumber: true })}
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
+                      placeholder="0"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Pedido Mínimo para Entrega (em centavos)
+                    </label>
+                    <input
+                      type="number"
+                      {...customerForm.register("minimum_order_value", { valueAsNumber: true })}
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+
                 <div className="mt-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Dias Permitidos para Entrega
@@ -464,56 +494,6 @@ export default function AddCustomerPage() {
                         <span className="ml-2">{day}</span>
                       </label>
                     ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Catálogo de Produtos Permitidos */}
-            <Card className="mb-4 shadow-sm">
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-2 mb-4">
-                  <div className="bg-pink-100 p-2 rounded-full">
-                    <Package className="h-5 w-5 text-[#E73664]" />
-                  </div>
-                  <h2 className="text-lg font-medium">Catálogo de Produtos Permitidos</h2>
-                </div>
-
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Categorias de Produtos Permitidas
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {['Potes e Copos', 'Picolés', 'Sorvetes Especiais', 'Sabores Tradicionais', 'Toppings'].map((category) => (
-                      <label key={category} className="flex items-center p-2 border rounded-lg">
-                        <input
-                          type="checkbox"
-                          name={`category_${category}`}
-                          className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664]"
-                        />
-                        <span className="ml-2">{category}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Produtos/SKUs Permitidos
-                  </label>
-                  <div className="border rounded-lg p-3 max-h-60 overflow-y-auto">
-                    <div className="flex flex-wrap gap-2">
-                      {['Pote 2L Chocolate', 'Pote 2L Morango', 'Pote 2L Creme', 'Pote 1L Chocolate', 'Pote 1L Morango', 'Picolé Chocolate', 'Picolé Morango'].map((product) => (
-                        <label key={product} className="flex items-center p-2 border rounded-lg">
-                          <input
-                            type="checkbox"
-                            name={`product_${product}`}
-                            className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664]"
-                          />
-                          <span className="ml-2">{product}</span>
-                        </label>
-                      ))}
-                    </div>
                   </div>
                 </div>
               </CardContent>
