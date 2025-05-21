@@ -117,8 +117,9 @@ export default function AddCustomerPage() {
 
   // Handler para submit do formulário
   const onSubmitCustomer = (data: any) => {
-    if (!validatePasswords()) return;
-    createCustomerMutation.mutate(data);
+    if (validatePasswords()) {
+      createCustomerMutation.mutate(data);
+    }
   };
 
   return (
