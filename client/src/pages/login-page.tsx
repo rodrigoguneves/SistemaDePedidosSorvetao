@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Mail, Lock, HelpCircle, LogIn } from "lucide-react";
+import { Mail, Lock, HelpCircle } from "lucide-react";
 import styles from "../styles/Login.module.css";
 
 const loginSchema = z.object({
@@ -20,6 +20,23 @@ export default function LoginPage() {
   const { user, loginMutation } = useAuth();
   const [, navigate] = useLocation();
   const [error, setError] = useState<string | null>(null);
+  const [imagePaths, setImagePaths] = useState<string[]>([
+    "/attached_assets/logo.png",
+    "./attached_assets/logo.png",
+    "../attached_assets/logo.png",
+    "/logo.png",
+    "./logo.png"
+  ]);
+
+  useEffect(() => {
+    console.log("Tentando encontrar a imagem do logo nos seguintes caminhos:");
+    imagePaths.forEach(path => {
+      const img = new Image();
+      img.onload = () => console.log(`Imagem carregou com sucesso em: ${path}`);
+      img.onerror = () => console.log(`Imagem falhou ao carregar em: ${path}`);
+      img.src = path;
+    });
+  }, []);
 
   // Redirect if already logged in
   if (user) {
@@ -60,10 +77,17 @@ export default function LoginPage() {
       <div className={styles.loginBody}>
         <div className={styles.loginContent}>
           <div className={styles.logoContainer}>
-            <div className={styles.logoText}>
-              <h1>sorvetão</h1>
-              <p>desde 1990</p>
-            </div>
+            <img 
+              src="/assets/logo.png" 
+              className={styles.logo} 
+              alt="Sorvetão Logo"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                console.log("Image failed to load:", target.src);
+                // Tentativa com caminho alternativo
+                target.src = "./assets/logo.png";
+              }}
+            />
           </div>
 
           <div className={styles.cardContainer}>
@@ -113,20 +137,17 @@ export default function LoginPage() {
                 className={styles.loginButton}
                 disabled={loginMutation.isPending}
               >
-                {loginMutation.isPending ? "Entrando..." : "Logar"} 
-                <LogIn className={styles.loginButtonIcon} size={16} />
+                {loginMutation.isPending ? "Entrando..." : "Logar"}
               </button>
 
-              <div className={styles.forgotPasswordContainer}>
-                <a href="#" className={styles.forgotPassword}>
-                  Esqueceu sua Senha?
-                </a>
-              </div>
+              <a href="#" className={styles.forgotPassword}>
+                Esqueceu sua senha?
+              </a>
             </form>
           </div>
 
           <p className={styles.infoText}>
-            Para Cadastramento no sistema procure nossa Equipe
+            Para cadastramento no sistema procure nossa equipe
           </p>
 
           <a href="#" className={styles.supportLink}>

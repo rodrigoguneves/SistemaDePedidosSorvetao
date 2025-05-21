@@ -9,6 +9,7 @@
   width: 100%;
   min-height: 100vh;
   overflow: hidden;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
 }
 
 .loginBody {
@@ -29,8 +30,8 @@
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 24px;
-  width: 400px;
+  gap: 32px;
+  width: 448px;
   max-width: 100%;
 }
 
@@ -40,36 +41,26 @@
   justify-content: center;
   align-items: center;
   width: 100%;
-  margin-bottom: 10px;
+  height: 112px;
 }
 
-.logoText {
-  text-align: center;
-  color: #e73664;
-}
-
-.logoText h1 {
-  font-family: 'Inter', sans-serif;
-  font-size: 42px;
-  font-weight: 700;
-  margin: 0;
-  line-height: 1;
-}
-
-.logoText p {
-  font-family: 'Inter', sans-serif;
-  font-size: 18px;
-  margin: 0;
-  line-height: 1;
+.logo {
+  width: 438px;
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 438.32/151;
 }
 
 .cardContainer {
   background: #fff;
   box-sizing: border-box;
-  border-radius: 16px;
+  border: 1px solid #f3f4f6;
+  border-radius: 32px;
   width: 100%;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  padding: 24px 0;
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.1),
+    0 10px 15px rgba(0, 0, 0, 0.1);
+  padding: 32px 0;
 }
 
 .titleContainer {
@@ -78,7 +69,7 @@
   justify-content: center;
   align-items: center;
   width: 100%;
-  padding-bottom: 8px;
+  padding-bottom: 3px;
 }
 
 .title {
@@ -86,10 +77,9 @@
   text-align: center;
   width: 100%;
   font-family: 'Inter', sans-serif;
-  font-size: 24px;
+  font-size: 26.667px;
   font-weight: 700;
-  line-height: 1.2;
-  margin: 0;
+  line-height: 26.667px;
 }
 
 .form {
@@ -98,7 +88,7 @@
   flex-direction: column;
   justify-content: center;
   align-items: flex-start;
-  gap: 20px;
+  gap: 24px;
   width: 85%;
   margin: 0 auto;
 }
@@ -109,7 +99,7 @@
   flex-direction: column;
   justify-content: center;
   align-items: flex-start;
-  gap: 6px;
+  gap: 8px;
   width: 100%;
 }
 
@@ -121,7 +111,7 @@
   line-height: normal;
   width: 100%;
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
 }
 
 .inputContainer {
@@ -133,19 +123,20 @@
   box-sizing: border-box;
   background: #f9fafb;
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border-radius: 24px;
   width: 100%;
-  height: 45px;
-  padding: 0 16px 0 40px;
+  height: 58px;
+  padding: 0 48px 0 50px;
   font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: 16px;
   color: #374151;
-  transition: border-color 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
   outline: none;
 }
 
 .input:focus {
   border-color: #E73664;
+  box-shadow: 0 0 0 2px rgba(231, 54, 100, 0.2);
 }
 
 .input::placeholder {
@@ -154,20 +145,20 @@
 
 .inputIcon {
   position: absolute;
-  left: 15px;
+  left: 20px;
   top: 50%;
   transform: translateY(-50%);
   color: #9ca3af;
-  pointer-events: none;
+  pointer-events: none; /* Ensures the icon doesn't interfere with input interaction */
 }
 
 .loginButton {
   background: #e73664;
   box-sizing: border-box;
   border: none;
-  border-radius: 8px;
+  border-radius: 24px;
   width: 100%;
-  height: 45px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -176,23 +167,14 @@
   font-size: 16px;
   font-weight: 500;
   cursor: pointer;
-  margin-top: 10px;
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    0 4px 6px rgba(0, 0, 0, 0.1);
   transition: background-color 0.2s ease;
-}
-
-.loginButtonIcon {
-  margin-left: 8px;
 }
 
 .loginButton:hover {
   background: #d32d59;
-}
-
-.forgotPasswordContainer {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  margin-top: 15px;
 }
 
 .forgotPassword {
@@ -201,6 +183,10 @@
   font-family: 'Inter', sans-serif;
   font-size: 14px;
   font-weight: 500;
+  line-height: 14px;
+  width: 100%;
+  display: block;
+  margin-top: 16px;
   text-decoration: none;
 }
 
