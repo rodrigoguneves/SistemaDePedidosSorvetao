@@ -328,14 +328,144 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return !!deletedProduct;
   }
+  
+  // Sale Units implementation
+  async getSaleUnit(id: number): Promise<SaleUnit | undefined> {
+    const [unit] = await db.select().from(saleUnits).where(eq(saleUnits.sale_unit_id, id));
+    return unit;
+  }
+  
+  async getSaleUnits(): Promise<SaleUnit[]> {
+    return db.select().from(saleUnits).orderBy(saleUnits.unit_name);
+  }
+  
+  async getSaleUnitsByProductType(productTypeTag: string): Promise<SaleUnit[]> {
+    // Look for units where the specified tag is in the applicable_product_type_tags array
+    // or where 'ALL' is in the array (indicating it's applicable to all products)
+    return db.select().from(saleUnits)
+      .where(sql`${saleUnits.applicable_product_type_tags} @> ARRAY[${productTypeTag}]::text[] OR ${saleUnits.applicable_product_type_tags} @> ARRAY['ALL']::text[]`)
+      .orderBy(saleUnits.unit_name);
+  }
+  
+  async createSaleUnit(saleUnit: InsertSaleUnit): Promise<SaleUnit> {
+    const [createdUnit] = await db.insert(saleUnits).values(saleUnit).returning();
+    return createdUnit;
+  }
+  
+  async updateSaleUnit(id: number, saleUnit: Partial<SaleUnit>): Promise<SaleUnit | undefined> {
+    const [updatedUnit] = await db
+      .update(saleUnits)
+      .set({ ...saleUnit, updated_at: new Date() })
+      .where(eq(saleUnits.sale_unit_id, id))
+      .returning();
+    return updatedUnit;
+  }
+  
+  // Base Products implementation
+  async getBaseProduct(id: number): Promise<BaseProduct | undefined> {
+    const [product] = await db.select().from(baseProducts).where(and(
+      eq(baseProducts.base_product_id, id),
+      isNull(baseProducts.deleted_at)
+    ));
+    return product;
+  }
+  
+  async getBaseProducts(includeDeleted: boolean = false): Promise<BaseProduct[]> {
+    if (includeDeleted) {
+      return db.select().from(baseProducts).orderBy(baseProducts.base_product_name);
+    }
+    return db.select().from(baseProducts)
+      .where(isNull(baseProducts.deleted_at))
+      .orderBy(baseProducts.base_product_name);
+  }
+  
+  async getBaseProductsByCategory(categoryId: number, includeDeleted: boolean = false): Promise<BaseProduct[]> {
+    if (includeDeleted) {
+      return db.select().from(baseProducts)
+        .where(eq(baseProducts.product_category_id, categoryId))
+        .orderBy(baseProducts.base_product_name);
+    }
+    return db.select().from(baseProducts)
+      .where(and(
+        eq(baseProducts.product_category_id, categoryId),
+        isNull(baseProducts.deleted_at)
+      ))
+      .orderBy(baseProducts.base_product_name);
+  }
+  
+  async createBaseProduct(baseProduct: InsertBaseProduct): Promise<BaseProduct> {
+    const [createdProduct] = await db.insert(baseProducts).values(baseProduct).returning();
+    return createdProduct;
+  }
+  
+  async updateBaseProduct(id: number, baseProduct: Partial<BaseProduct>): Promise<BaseProduct | undefined> {
+    const [updatedProduct] = await db
+      .update(baseProducts)
+      .set({ ...baseProduct, updated_at: new Date() })
+      .where(and(eq(baseProducts.base_product_id, id), isNull(baseProducts.deleted_at)))
+      .returning();
+    return updatedProduct;
+  }
+  
+  async softDeleteBaseProduct(id: number): Promise<boolean> {
+    const [result] = await db
+      .update(baseProducts)
+      .set({ deleted_at: new Date(), updated_at: new Date() })
+      .where(and(eq(baseProducts.base_product_id, id), isNull(baseProducts.deleted_at)))
+      .returning();
+    return !!result;
+  }
+  
+  // Product Sale Versions implementation
+  async getProductSaleVersion(id: number): Promise<ProductSaleVersion | undefined> {
+    const [version] = await db.select().from(productSaleVersions)
+      .where(eq(productSaleVersions.product_version_id, id));
+    return version;
+  }
+  
+  async getProductSaleVersionsByBaseProduct(baseProductId: number, onlyActive: boolean = true): Promise<ProductSaleVersion[]> {
+    let query = db.select().from(productSaleVersions)
+      .where(eq(productSaleVersions.base_product_id, baseProductId));
+    
+    if (onlyActive) {
+      query = query.where(eq(productSaleVersions.is_active, true));
+    }
+    
+    return query.orderBy(productSaleVersions.price);
+  }
+  
+  async getProductSaleVersionsBySaleUnit(saleUnitId: number, onlyActive: boolean = true): Promise<ProductSaleVersion[]> {
+    let query = db.select().from(productSaleVersions)
+      .where(eq(productSaleVersions.sale_unit_id, saleUnitId));
+    
+    if (onlyActive) {
+      query = query.where(eq(productSaleVersions.is_active, true));
+    }
+    
+    return query.orderBy(productSaleVersions.price);
+  }
+  
+  async createProductSaleVersion(productSaleVersion: InsertProductSaleVersion): Promise<ProductSaleVersion> {
+    const [createdVersion] = await db.insert(productSaleVersions).values(productSaleVersion).returning();
+    return createdVersion;
+  }
+  
+  async updateProductSaleVersion(id: number, productSaleVersion: Partial<ProductSaleVersion>): Promise<ProductSaleVersion | undefined> {
+    const [updatedVersion] = await db
+      .update(productSaleVersions)
+      .set({ ...productSaleVersion, updated_at: new Date() })
+      .where(eq(productSaleVersions.product_version_id, id))
+      .returning();
+    return updatedVersion;
+  }
 
-  // Customer Product Access methods
+  // Customer Catalog Access methods
+  // Legacy methods for backward compatibility
   async getCustomerProducts(customerId: number): Promise<Product[]> {
     // Get products directly assigned to customer
     const directProducts = await db
-      .select({ product: products })
-      .from(customerProducts)
-      .innerJoin(products, eq(customerProducts.product_id, products.id))
+      .select().from(products)
+      .innerJoin(customerProducts, eq(customerProducts.product_id, products.id))
       .where(and(
         eq(customerProducts.customer_id, customerId),
         isNull(products.data_de_exclusao)
@@ -344,9 +474,9 @@ export class DatabaseStorage implements IStorage {
 
     // Get products from categories assigned to customer
     const categoryProducts = await db
-      .select({ product: products })
-      .from(customerCategories)
-      .innerJoin(products, eq(customerCategories.category_id, products.category_id))
+      .select().from(products)
+      .innerJoin(productCategories, eq(products.category_id, productCategories.id))
+      .innerJoin(customerCategories, eq(customerCategories.category_id, productCategories.id))
       .where(and(
         eq(customerCategories.customer_id, customerId),
         isNull(products.data_de_exclusao)
@@ -354,7 +484,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy([asc(products.price), asc(products.name)]);
 
     // Combine and deduplicate results
-    const allProducts = [...directProducts.map(p => p.product), ...categoryProducts.map(p => p.product)];
+    const allProducts = [...directProducts, ...categoryProducts];
     const uniqueProducts = Array.from(new Map(allProducts.map(p => [p.id, p])).values());
 
     return uniqueProducts.sort((a, b) => {
@@ -367,18 +497,87 @@ export class DatabaseStorage implements IStorage {
 
   async getCustomerCategories(customerId: number): Promise<ProductCategory[]> {
     const result = await db
-      .select({ category: productCategories })
-      .from(customerCategories)
-      .innerJoin(productCategories, eq(customerCategories.category_id, productCategories.id))
+      .select().from(productCategories)
+      .innerJoin(customerCategories, eq(customerCategories.category_id, productCategories.id))
       .where(and(
         eq(customerCategories.customer_id, customerId),
         isNull(productCategories.data_de_exclusao)
       ))
       .orderBy(productCategories.name);
 
-    return result.map(r => r.category);
+    return result;
   }
 
+  async getCustomerAllowedSaleUnits(customerId: number, categoryId: number): Promise<SaleUnit[]> {
+    const result = await db
+      .select().from(saleUnits)
+      .innerJoin(
+        customerCategoryAllowedSaleUnits, 
+        eq(customerCategoryAllowedSaleUnits.sale_unit_id, saleUnits.sale_unit_id)
+      )
+      .where(and(
+        eq(customerCategoryAllowedSaleUnits.customer_id, customerId),
+        eq(customerCategoryAllowedSaleUnits.product_category_id, categoryId)
+      ))
+      .orderBy(saleUnits.unit_name);
+
+    return result;
+  }
+
+  async getCustomerProductVersions(customerId: number): Promise<ProductSaleVersion[]> {
+    // Get categories the customer has access to
+    const customerCategories = await this.getCustomerCategories(customerId);
+    const categoryIds = customerCategories.map(category => category.id);
+    
+    if (categoryIds.length === 0) {
+      return [];
+    }
+    
+    // Get allowed sale units for each category
+    const allowedSaleUnits = await db
+      .select()
+      .from(customerCategoryAllowedSaleUnits)
+      .where(eq(customerCategoryAllowedSaleUnits.customer_id, customerId));
+    
+    // Group allowed sale units by category
+    const saleUnitsByCategory = allowedSaleUnits.reduce((acc: Record<number, number[]>, curr) => {
+      if (!acc[curr.product_category_id]) {
+        acc[curr.product_category_id] = [];
+      }
+      acc[curr.product_category_id].push(curr.sale_unit_id);
+      return acc;
+    }, {});
+    
+    // Get all product versions for the allowed categories and sale units
+    const productVersionsPromises = categoryIds.map(async (categoryId) => {
+      const allowedSaleUnitIds = saleUnitsByCategory[categoryId] || [];
+      if (allowedSaleUnitIds.length === 0) return [];
+      
+      return db
+        .select()
+        .from(productSaleVersions)
+        .innerJoin(
+          baseProducts, 
+          eq(productSaleVersions.base_product_id, baseProducts.base_product_id)
+        )
+        .where(and(
+          eq(baseProducts.product_category_id, categoryId),
+          eq(productSaleVersions.is_active, true),
+          eq(baseProducts.is_active, true),
+          isNull(baseProducts.deleted_at)
+        ));
+    });
+    
+    const productVersionsResults = await Promise.all(productVersionsPromises);
+    const allProductVersions = productVersionsResults.flat();
+    
+    // Remove duplicates if any
+    return Array.from(
+      new Map(allProductVersions.map(v => [v.product_version_id, v])).values()
+    );
+  }
+
+  // Legacy methods for backward compatibility
   async addProductToCustomer(customerId: number, productId: number): Promise<boolean> {
     const [result] = await db
       .insert(customerProducts)
@@ -412,6 +611,37 @@ export class DatabaseStorage implements IStorage {
       .where(and(
         eq(customerCategories.customer_id, customerId),
         eq(customerCategories.category_id, categoryId)
+      ))
+      .returning();
+    return !!result;
+  }
+  
+  // New methods for customer catalog access
+  async addCategorySaleUnitToCustomer(customerId: number, categoryId: number, saleUnitId: number): Promise<boolean> {
+    try {
+      const [result] = await db
+        .insert(customerCategoryAllowedSaleUnits)
+        .values({
+          customer_id: customerId,
+          product_category_id: categoryId,
+          sale_unit_id: saleUnitId
+        })
+        .returning();
+      return !!result;
+    } catch (error) {
+      // Handle potential duplicate insertion error
+      console.error("Error adding sale unit to customer category:", error);
+      return false;
+    }
+  }
+
+  async removeCategorySaleUnitFromCustomer(customerId: number, categoryId: number, saleUnitId: number): Promise<boolean> {
+    const [result] = await db
+      .delete(customerCategoryAllowedSaleUnits)
+      .where(and(
+        eq(customerCategoryAllowedSaleUnits.customer_id, customerId),
+        eq(customerCategoryAllowedSaleUnits.product_category_id, categoryId),
+        eq(customerCategoryAllowedSaleUnits.sale_unit_id, saleUnitId)
       ))
       .returning();
     return !!result;
