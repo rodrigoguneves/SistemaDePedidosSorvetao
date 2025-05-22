@@ -150,176 +150,114 @@ export default function EditCustomerPage() {
       // Always log what we're working with
       console.log("Working with customer categories array:", JSON.stringify(customerCategories));
 
-      // Handle both possible data structures (category_id or id property)
+      // Extract category IDs from different possible structures
       const categoryIds = customerCategories.map((cat: any) => {
-        // Check all possible property names one by one
+        // Skip if not an object
         if (cat === null || typeof cat !== 'object') {
           console.log("Invalid category item:", cat);
           return null;
         }
 
-        // Try to extract ID from various possible property names
-        const possibleIds = [
-          cat.category_id,
-          cat.id, 
-          cat.product_category_id
-        ];
+        // For product_categories table joined with customer_categories table
+        if (cat.id !== undefined) {
+          return Number(cat.id);
+        }
         
-        // Find first non-undefined value
-        const extractedId = possibleIds.find(id => id !== undefined);
+        // For customer_categories table alone
+        if (cat.category_id !== undefined) {
+          return Number(cat.category_id);
+        }
         
-        if (extractedId !== undefined) {
-          return Number(extractedId);
+        // Alternative field name
+        if (cat.product_category_id !== undefined) {
+          return Number(cat.product_category_id);
+        }
+        
+        // Handle nested structure
+        if (cat.productCategories && cat.productCategories.id !== undefined) {
+          return Number(cat.productCategories.id);
         }
 
-        // Debug if we can't find any expected property
         console.log("Could not extract category ID from:", cat);
         return null;
       }).filter(id => id !== null && !isNaN(id));
 
       console.log("Extracted category IDs:", categoryIds);
 
-      // Always set selected categories, even if empty (to clear previous selections)
+      // Set selected categories
       setSelectedCategories(categoryIds);
-
-      // Ensure that we have default sale units for all selected categories
-      if (saleUnits && saleUnits.length > 0) {
-        categoryIds.forEach(catId => {
-          if (!categoryUnits[catId]) {
-            // Define default sale units based on category
-            let defaultUnits: number[] = [];
-
-            // Assign default units based on category
-            if ([1, 2, 5, 6, 7, 8, 9].includes(catId)) {
-              // Find "unidade" sale unit
-              const unitId = saleUnits.find((unit: any) => unit.unit_name === "Unidade")?.sale_unit_id;
-              if (unitId) defaultUnits = [unitId];
-            } 
-            else if ([3, 4].includes(catId)) {
-              defaultUnits = saleUnits
-                .filter((unit: any) => ["Caixa Completa 24un", "Meia Caixa 12un", "Unidade"].includes(unit.unit_name))
-                .map((unit: any) => unit.sale_unit_id);
-            }
-            else if (catId === 11) {
-              defaultUnits = saleUnits
-                .filter((unit: any) => ["Caixa Completa 16un", "Meia Caixa 8un", "Unidade"].includes(unit.unit_name))
-                .map((unit: any) => unit.sale_unit_id);
-            }
-            else {
-              defaultUnits = saleUnits.map((unit: any) => unit.sale_unit_id);
-            }
-
-            // Only update if we found some units and if saleUnits is loaded
-            if (defaultUnits.length > 0) {
-              setCategoryUnits(prevUnits => ({
-                ...prevUnits,
-                [catId]: defaultUnits
-              }));
-            }
-          }
-        });
-      }
     }
-  }, [customerCategories, saleUnits]);
+  }, [customerCategories]);
 
   // Initialize category sale units when data is loaded
   useEffect(() => {
-    if (customerSaleUnits) {
+    if (customerSaleUnits && Array.isArray(customerSaleUnits)) {
       console.log("Loading customer sale units:", customerSaleUnits);
-
-      // Handle invalid data case
-      if (!Array.isArray(customerSaleUnits)) {
-        console.log("Customer sale units is not an array");
-        return;
-      }
-
-      // Always log what we're working with
-      console.log("Working with customer sale units array:", JSON.stringify(customerSaleUnits));
-
+      
+      // Build category-to-units mapping
       const unitsByCat: Record<number, number[]> = {};
-
-      // Even for empty arrays, we should process (just won't add any units)
+      
       customerSaleUnits.forEach((item: any) => {
         if (!item || typeof item !== 'object') {
-          console.log("Invalid sale unit item:", item);
           return;
         }
-
-        // Try all possible property names with improved debugging
+        
+        // Determine category ID from various possible fields
         let categoryId = null;
+        if (item.product_category_id !== undefined) categoryId = Number(item.product_category_id);
+        else if (item.category_id !== undefined) categoryId = Number(item.category_id);
         
-        // Check all possible field names and log their values for debugging
-        const possibleCategoryFields = {
-          product_category_id: item.product_category_id,
-          category_id: item.category_id,
-          categoryId: item.categoryId
-        };
+        // Get unit ID
+        const unitId = item.sale_unit_id !== undefined ? Number(item.sale_unit_id) : null;
         
-        console.log("Possible category ID fields:", possibleCategoryFields);
-        
-        if (item.product_category_id !== undefined) categoryId = item.product_category_id;
-        else if (item.category_id !== undefined) categoryId = item.category_id;
-        else if (item.categoryId !== undefined) categoryId = item.categoryId;
-        
-        // Also check nested properties if present
-        if (categoryId === null && item.category && typeof item.category === 'object') {
-          if (item.category.id !== undefined) categoryId = item.category.id;
-        }
-        
-        const unitId = item.sale_unit_id;
-
-        console.log(`Processing item: Category ID=${categoryId}, Unit ID=${unitId}`);
-
-        if (categoryId === null || unitId === undefined) {
+        // Validate both IDs
+        if (categoryId === null || unitId === null || isNaN(categoryId) || isNaN(unitId)) {
           console.log("Skipping invalid sale unit entry:", item);
           return;
         }
-
-        // Ensure the properties are treated as numbers
-        const catId = Number(categoryId);
-        const uId = Number(unitId);
-
-        if (isNaN(catId) || isNaN(uId)) {
-          console.log("Invalid category ID or unit ID:", {categoryId, unitId});
-          return;
+        
+        // Initialize array if needed
+        if (!unitsByCat[categoryId]) {
+          unitsByCat[categoryId] = [];
         }
-
-        if (!unitsByCat[catId]) {
-          unitsByCat[catId] = [];
-        }
-
-        // Only add if not already in the array
-        if (!unitsByCat[catId].includes(uId)) {
-          unitsByCat[catId].push(uId);
+        
+        // Add unit ID if not already in the array
+        if (!unitsByCat[categoryId].includes(unitId)) {
+          unitsByCat[categoryId].push(unitId);
         }
       });
-
-      console.log("Processed sale units by category:", unitsByCat);
-
-      // Set the category units directly rather than merging
-      // This ensures we get a clean state based on what's in the database
-      setCategoryUnits(unitsByCat);
       
-      // If we didn't find any units but we have categories selected, 
-      // make sure each category has at least default units assigned
-      if (Object.keys(unitsByCat).length === 0 && selectedCategories.length > 0) {
-        console.log("No units found, adding default units for selected categories");
-        
-        const defaultUnitsByCat: Record<number, number[]> = {};
-        
-        selectedCategories.forEach(catId => {
-          // Get default units based on category type
+      console.log("Processed sale units by category:", unitsByCat);
+      
+      // Update state with the processed data
+      setCategoryUnits(unitsByCat);
+    }
+  }, [customerSaleUnits]);
+
+  // Apply default sale units for categories that have none
+  useEffect(() => {
+    if (selectedCategories.length > 0 && saleUnits && saleUnits.length > 0) {
+      const updatedUnits = {...categoryUnits};
+      let madeChanges = false;
+      
+      selectedCategories.forEach(catId => {
+        // If this category has no units assigned, add defaults
+        if (!updatedUnits[catId] || updatedUnits[catId].length === 0) {
           const defaultUnits = getDefaultUnitsForCategory(catId, saleUnits);
           if (defaultUnits.length > 0) {
-            defaultUnitsByCat[catId] = defaultUnits;
+            updatedUnits[catId] = defaultUnits;
+            madeChanges = true;
           }
-        });
-        
-        console.log("Adding default units:", defaultUnitsByCat);
-        setCategoryUnits(defaultUnitsByCat);
+        }
+      });
+      
+      // Only update state if changes were made
+      if (madeChanges) {
+        console.log("Adding default units for categories without assigned units:", updatedUnits);
+        setCategoryUnits(updatedUnits);
       }
     }
-  }, [customerSaleUnits, selectedCategories, saleUnits]);
+  }, [selectedCategories, saleUnits, categoryUnits]);
   
   // Helper function to get default units for a category
   const getDefaultUnitsForCategory = (categoryId: number, allUnits: any[]) => {
@@ -351,20 +289,38 @@ export default function EditCustomerPage() {
     return defaultUnits;
   };
 
-  // Force refresh categories and sale units on mount
+  // Force refresh all customer data on mount
   useEffect(() => {
     if (customerId) {
       console.log("Refreshing customer data on mount for ID:", customerId);
-
-      // Enhanced fetch function with direct fetch instead of query client
-      const fetchCustomerData = async () => {
+      
+      // Comprehensive data fetching function
+      const fetchAllCustomerData = async () => {
         try {
-          // Fetch categories directly with anti-cache headers
+          // 1. Fetch customer basic data
+          const customerResponse = await fetch(`/api/customers/${customerId}`, {
+            headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'Expires': '0'
+            }
+          });
+          
+          if (!customerResponse.ok) {
+            throw new Error(`Failed to fetch customer data: ${customerResponse.status}`);
+          }
+          
+          const customerData = await customerResponse.json();
+          console.log("Direct fetch customer result:", customerData);
+          queryClient.setQueryData([`/api/customers/${customerId}`], customerData);
+          
+          // 2. Fetch categories with fresh data
           console.log("Fetching categories directly for customer:", customerId);
           const catResponse = await fetch(`/api/customers/${customerId}/categories`, {
             headers: {
-              'Cache-Control': 'no-cache',
-              'Pragma': 'no-cache'
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'Expires': '0'
             }
           });
           
@@ -374,16 +330,31 @@ export default function EditCustomerPage() {
 
           const categoriesData = await catResponse.json();
           console.log("Direct fetch categories result:", categoriesData);
-
-          // Update query client with fresh data
           queryClient.setQueryData([`/api/customers/${customerId}/categories`], categoriesData);
+          
+          // Process and directly set the categories
+          if (Array.isArray(categoriesData)) {
+            const categoryIds = categoriesData.map((cat: any) => {
+              if (cat === null || typeof cat !== 'object') return null;
+              
+              if (cat.id !== undefined) return Number(cat.id);
+              if (cat.category_id !== undefined) return Number(cat.category_id);
+              if (cat.product_category_id !== undefined) return Number(cat.product_category_id);
+              
+              return null;
+            }).filter(id => id !== null && !isNaN(id));
+            
+            console.log("Setting selected categories directly:", categoryIds);
+            setSelectedCategories(categoryIds);
+          }
 
-          // Fetch sale units directly with anti-cache headers
+          // 3. Fetch sale units with fresh data
           console.log("Fetching sale units directly for customer:", customerId);
           const unitsResponse = await fetch(`/api/customers/${customerId}/allowed-sale-units`, {
             headers: {
-              'Cache-Control': 'no-cache',
-              'Pragma': 'no-cache'
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'Expires': '0'
             }
           });
           
@@ -393,111 +364,57 @@ export default function EditCustomerPage() {
 
           const unitsData = await unitsResponse.json();
           console.log("Direct fetch sale units result:", unitsData);
-
-          // Update query client with fresh data
           queryClient.setQueryData([`/api/customers/${customerId}/allowed-sale-units`], unitsData);
-
-          // Ensure categoriesData is an array
-          const processCategoriesData = Array.isArray(categoriesData) ? categoriesData : [];
           
-          // Manually process the data to ensure it's properly loaded
-          const categoryIds = processCategoriesData.map((cat: any) => {
-            // If the item is not an object, skip it
-            if (cat === null || typeof cat !== 'object') {
-              return null;
-            }
+          // Process and directly set the sale units
+          if (Array.isArray(unitsData)) {
+            const unitsByCat: Record<number, number[]> = {};
             
-            // Try to extract ID from various possible property names
-            if (cat.category_id !== undefined) return Number(cat.category_id);
-            if (cat.id !== undefined) return Number(cat.id);
-            if (cat.product_category_id !== undefined) return Number(cat.product_category_id);
+            unitsData.forEach((item: any) => {
+              if (!item || typeof item !== 'object') return;
+              
+              let categoryId = null;
+              if (item.product_category_id !== undefined) categoryId = Number(item.product_category_id);
+              else if (item.category_id !== undefined) categoryId = Number(item.category_id);
+              
+              const unitId = item.sale_unit_id !== undefined ? Number(item.sale_unit_id) : null;
+              
+              if (categoryId === null || unitId === null || isNaN(categoryId) || isNaN(unitId)) return;
+              
+              if (!unitsByCat[categoryId]) {
+                unitsByCat[categoryId] = [];
+              }
+              
+              if (!unitsByCat[categoryId].includes(unitId)) {
+                unitsByCat[categoryId].push(unitId);
+              }
+            });
             
-            return null;
-          }).filter(id => id !== null && !isNaN(id));
-
-          console.log("Directly setting selected categories:", categoryIds);
-          setSelectedCategories(categoryIds);
-
-          // Ensure unitsData is an array
-          const processUnitsData = Array.isArray(unitsData) ? unitsData : [];
+            console.log("Setting category units directly:", unitsByCat);
+            setCategoryUnits(unitsByCat);
+          }
           
-          // Process sale units data
-          const unitsByCat: Record<number, number[]> = {};
-
-          processUnitsData.forEach((item: any) => {
-            // If the item is not an object, skip it
-            if (item === null || typeof item !== 'object') {
-              return;
-            }
-            
-            // Try to extract category ID from various possible property names
-            let categoryId = null;
-            if (item.product_category_id !== undefined) categoryId = item.product_category_id;
-            else if (item.category_id !== undefined) categoryId = item.category_id;
-            
-            const unitId = item.sale_unit_id;
-
-            if (categoryId === null || unitId === undefined) {
-              return;
-            }
-
-            // Convert to numbers and validate
-            const catId = Number(categoryId);
-            const uId = Number(unitId);
-
-            if (isNaN(catId) || isNaN(uId)) {
-              return;
-            }
-
-            // Initialize array if needed
-            if (!unitsByCat[catId]) {
-              unitsByCat[catId] = [];
-            }
-
-            // Only add if not already in the array
-            if (!unitsByCat[catId].includes(uId)) {
-              unitsByCat[catId].push(uId);
-            }
-          });
-
-          console.log("Directly setting category units:", unitsByCat);
-          setCategoryUnits(unitsByCat);
-
-          console.log("Data fetching and processing complete");
+          console.log("All customer data fetched and processed successfully");
         } catch (error) {
-          console.error("Error during direct data fetch:", error);
-          
-          // Even on error, ensure we have clean state
-          setSelectedCategories([]);
-          setCategoryUnits({});
+          console.error("Error during comprehensive data fetch:", error);
+          toast({
+            title: "Erro ao carregar dados",
+            description: "Não foi possível carregar todos os dados do cliente. Tente novamente.",
+            variant: "destructive",
+          });
         }
       };
-
-      // Execute the fetch function
-      fetchCustomerData();
-
-      // Also invalidate the queries to ensure the UI refreshes
-      queryClient.invalidateQueries([`/api/customers/${customerId}/categories`]);
-      queryClient.invalidateQueries([`/api/customers/${customerId}/allowed-sale-units`]);
       
-      // Returning a cleanup function to reset state when component unmounts
+      // Execute the comprehensive fetch function
+      fetchAllCustomerData();
+      
+      // Cleanup function to reset state when component unmounts
       return () => {
         setSelectedCategories([]);
         setCategoryUnits({});
       };
     }
-  }, [customerId, queryClient, setSelectedCategories, setCategoryUnits]);
-
-  // Force refresh of categories and sale units when customer ID changes
-  useEffect(() => {
-    if (customerId) {
-      console.log("Customer ID changed, refreshing data for ID:", customerId);
-
-      // Manually trigger refetch
-      queryClient.invalidateQueries([`/api/customers/${customerId}/categories`]);
-      queryClient.invalidateQueries([`/api/customers/${customerId}/allowed-sale-units`]);
-    }
-  }, [customerId, queryClient]);
+  }, [customerId, queryClient, toast]);
 
   // Debug loading state
   useEffect(() => {
@@ -544,11 +461,11 @@ export default function EditCustomerPage() {
         console.log("Error parsing address:", e);
       }
 
-      // Enhanced CNPJ handling with better debugging
+      // Get CNPJ value with clear logging
       const cnpjValue = customer.cnpj || "";
-      console.log("Setting CNPJ value:", cnpjValue);
+      console.log("Setting CNPJ value:", cnpjValue, typeof cnpjValue);
 
-      // Set form values first with available data
+      // Set form values with available data
       customerForm.reset({
         company_name: customer.company_name,
         contact_person: customer.contact_person || "",
@@ -575,27 +492,37 @@ export default function EditCustomerPage() {
         user_id: customer.user_id
       });
 
-      // Explicitly set CNPJ value directly to ensure it's properly set
+      // Force CNPJ field to update - this is critical for proper display
       customerForm.setValue("cnpj", cnpjValue);
       
-      // Add a delay to ensure the CNPJ value is set after any form reset
-      setTimeout(() => {
-        const currentCnpj = customerForm.getValues("cnpj");
-        if (currentCnpj !== cnpjValue) {
-          console.log(`CNPJ value was reset or changed. Current: "${currentCnpj}", Expected: "${cnpjValue}"`);
-          customerForm.setValue("cnpj", cnpjValue);
-        }
-      }, 100);
+      // Use multiple timeouts with increasing delays for more reliable CNPJ setting
+      [50, 200, 500].forEach(delay => {
+        setTimeout(() => {
+          const currentCnpj = customerForm.getValues("cnpj");
+          if (currentCnpj !== cnpjValue) {
+            console.log(`CNPJ value check at ${delay}ms: Current: "${currentCnpj}", Expected: "${cnpjValue}"`);
+            customerForm.setValue("cnpj", cnpjValue, { 
+              shouldValidate: true,
+              shouldDirty: true,
+              shouldTouch: true
+            });
+          }
+        }, delay);
+      });
 
-      // Fetch user email if available - with improved error handling and retry mechanism
+      // Fetch user email with improved reliability
       if (customer.user_id) {
-        const fetchUserEmail = async (retryCount = 0) => {
+        const fetchUserEmail = async () => {
           try {
-            console.log(`Fetching user email for user_id: ${customer.user_id} (attempt ${retryCount + 1})`);
+            console.log(`Fetching user email for user_id: ${customer.user_id}`);
+            
+            // Use direct fetch with anti-cache headers
             const res = await fetch(`/api/users/${customer.user_id}`, {
+              method: 'GET',
               headers: {
-                'Cache-Control': 'no-cache', 
-                'Pragma': 'no-cache'
+                'Cache-Control': 'no-cache, no-store, must-revalidate', 
+                'Pragma': 'no-cache',
+                'Expires': '0'
               }
             });
 
@@ -604,28 +531,35 @@ export default function EditCustomerPage() {
             }
 
             const userData = await res.json();
-            console.log("User data loaded successfully:", userData);
+            console.log("User data loaded:", userData);
 
             if (userData && userData.email) {
               console.log("Setting email to:", userData.email);
-              customerForm.setValue("email", userData.email);
-              return true;
+              customerForm.setValue("email", userData.email, {
+                shouldValidate: true,
+                shouldDirty: false,
+                shouldTouch: false
+              });
             } else {
               console.log("No email found in user data");
               customerForm.setValue("email", "Email não encontrado");
-              return false;
             }
           } catch (error) {
-            console.error(`Error fetching user email (attempt ${retryCount + 1}):`, error);
+            console.error("Error fetching user email:", error);
+            customerForm.setValue("email", "Erro ao carregar email");
             
-            // Retry logic (up to 2 retries)
-            if (retryCount < 2) {
-              console.log(`Retrying email fetch in ${(retryCount + 1) * 500}ms...`);
-              setTimeout(() => fetchUserEmail(retryCount + 1), (retryCount + 1) * 500);
-            } else {
-              customerForm.setValue("email", "Email não disponível");
-            }
-            return false;
+            // Retry once after a delay
+            setTimeout(() => {
+              console.log("Retrying email fetch...");
+              fetch(`/api/users/${customer.user_id}`)
+                .then(res => res.json())
+                .then(userData => {
+                  if (userData && userData.email) {
+                    customerForm.setValue("email", userData.email);
+                  }
+                })
+                .catch(err => console.error("Retry failed:", err));
+            }, 1000);
           }
         };
 
