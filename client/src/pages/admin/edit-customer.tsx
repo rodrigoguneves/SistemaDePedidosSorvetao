@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { zodResolver } from "zod";
 import { useForm, useWatch } from "react-hook-form";
 import { Users, TagsIcon, CheckCircle, User, Building, Phone, MapPin, KeyRound, Truck } from "lucide-react";
 import { Customer, insertCustomerSchema } from "@shared/schema";
@@ -18,7 +17,7 @@ export default function EditCustomerPage() {
   const [location, setLocation] = useLocation();
   const [, params] = useRoute("/admin/edit-customer/:id");
   const customerId = params ? parseInt(params.id) : null;
-  
+
   // State for product categories and sale units
   const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
   const [categoryUnits, setCategoryUnits] = useState<Record<number, number[]>>({});
@@ -140,14 +139,14 @@ export default function EditCustomerPage() {
   useEffect(() => {
     if (customerCategories) {
       console.log("Loading customer categories:", customerCategories);
-      
+
       // Handle empty array case
       if (!Array.isArray(customerCategories) || customerCategories.length === 0) {
         console.log("No customer categories found or invalid data");
         setSelectedCategories([]);
         return;
       }
-      
+
       // Handle both possible data structures (category_id or id property)
       const categoryIds = customerCategories.map((cat: any) => {
         // Check all possible property names one by one
@@ -155,27 +154,27 @@ export default function EditCustomerPage() {
           console.log("Invalid category item:", cat);
           return null;
         }
-        
+
         if (cat.category_id !== undefined) return Number(cat.category_id);
         if (cat.id !== undefined) return Number(cat.id);
         if (cat.product_category_id !== undefined) return Number(cat.product_category_id);
-        
+
         // Debug if we can't find any expected property
         console.log("Could not extract category ID from:", cat);
         return null;
       }).filter(id => id !== null && !isNaN(id));
-      
+
       console.log("Extracted category IDs:", categoryIds);
-      
+
       // Always set selected categories, even if empty (to clear previous selections)
       setSelectedCategories(categoryIds);
-      
+
       // Ensure that we have default sale units for all selected categories
       categoryIds.forEach(catId => {
         if (!categoryUnits[catId]) {
           // Define default sale units based on category
           let defaultUnits: number[] = [];
-          
+
           // Assign default units based on category
           if ([1, 2, 5, 6, 7, 8, 9].includes(catId)) {
             // Find "unidade" sale unit
@@ -195,7 +194,7 @@ export default function EditCustomerPage() {
           else {
             defaultUnits = saleUnits.map((unit: any) => unit.sale_unit_id);
           }
-          
+
           // Only update if we found some units and if saleUnits is loaded
           if (defaultUnits.length > 0 && saleUnits.length > 0) {
             setCategoryUnits(prevUnits => ({
@@ -212,78 +211,78 @@ export default function EditCustomerPage() {
   useEffect(() => {
     if (customerSaleUnits) {
       console.log("Loading customer sale units:", customerSaleUnits);
-      
+
       // Handle invalid data case
       if (!Array.isArray(customerSaleUnits)) {
         console.log("Customer sale units is not an array");
         return;
       }
-      
+
       const unitsByCat: Record<number, number[]> = {};
-      
+
       // Handle empty array case
       if (customerSaleUnits.length === 0) {
         console.log("No customer sale units found");
         // Don't clear existing units, as we might have set defaults already
         return;
       }
-      
+
       customerSaleUnits.forEach((item: any) => {
         if (!item || typeof item !== 'object') {
           console.log("Invalid sale unit item:", item);
           return;
         }
-        
+
         // Try all possible property names
         const categoryId = item.product_category_id || item.category_id;
         const unitId = item.sale_unit_id;
-        
+
         if (!categoryId || !unitId) {
           console.log("Skipping invalid sale unit entry:", item);
           return;
         }
-        
+
         // Ensure the properties are treated as numbers
         const catId = Number(categoryId);
         const uId = Number(unitId);
-        
+
         if (isNaN(catId) || isNaN(uId)) {
           console.log("Invalid category ID or unit ID:", {categoryId, unitId});
           return;
         }
-        
+
         if (!unitsByCat[catId]) {
           unitsByCat[catId] = [];
         }
-        
+
         // Only add if not already in the array
         if (!unitsByCat[catId].includes(uId)) {
           unitsByCat[catId].push(uId);
         }
       });
-      
+
       console.log("Processed sale units by category:", unitsByCat);
-      
+
       // Merge with existing values rather than replacing completely
       setCategoryUnits(prevUnits => {
         const newUnits = {...prevUnits};
-        
+
         // Add all the units we found
         Object.entries(unitsByCat).forEach(([catId, units]) => {
           const categoryId = Number(catId);
           newUnits[categoryId] = units;
         });
-        
+
         return newUnits;
       });
     }
   }, [customerSaleUnits]);
-  
+
   // Force refresh categories and sale units on mount
   useEffect(() => {
     if (customerId) {
       console.log("Refreshing customer data on mount for ID:", customerId);
-      
+
       // Enhanced fetch function with direct fetch instead of query client
       const fetchCustomerData = async () => {
         try {
@@ -293,26 +292,26 @@ export default function EditCustomerPage() {
           if (!catResponse.ok) {
             throw new Error(`Failed to fetch categories: ${catResponse.status}`);
           }
-          
+
           const categoriesData = await catResponse.json();
           console.log("Direct fetch categories result:", categoriesData);
-          
+
           // Update query client with fresh data
           queryClient.setQueryData([`/api/customers/${customerId}/categories`], categoriesData);
-          
+
           // Fetch sale units directly
           console.log("Fetching sale units directly for customer:", customerId);
           const unitsResponse = await fetch(`/api/customers/${customerId}/allowed-sale-units`);
           if (!unitsResponse.ok) {
             throw new Error(`Failed to fetch sale units: ${unitsResponse.status}`);
           }
-          
+
           const unitsData = await unitsResponse.json();
           console.log("Direct fetch sale units result:", unitsData);
-          
+
           // Update query client with fresh data
           queryClient.setQueryData([`/api/customers/${customerId}/allowed-sale-units`], unitsData);
-          
+
           // Manually process the data to ensure it's properly loaded
           if (Array.isArray(categoriesData)) {
             const categoryIds = categoriesData.map((cat: any) => {
@@ -321,59 +320,59 @@ export default function EditCustomerPage() {
               if (cat.product_category_id !== undefined) return Number(cat.product_category_id);
               return null;
             }).filter(id => id !== null && !isNaN(id));
-            
+
             console.log("Directly setting selected categories:", categoryIds);
             setSelectedCategories(categoryIds);
           }
-          
+
           if (Array.isArray(unitsData) && unitsData.length > 0) {
             const unitsByCat: Record<number, number[]> = {};
-            
+
             unitsData.forEach((item: any) => {
               const categoryId = Number(item.product_category_id || item.category_id);
               const unitId = Number(item.sale_unit_id);
-              
+
               if (!isNaN(categoryId) && !isNaN(unitId)) {
                 if (!unitsByCat[categoryId]) {
                   unitsByCat[categoryId] = [];
                 }
-                
+
                 if (!unitsByCat[categoryId].includes(unitId)) {
                   unitsByCat[categoryId].push(unitId);
                 }
               }
             });
-            
+
             console.log("Directly setting category units:", unitsByCat);
             setCategoryUnits(unitsByCat);
           }
-          
+
           console.log("Data fetching and processing complete");
         } catch (error) {
           console.error("Error during direct data fetch:", error);
         }
       };
-      
+
       // Execute the fetch function
       fetchCustomerData();
-      
+
       // Also invalidate the queries to ensure the UI refreshes
       queryClient.invalidateQueries([`/api/customers/${customerId}/categories`]);
       queryClient.invalidateQueries([`/api/customers/${customerId}/allowed-sale-units`]);
     }
   }, [customerId, queryClient, setSelectedCategories, setCategoryUnits]);
-  
+
   // Force refresh of categories and sale units when customer ID changes
   useEffect(() => {
     if (customerId) {
       console.log("Customer ID changed, refreshing data for ID:", customerId);
-      
+
       // Manually trigger refetch
       queryClient.invalidateQueries([`/api/customers/${customerId}/categories`]);
       queryClient.invalidateQueries([`/api/customers/${customerId}/allowed-sale-units`]);
     }
   }, [customerId, queryClient]);
-  
+
   // Debug loading state
   useEffect(() => {
     if (customer) {
@@ -398,7 +397,7 @@ export default function EditCustomerPage() {
   useEffect(() => {
     if (customer) {
       console.log("Setting up customer form with data:", customer);
-      
+
       // Extract address components from address field if possible
       let street = "";
       let number = "";
@@ -449,40 +448,43 @@ export default function EditCustomerPage() {
         password: "",  // Optional for update
         user_id: customer.user_id
       });
-      
+
       // Explicitly set CNPJ again to ensure it's properly set
       setTimeout(() => {
         customerForm.setValue("cnpj", cnpjValue);
       }, 100);
-      
-      // Then fetch user email if available
-      const fetchUserEmail = async () => {
-        if (customer.user_id) {
+
+      // Fetch user email if available - with improved error handling
+      if (customer.user_id) {
+        // Use immediate self-invoking async function for cleaner error handling
+        (async () => {
           try {
+            console.log("Fetching user email for user_id:", customer.user_id);
             const res = await fetch(`/api/users/${customer.user_id}`);
+
             if (!res.ok) {
               throw new Error(`Failed to fetch user data: ${res.status}`);
             }
+
             const userData = await res.json();
-            console.log("User data loaded:", userData);
-            
+            console.log("User data loaded successfully:", userData);
+
             if (userData && userData.email) {
-              // Update just the email field after fetching
+              console.log("Setting email to:", userData.email);
               customerForm.setValue("email", userData.email);
+            } else {
+              console.log("No email found in user data");
+              customerForm.setValue("email", "Email não encontrado");
             }
           } catch (error) {
             console.error("Error fetching user email:", error);
-            // Set a fallback value so at least something shows up
             customerForm.setValue("email", "Email não disponível");
           }
-        } else {
-          console.log("No user_id available for this customer");
-          customerForm.setValue("email", "Cliente sem usuário associado");
-        }
-      };
-
-      // Execute email fetch
-      fetchUserEmail();
+        })();
+      } else {
+        console.log("No user_id available for this customer");
+        customerForm.setValue("email", "Cliente sem usuário associado");
+      }
     }
   }, [customer, customerForm]);
 
@@ -490,10 +492,10 @@ export default function EditCustomerPage() {
   const handleCategoryChange = (categoryId: number, checked: boolean) => {
     if (checked) {
       setSelectedCategories(prev => [...prev, categoryId]);
-      
+
       // Define default sale units based on category
       let defaultUnits: number[] = [];
-      
+
       // Balde 10 Litros, Balde 5 Litros, Copo 180ml, Copo 250ml, Itens Avulsos, Pote 1 Litro e Pote 1.8 Litros
       if ([1, 2, 5, 6, 7, 8, 9].includes(categoryId)) {
         // Find "unidade" sale unit
@@ -516,7 +518,7 @@ export default function EditCustomerPage() {
       else {
         defaultUnits = saleUnits.map((unit: any) => unit.sale_unit_id);
       }
-      
+
       setCategoryUnits(prevUnits => ({
         ...prevUnits,
         [categoryId]: defaultUnits
@@ -554,12 +556,12 @@ export default function EditCustomerPage() {
       const res = await fetch(`/api/customers/${customerId}/categories/${categoryId}`, {
         method
       });
-      
+
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.message || 'Error updating category access');
       }
-      
+
       return await res.json();
     }
   });
@@ -571,12 +573,12 @@ export default function EditCustomerPage() {
       const res = await fetch(`/api/customers/${customerId}/categories/${categoryId}/sale-units/${unitId}`, {
         method
       });
-      
+
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.message || 'Error updating sale unit access');
       }
-      
+
       return await res.json();
     }
   });
@@ -624,11 +626,11 @@ export default function EditCustomerPage() {
     try {
       // Handle address combining
       const address = `${data.street}, ${data.number}${data.complement ? `, ${data.complement}` : ''}, ${data.neighborhood}`;
-      
+
       // Convert currency values from BRL to cents
       let delivery_fee_reais = 0;
       let minimum_order_value_reais = 0;
-      
+
       try {
         if (typeof data.delivery_fee_reais === 'string') {
           const normalized = data.delivery_fee_reais.replace(/,/g, '.').trim();
@@ -636,7 +638,7 @@ export default function EditCustomerPage() {
         } else if (typeof data.delivery_fee_reais === 'number') {
           delivery_fee_reais = data.delivery_fee_reais;
         }
-        
+
         if (typeof data.minimum_order_value_reais === 'string') {
           const normalized = data.minimum_order_value_reais.replace(/,/g, '.').trim();
           minimum_order_value_reais = normalized === '' ? 0 : parseFloat(normalized);
@@ -646,16 +648,16 @@ export default function EditCustomerPage() {
       } catch (e) {
         console.error("Error converting currency values:", e);
       }
-      
+
       // Force values to 0 if NaN or negative
       if (isNaN(delivery_fee_reais) || delivery_fee_reais < 0) {
         delivery_fee_reais = 0;
       }
-      
+
       if (isNaN(minimum_order_value_reais) || minimum_order_value_reais < 0) {
         minimum_order_value_reais = 0;
       }
-      
+
       // Prepare submission data
       const submissionData = {
         company_name: data.company_name.trim(),
@@ -679,37 +681,37 @@ export default function EditCustomerPage() {
         // Only include password if it's not empty
         password: data.password ? data.password : undefined,
       };
-      
+
       console.log("Submission data:", submissionData);
-      
+
       // First update the customer basic info
       await updateCustomerMutation.mutateAsync(submissionData);
-      
+
       // Fetch current customer categories
       const currentCategoriesRes = await fetch(`/api/customers/${customerId}/categories`);
       if (!currentCategoriesRes.ok) throw new Error('Failed to fetch current categories');
       const currentCategories = await currentCategoriesRes.json();
-      
+
       // Add/remove categories
       const currentCategoryIds = currentCategories.map((cat: any) => cat.id);
       const categoriesToAdd = selectedCategories.filter(id => !currentCategoryIds.includes(id));
       const categoriesToRemove = currentCategoryIds.filter(id => !selectedCategories.includes(id));
-      
+
       // Process category additions
       for (const categoryId of categoriesToAdd) {
         await updateCategoryAccessMutation.mutateAsync({ categoryId, add: true });
       }
-      
+
       // Process category removals
       for (const categoryId of categoriesToRemove) {
         await updateCategoryAccessMutation.mutateAsync({ categoryId, add: false });
       }
-      
+
       // Fetch current sale units access
       const currentUnitsRes = await fetch(`/api/customers/${customerId}/allowed-sale-units`);
       if (!currentUnitsRes.ok) throw new Error('Failed to fetch current sale units');
       const currentUnits = await currentUnitsRes.json();
-      
+
       // Group current units by category
       const currentUnitsByCategory: Record<number, number[]> = {};
       currentUnits.forEach((item: any) => {
@@ -718,19 +720,19 @@ export default function EditCustomerPage() {
         }
         currentUnitsByCategory[item.product_category_id].push(item.sale_unit_id);
       });
-      
+
       // Update sale units for each category
       for (const categoryId of selectedCategories) {
         const current = currentUnitsByCategory[categoryId] || [];
         const desired = categoryUnits[categoryId] || [];
-        
+
         // Units to add
         for (const unitId of desired) {
           if (!current.includes(unitId)) {
             await updateSaleUnitAccessMutation.mutateAsync({ categoryId, unitId, add: true });
           }
         }
-        
+
         // Units to remove
         for (const unitId of current) {
           if (!desired.includes(unitId)) {
@@ -738,16 +740,16 @@ export default function EditCustomerPage() {
           }
         }
       }
-      
+
       toast({
         title: "Cliente atualizado com sucesso",
         description: "Todas as informações e acessos foram atualizados.",
         variant: "default",
       });
-      
+
       // Navigate back to customers page
       setLocation("/admin/customers");
-      
+
     } catch (error: any) {
       toast({
         title: "Erro ao atualizar cliente",
@@ -1096,20 +1098,20 @@ export default function EditCustomerPage() {
                 {selectedCategories.length > 0 && (
                   <div>
                     <h3 className="text-sm font-medium text-gray-700 mb-3">Selecione as unidades de venda para cada categoria:</h3>
-                    
+
                     {selectedCategories.map(categoryId => {
                       const category = productCategories.find((c: any) => c.id === categoryId);
                       const autoAssociatedCategories = [
                         "Balde 10 Litros", "Balde 5 Litros", "Copo 180ml", 
                         "Copo 250ml", "Itens Avulsos", "Pote 1 Litro", "Pote 1.8 Litros"
                       ];
-                      
+
                       // Check if this category should be auto-associated with "unidade"
                       const isAutoAssociated = autoAssociatedCategories.includes(category?.name || "");
-                      
+
                       // Find the "unidade" sale unit
                       const unidadeSaleUnit = saleUnits.find((unit:any) => unit.unit_name === "Unidade");
-                      
+
                       // Auto-associate if needed
                       if (isAutoAssociated && unidadeSaleUnit) {
                         // Make sure "unidade" is selected for this category
@@ -1118,14 +1120,14 @@ export default function EditCustomerPage() {
                           handleSaleUnitChange(categoryId, unidadeSaleUnit.sale_unit_id, true);
                         }
                       }
-                      
+
                       return (
                         <div key={categoryId} className="mb-5 p-4 border rounded-lg bg-gray-50">
                           <h4 className="font-semibold mb-2 flex items-center">
                             <TagsIcon className="h-4 w-4 mr-1 text-[#E73664]" />
                             {category?.name}
                           </h4>
-                          
+
                           {isAutoAssociated && unidadeSaleUnit ? (
                             <div className="ml-2 p-2">
                               <p className="text-sm text-gray-700 italic">
@@ -1138,15 +1140,15 @@ export default function EditCustomerPage() {
                                 // Filtra as unidades de venda com base na categoria
                                 const isPicklesCategory = ["Picolés de Fruta", "Picolés de Leite"].includes(category?.name || "");
                                 const isIceCreamStickCategory = category?.name === "Sorvete no Palito";
-                                
+
                                 let filteredUnits = [...saleUnits];
-                                
+
                                 if (isPicklesCategory) {
                                   // Apenas "Caixa Completa 24un", "Meia Caixa 12un" e "Unidade"
                                   filteredUnits = saleUnits.filter((unit:any) => 
                                     ["Caixa Completa 24un", "Meia Caixa 12un", "Unidade"].includes(unit.unit_name)
                                   );
-                                  
+
                                   return (
                                     <div className="w-full">
                                       <p className="text-sm text-gray-700 italic mb-3">
@@ -1178,7 +1180,7 @@ export default function EditCustomerPage() {
                                   filteredUnits = saleUnits.filter((unit:any) => 
                                     ["Caixa Completa 16un", "Meia Caixa 8un", "Unidade"].includes(unit.unit_name)
                                   );
-                                  
+
                                   return (
                                     <div className="w-full">
                                       <p className="text-sm text-gray-700 italic mb-3">
