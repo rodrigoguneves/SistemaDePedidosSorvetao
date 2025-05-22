@@ -37,6 +37,7 @@ export const customers = pgTable('customers', {
   company_name: text('company_name').notNull(),
   contact_person: text('contact_person').notNull(),
   phone: text('phone').notNull(),
+  cnpj: text('cnpj'), // Added CNPJ field for tax ID
   address: text('address').notNull(),
   city: text('city').notNull(),
   state: text('state').notNull(),

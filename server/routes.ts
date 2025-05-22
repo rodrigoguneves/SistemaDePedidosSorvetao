@@ -284,6 +284,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
       next(error);
     }
   });
+  
+  // Endpoint to get all allowed sale units for a customer across all categories
+  app.get("/api/customers/:id/allowed-sale-units", async (req, res, next) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(403).json({ message: "Acesso negado" });
+      }
+
+      // For customer users, they can only access their own data
+      if (req.user.role === 'customer') {
+        const customerData = await storage.getCustomerByUserId(req.user.id);
+        if (!customerData || customerData.id !== parseInt(req.params.id)) {
+          return res.status(403).json({ message: "Acesso negado" });
+        }
+      }
+
+      const customerId = parseInt(req.params.id);
+      console.log(`Fetching all allowed sale units for customer ID: ${customerId}`);
+      
+      // Get all customer categories first
+      const categories = await storage.getCustomerCategories(customerId);
+      
+      if (!categories || categories.length === 0) {
+        console.log(`No categories found for customer ID: ${customerId}`);
+        return res.json([]);
+      }
+      
+      // For each category, get allowed sale units
+      let allSaleUnits = [];
+      
+      for (const category of categories) {
+        const categoryId = category.id;
+        
+        try {
+          const units = await storage.getCustomerAllowedSaleUnits(customerId, categoryId);
+          
+          // Add category ID to each sale unit for client-side processing
+          const unitsWithCategory = units.map(unit => ({
+            ...unit,
+            product_category_id: categoryId
+          }));
+          
+          allSaleUnits = [...allSaleUnits, ...unitsWithCategory];
+        } catch (err) {
+          console.error(`Error fetching sale units for customer ${customerId}, category ${categoryId}:`, err);
+        }
+      }
+      
+      console.log(`Found ${allSaleUnits.length} allowed sale units for customer ID: ${customerId}`);
+      res.json(allSaleUnits);
+    } catch (error) {
+      console.error(`Error in allowed-sale-units endpoint:`, error);
+      next(error);
+    }
+  });
 
   app.get("/api/customers/:id/products", async (req, res, next) => {
     try {

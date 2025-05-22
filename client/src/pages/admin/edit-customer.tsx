@@ -544,7 +544,7 @@ export default function EditCustomerPage() {
         console.log("Error parsing address:", e);
       }
 
-      // Safely handle CNPJ value
+      // Enhanced CNPJ handling with better debugging
       const cnpjValue = customer.cnpj || "";
       console.log("Setting CNPJ value:", cnpjValue);
 
@@ -577,6 +577,15 @@ export default function EditCustomerPage() {
 
       // Explicitly set CNPJ value directly to ensure it's properly set
       customerForm.setValue("cnpj", cnpjValue);
+      
+      // Add a delay to ensure the CNPJ value is set after any form reset
+      setTimeout(() => {
+        const currentCnpj = customerForm.getValues("cnpj");
+        if (currentCnpj !== cnpjValue) {
+          console.log(`CNPJ value was reset or changed. Current: "${currentCnpj}", Expected: "${cnpjValue}"`);
+          customerForm.setValue("cnpj", cnpjValue);
+        }
+      }, 100);
 
       // Fetch user email if available - with improved error handling and retry mechanism
       if (customer.user_id) {
