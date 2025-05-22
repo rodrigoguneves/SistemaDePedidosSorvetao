@@ -73,12 +73,12 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         {/* Logo e seção esquerda */}
         <div className="flex items-center">
           <div>
-            <img src="/assets/logo.png" alt="Sorvetão" className="h-10" />
+            <img src="/assets/logo.png" alt="Sorvetão" className="h-12" />
           </div>
         </div>
         
         {/* Navigation centralizada */}
-        <nav className="flex items-center space-x-4 justify-center flex-1">
+        <nav className="flex items-center space-x-[30px] justify-center flex-1">
           {navigationItems.map((item, index) => (
             <Link key={index} href={item.href}>
               <div className="flex flex-col items-center p-2">
