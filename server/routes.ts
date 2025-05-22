@@ -14,6 +14,32 @@ import { eq } from "drizzle-orm";
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication routes
   setupAuth(app);
+  
+  // Get user by ID - needed for customer form email display
+  app.get("/api/users/:id", async (req, res, next) => {
+    try {
+      if (!req.isAuthenticated() || (req.user.role !== 'admin' && req.user.role !== 'manager')) {
+        return res.status(403).json({ message: "Acesso negado" });
+      }
+
+      const userId = parseInt(req.params.id);
+      console.log(`Fetching user details for ID: ${userId}`);
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        console.log(`User not found for ID: ${userId}`);
+        return res.status(404).json({ message: "Usuário não encontrado" });
+      }
+
+      // Remove sensitive information
+      const { password, ...userWithoutPassword } = user;
+      console.log(`Returning user data for ID ${userId}:`, userWithoutPassword);
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error(`Error fetching user ${req.params.id}:`, error);
+      next(error);
+    }
+  });
 
   // Customer endpoints
   app.get("/api/customers", async (req, res, next) => {

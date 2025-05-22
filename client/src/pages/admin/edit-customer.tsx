@@ -245,12 +245,30 @@ export default function EditCustomerPage() {
           return;
         }
 
-        // Try all possible property names
+        // Try all possible property names with improved debugging
         let categoryId = null;
+        
+        // Check all possible field names and log their values for debugging
+        const possibleCategoryFields = {
+          product_category_id: item.product_category_id,
+          category_id: item.category_id,
+          categoryId: item.categoryId
+        };
+        
+        console.log("Possible category ID fields:", possibleCategoryFields);
+        
         if (item.product_category_id !== undefined) categoryId = item.product_category_id;
         else if (item.category_id !== undefined) categoryId = item.category_id;
+        else if (item.categoryId !== undefined) categoryId = item.categoryId;
+        
+        // Also check nested properties if present
+        if (categoryId === null && item.category && typeof item.category === 'object') {
+          if (item.category.id !== undefined) categoryId = item.category.id;
+        }
         
         const unitId = item.sale_unit_id;
+
+        console.log(`Processing item: Category ID=${categoryId}, Unit ID=${unitId}`);
 
         if (categoryId === null || unitId === undefined) {
           console.log("Skipping invalid sale unit entry:", item);
@@ -281,8 +299,57 @@ export default function EditCustomerPage() {
       // Set the category units directly rather than merging
       // This ensures we get a clean state based on what's in the database
       setCategoryUnits(unitsByCat);
+      
+      // If we didn't find any units but we have categories selected, 
+      // make sure each category has at least default units assigned
+      if (Object.keys(unitsByCat).length === 0 && selectedCategories.length > 0) {
+        console.log("No units found, adding default units for selected categories");
+        
+        const defaultUnitsByCat: Record<number, number[]> = {};
+        
+        selectedCategories.forEach(catId => {
+          // Get default units based on category type
+          const defaultUnits = getDefaultUnitsForCategory(catId, saleUnits);
+          if (defaultUnits.length > 0) {
+            defaultUnitsByCat[catId] = defaultUnits;
+          }
+        });
+        
+        console.log("Adding default units:", defaultUnitsByCat);
+        setCategoryUnits(defaultUnitsByCat);
+      }
     }
-  }, [customerSaleUnits]);
+  }, [customerSaleUnits, selectedCategories, saleUnits]);
+  
+  // Helper function to get default units for a category
+  const getDefaultUnitsForCategory = (categoryId: number, allUnits: any[]) => {
+    if (!Array.isArray(allUnits) || allUnits.length === 0) return [];
+    
+    let defaultUnits: number[] = [];
+    
+    // Assign default units based on category
+    if ([1, 2, 5, 6, 7, 8, 9].includes(categoryId)) {
+      // Find "unidade" sale unit
+      const unitId = allUnits.find((unit: any) => unit.unit_name === "Unidade")?.sale_unit_id;
+      if (unitId) defaultUnits = [unitId];
+    } 
+    else if ([3, 4].includes(categoryId)) {
+      defaultUnits = allUnits
+        .filter((unit: any) => ["Caixa Completa 24un", "Meia Caixa 12un", "Unidade"].includes(unit.unit_name))
+        .map((unit: any) => unit.sale_unit_id);
+    }
+    else if (categoryId === 11) {
+      defaultUnits = allUnits
+        .filter((unit: any) => ["Caixa Completa 16un", "Meia Caixa 8un", "Unidade"].includes(unit.unit_name))
+        .map((unit: any) => unit.sale_unit_id);
+    }
+    else {
+      // For other categories, include all units
+      defaultUnits = allUnits.map((unit: any) => unit.sale_unit_id);
+    }
+    
+    return defaultUnits;
+  };
 
   // Force refresh categories and sale units on mount
   useEffect(() => {
