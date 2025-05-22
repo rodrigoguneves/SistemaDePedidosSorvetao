@@ -118,6 +118,10 @@ export default function AddCustomerPage() {
         "Copo 250ml", "Itens Avulsos", "Pote 1 Litro", "Pote 1.8 Litros"
       ];
       
+      // Categorias com unidades de venda específicas
+      const isPicklesCategory = ["Picolés de Fruta", "Picolés de Leite"].includes(category?.name || "");
+      const isIceCreamStickCategory = category?.name === "Sorvete no Palito";
+      
       const isAutoAssociated = autoAssociatedCategories.includes(category?.name || "");
       const unidadeSaleUnit = saleUnits.find(unit => unit.unit_name === "Unidade");
       
@@ -127,6 +131,36 @@ export default function AddCustomerPage() {
         setCategorySaleUnits(prev => ({
           ...prev,
           [categoryId]: [unidadeSaleUnit.sale_unit_id]
+        }));
+      } else if (isPicklesCategory && unidadeSaleUnit) {
+        // Para Picolés de Fruta e Picolés de Leite, associamos automaticamente as unidades específicas
+        const caixaCompleta = saleUnits.find(unit => unit.unit_name === "Caixa Completa 24un");
+        const meiaCaixa = saleUnits.find(unit => unit.unit_name === "Meia Caixa 12un");
+        
+        const preSelectedUnits = [
+          unidadeSaleUnit?.sale_unit_id,
+          caixaCompleta?.sale_unit_id,
+          meiaCaixa?.sale_unit_id
+        ].filter(Boolean) as number[];
+        
+        setCategorySaleUnits(prev => ({
+          ...prev,
+          [categoryId]: preSelectedUnits
+        }));
+      } else if (isIceCreamStickCategory && unidadeSaleUnit) {
+        // Para Sorvete no Palito, associamos automaticamente as unidades específicas
+        const caixaCompleta = saleUnits.find(unit => unit.unit_name === "Caixa Completa 16un");
+        const meiaCaixa = saleUnits.find(unit => unit.unit_name === "Meia Caixa 8un");
+        
+        const preSelectedUnits = [
+          unidadeSaleUnit?.sale_unit_id,
+          caixaCompleta?.sale_unit_id,
+          meiaCaixa?.sale_unit_id
+        ].filter(Boolean) as number[];
+        
+        setCategorySaleUnits(prev => ({
+          ...prev,
+          [categoryId]: preSelectedUnits
         }));
       } else {
         // Initialize empty array for manual selection
@@ -807,25 +841,100 @@ export default function AddCustomerPage() {
                             </div>
                           ) : (
                             <div className="ml-2 grid grid-cols-2 gap-2">
-                              {saleUnits.map((unit: SaleUnit) => (
-                                <div key={unit.sale_unit_id} className="flex items-center p-2">
-                                  <input
-                                    type="checkbox"
-                                    id={`unit-${categoryId}-${unit.sale_unit_id}`}
-                                    checked={(categorySaleUnits[categoryId] || []).includes(unit.sale_unit_id)}
-                                    onChange={(e) => handleSaleUnitChange(categoryId, unit.sale_unit_id, e.target.checked)}
-                                    className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664]"
-                                  />
-                                  <label htmlFor={`unit-${categoryId}-${unit.sale_unit_id}`} className="ml-2">
-                                    <span className="text-sm font-medium">{unit.unit_name}</span>
-                                    {unit.short_description && (
-                                      <span className="text-xs text-gray-500 block">
-                                        {unit.short_description}
-                                      </span>
-                                    )}
-                                  </label>
-                                </div>
-                              ))}
+                              {(() => {
+                                // Filtra as unidades de venda com base na categoria
+                                const isPicklesCategory = ["Picolés de Fruta", "Picolés de Leite"].includes(category?.name || "");
+                                const isIceCreamStickCategory = category?.name === "Sorvete no Palito";
+                                
+                                let filteredUnits = [...saleUnits];
+                                
+                                if (isPicklesCategory) {
+                                  // Apenas "Caixa Completa 24un", "Meia Caixa 12un" e "Unidade"
+                                  filteredUnits = saleUnits.filter(unit => 
+                                    ["Caixa Completa 24un", "Meia Caixa 12un", "Unidade"].includes(unit.unit_name)
+                                  );
+                                  
+                                  return (
+                                    <div className="w-full">
+                                      <p className="text-sm text-gray-700 italic mb-3">
+                                        Para Picolés, as seguintes unidades de venda são pré-selecionadas:
+                                      </p>
+                                      {filteredUnits.map((unit: SaleUnit) => (
+                                        <div key={unit.sale_unit_id} className="flex items-center p-2">
+                                          <input
+                                            type="checkbox"
+                                            id={`unit-${categoryId}-${unit.sale_unit_id}`}
+                                            checked={(categorySaleUnits[categoryId] || []).includes(unit.sale_unit_id)}
+                                            onChange={(e) => handleSaleUnitChange(categoryId, unit.sale_unit_id, e.target.checked)}
+                                            className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664]"
+                                          />
+                                          <label htmlFor={`unit-${categoryId}-${unit.sale_unit_id}`} className="ml-2">
+                                            <span className="text-sm font-medium">{unit.unit_name}</span>
+                                            {unit.short_description && (
+                                              <span className="text-xs text-gray-500 block">
+                                                {unit.short_description}
+                                              </span>
+                                            )}
+                                          </label>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  );
+                                } else if (isIceCreamStickCategory) {
+                                  // Apenas "Caixa Completa 16un", "Meia Caixa 8un" e "Unidade"
+                                  filteredUnits = saleUnits.filter(unit => 
+                                    ["Caixa Completa 16un", "Meia Caixa 8un", "Unidade"].includes(unit.unit_name)
+                                  );
+                                  
+                                  return (
+                                    <div className="w-full">
+                                      <p className="text-sm text-gray-700 italic mb-3">
+                                        Para Sorvete no Palito, as seguintes unidades de venda são pré-selecionadas:
+                                      </p>
+                                      {filteredUnits.map((unit: SaleUnit) => (
+                                        <div key={unit.sale_unit_id} className="flex items-center p-2">
+                                          <input
+                                            type="checkbox"
+                                            id={`unit-${categoryId}-${unit.sale_unit_id}`}
+                                            checked={(categorySaleUnits[categoryId] || []).includes(unit.sale_unit_id)}
+                                            onChange={(e) => handleSaleUnitChange(categoryId, unit.sale_unit_id, e.target.checked)}
+                                            className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664]"
+                                          />
+                                          <label htmlFor={`unit-${categoryId}-${unit.sale_unit_id}`} className="ml-2">
+                                            <span className="text-sm font-medium">{unit.unit_name}</span>
+                                            {unit.short_description && (
+                                              <span className="text-xs text-gray-500 block">
+                                                {unit.short_description}
+                                              </span>
+                                            )}
+                                          </label>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  );
+                                } else {
+                                  // Para outras categorias, mostra todas as unidades
+                                  return saleUnits.map((unit: SaleUnit) => (
+                                    <div key={unit.sale_unit_id} className="flex items-center p-2">
+                                      <input
+                                        type="checkbox"
+                                        id={`unit-${categoryId}-${unit.sale_unit_id}`}
+                                        checked={(categorySaleUnits[categoryId] || []).includes(unit.sale_unit_id)}
+                                        onChange={(e) => handleSaleUnitChange(categoryId, unit.sale_unit_id, e.target.checked)}
+                                        className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664]"
+                                      />
+                                      <label htmlFor={`unit-${categoryId}-${unit.sale_unit_id}`} className="ml-2">
+                                        <span className="text-sm font-medium">{unit.unit_name}</span>
+                                        {unit.short_description && (
+                                          <span className="text-xs text-gray-500 block">
+                                            {unit.short_description}
+                                          </span>
+                                        )}
+                                      </label>
+                                    </div>
+                                  ));
+                                }
+                              })()}
                             </div>
                           )}
                         </div>
