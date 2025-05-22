@@ -113,7 +113,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       </header>
 
       <main className="p-6">
-        <div className="[&>*]:rounded-[28px]">
+        <div className="[&>*]:!rounded-[28px]">
           {children}
         </div>
       </main>
