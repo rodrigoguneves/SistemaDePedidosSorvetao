@@ -62,8 +62,15 @@ export default function AddCustomerPage() {
       neighborhood: z.string().min(1, "Bairro é obrigatório"),
       cnpj: z.string().optional(),
       confirm_password: z.string().min(6, "A confirmação de senha deve ter pelo menos 6 caracteres"),
-      delivery_fee_reais: z.number().min(0, "Taxa não pode ser negativa"),
-      minimum_order_value_reais: z.number().min(0, "Valor mínimo não pode ser negativo"),
+      // Allow either string or number for currency values to handle both formats
+      delivery_fee_reais: z.union([
+        z.string(),
+        z.number().min(0, "Taxa não pode ser negativa")
+      ]),
+      minimum_order_value_reais: z.union([
+        z.string(),
+        z.number().min(0, "Valor mínimo não pode ser negativo")
+      ]),
     })),
     defaultValues: {
       company_name: "",
@@ -84,8 +91,8 @@ export default function AddCustomerPage() {
       enable_delivery: false,
       delivery_fee: 0,
       minimum_order_value: 0,
-      delivery_fee_reais: 0,
-      minimum_order_value_reais: 0,
+      delivery_fee_reais: "0",
+      minimum_order_value_reais: "0",
       allowed_delivery_days: [false, true, true, true, true, true, false],
       password: "",
       confirm_password: "",
@@ -138,13 +145,22 @@ export default function AddCustomerPage() {
   const createCustomerMutation = useMutation({
     mutationFn: async (data: any) => {
       try {
+        // Ensure values are numbers before conversion
+        const deliveryFeeReais = typeof data.delivery_fee_reais === 'number' 
+          ? data.delivery_fee_reais 
+          : parseFloat(data.delivery_fee_reais || '0');
+          
+        const minOrderReais = typeof data.minimum_order_value_reais === 'number' 
+          ? data.minimum_order_value_reais 
+          : parseFloat(data.minimum_order_value_reais || '0');
+        
         // Combina os campos de endereço antes de enviar
         const formattedData = {
           ...data,
           address: `${data.street}, ${data.number}${data.complement ? `, ${data.complement}` : ''}, ${data.neighborhood}`,
           // Convert currency values from reais to centavos with safe conversion
-          delivery_fee: Math.round((parseFloat(data.delivery_fee_reais) || 0) * 100),
-          minimum_order_value: Math.round((parseFloat(data.minimum_order_value_reais) || 0) * 100),
+          delivery_fee: Math.round(deliveryFeeReais * 100),
+          minimum_order_value: Math.round(minOrderReais * 100),
         };
 
         // Remove unnecessary fields
@@ -269,9 +285,22 @@ export default function AddCustomerPage() {
       }
     }
     
-    // Ensure currency values are proper numbers
-    const delivery_fee_reais = parseFloat(data.delivery_fee_reais || 0);
-    const minimum_order_value_reais = parseFloat(data.minimum_order_value_reais || 0);
+    // Properly handle currency values (ensure they are numbers)
+    let delivery_fee_reais = 0;
+    let minimum_order_value_reais = 0;
+    
+    // Handle various input formats and convert to numbers
+    if (typeof data.delivery_fee_reais === 'string') {
+      delivery_fee_reais = parseFloat(data.delivery_fee_reais.replace(',', '.') || '0');
+    } else if (typeof data.delivery_fee_reais === 'number') {
+      delivery_fee_reais = data.delivery_fee_reais;
+    }
+    
+    if (typeof data.minimum_order_value_reais === 'string') {
+      minimum_order_value_reais = parseFloat(data.minimum_order_value_reais.replace(',', '.') || '0');
+    } else if (typeof data.minimum_order_value_reais === 'number') {
+      minimum_order_value_reais = data.minimum_order_value_reais;
+    }
     
     if (isNaN(delivery_fee_reais) || isNaN(minimum_order_value_reais)) {
       toast({
@@ -288,10 +317,15 @@ export default function AddCustomerPage() {
       // Create a copy of data with corrected number formats
       const submissionData = {
         ...data,
+        // Use corrected number values
         delivery_fee_reais: delivery_fee_reais,
         minimum_order_value_reais: minimum_order_value_reais,
         categories: selectedCategories,
-        categorySaleUnits: categorySaleUnits
+        categorySaleUnits: categorySaleUnits,
+        // Set default values for fields that might be undefined
+        delivery_fee: data.delivery_fee || 0,
+        minimum_order_value: data.minimum_order_value || 0,
+        enable_delivery: data.enable_delivery || false
       };
       
       console.log("Submitting data to API:", submissionData);
@@ -706,7 +740,7 @@ export default function AddCustomerPage() {
                         <input
                           type="number"
                           step="0.01"
-                          {...customerForm.register("delivery_fee_reais", { valueAsNumber: true })}
+                          {...customerForm.register("delivery_fee_reais")}
                           className="w-full pl-10 rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
                           placeholder="0.00"
                         />
@@ -727,7 +761,7 @@ export default function AddCustomerPage() {
                         <input
                           type="number"
                           step="0.01"
-                          {...customerForm.register("minimum_order_value_reais", { valueAsNumber: true })}
+                          {...customerForm.register("minimum_order_value_reais")}
                           className="w-full pl-10 rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
                           placeholder="0.00"
                         />
