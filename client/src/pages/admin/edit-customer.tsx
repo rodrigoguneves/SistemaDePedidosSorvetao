@@ -140,7 +140,7 @@ export default function EditCustomerPage() {
   useEffect(() => {
     if (customerCategories && customerCategories.length > 0) {
       console.log("Loading customer categories:", customerCategories);
-      const categoryIds = customerCategories.map((cat: any) => cat.id);
+      const categoryIds = customerCategories.map((cat: any) => cat.category_id || cat.id);
       setSelectedCategories(prev => {
         // Only update if there's a change to avoid re-renders
         if (JSON.stringify(prev.sort()) !== JSON.stringify(categoryIds.sort())) {
@@ -158,10 +158,15 @@ export default function EditCustomerPage() {
       const unitsByCat: Record<number, number[]> = {};
       
       customerSaleUnits.forEach((item: any) => {
-        if (!unitsByCat[item.product_category_id]) {
-          unitsByCat[item.product_category_id] = [];
+        const categoryId = item.product_category_id;
+        const unitId = item.sale_unit_id;
+        
+        if (!categoryId || !unitId) return;
+        
+        if (!unitsByCat[categoryId]) {
+          unitsByCat[categoryId] = [];
         }
-        unitsByCat[item.product_category_id].push(item.sale_unit_id);
+        unitsByCat[categoryId].push(unitId);
       });
       
       setCategoryUnits(prev => {
@@ -173,6 +178,15 @@ export default function EditCustomerPage() {
       });
     }
   }, [customerSaleUnits]);
+  
+  // Force refresh categories and sale units on mount
+  useEffect(() => {
+    if (customerId) {
+      // Manually trigger refetch when component mounts to ensure we have fresh data
+      queryClient.refetchQueries([`/api/customers/${customerId}/categories`]);
+      queryClient.refetchQueries([`/api/customers/${customerId}/allowed-sale-units`]);
+    }
+  }, []);
   
   // Force refresh of categories and sale units when customer ID changes
   useEffect(() => {
@@ -245,7 +259,12 @@ export default function EditCustomerPage() {
 
       // Set form values
       const setFormValues = async () => {
-        const email = await fetchUserEmail();
+        let email = "";
+        try {
+          email = await fetchUserEmail();
+        } catch (error) {
+          console.error("Error fetching user email:", error);
+        }
         
         customerForm.reset({
           company_name: customer.company_name,
@@ -663,7 +682,7 @@ export default function EditCustomerPage() {
                       disabled={true}
                       className="w-full rounded-lg border-gray-300 shadow-sm bg-gray-100 focus:border-[#E73664] focus:ring-[#E73664]"
                       placeholder="contato@empresa.com"
-                      value={customer?.email || ""}
+                      value={customerForm.getValues("email") || ""}
                     />
                   </div>
 
