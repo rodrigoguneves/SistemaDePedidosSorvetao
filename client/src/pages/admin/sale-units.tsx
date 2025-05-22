@@ -18,7 +18,7 @@ import {
   Trash2,
   Plus,
   Tags,
-  RulerSquare
+  Ruler
 } from "lucide-react";
 
 // Importando componentes do Flowbite
@@ -282,7 +282,7 @@ export default function SaleUnitsPage() {
           <Link href="/admin/sale-units">
             <div className="flex flex-col items-center cursor-pointer">
               <div className="w-10 h-10 rounded-full bg-pink-500 flex items-center justify-center">
-                <RulerSquare className="w-5 h-5 text-white" />
+                <Ruler className="w-5 h-5 text-white" />
               </div>
               <span className="text-xs mt-1 text-pink-500 font-bold">Unidades</span>
             </div>
@@ -447,7 +447,7 @@ export default function SaleUnitsPage() {
           <Modal.Header>
             <div className="flex items-center">
               <div className="bg-[#E73664]/10 p-3 rounded-full mr-3">
-                <RulerSquare className="h-5 w-5 text-[#E73664]" />
+                <Ruler className="h-5 w-5 text-[#E73664]" />
               </div>
               <div>
                 <h3 className="text-xl font-bold">
