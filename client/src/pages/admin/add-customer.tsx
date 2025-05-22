@@ -66,11 +66,11 @@ export default function AddCustomerPage() {
       delivery_fee_reais: z.union([
         z.string(),
         z.number().min(0, "Taxa não pode ser negativa")
-      ]),
+      ]).optional().default("0"),
       minimum_order_value_reais: z.union([
         z.string(),
         z.number().min(0, "Valor mínimo não pode ser negativo")
-      ]),
+      ]).optional().default("0"),
     })),
     defaultValues: {
       company_name: "",
@@ -339,35 +339,39 @@ export default function AddCustomerPage() {
     let delivery_fee_reais = 0;
     let minimum_order_value_reais = 0;
     
-    // Handle various input formats and convert to numbers
-    if (typeof data.delivery_fee_reais === 'string') {
-      // Normalize string by replacing comma with dot
-      const normalized = data.delivery_fee_reais.replace(',', '.').trim();
-      delivery_fee_reais = normalized === '' ? 0 : parseFloat(normalized);
-      console.log("Convertendo delivery_fee_reais de string para número:", data.delivery_fee_reais, "→", delivery_fee_reais);
-    } else if (typeof data.delivery_fee_reais === 'number') {
-      delivery_fee_reais = data.delivery_fee_reais;
-      console.log("delivery_fee_reais já é um número:", delivery_fee_reais);
+    try {
+      // Handle various input formats and convert to numbers
+      if (typeof data.delivery_fee_reais === 'string') {
+        // Normalize string by replacing comma with dot and handling multiple commas/dots
+        const normalized = data.delivery_fee_reais.replace(/,/g, '.').trim();
+        delivery_fee_reais = normalized === '' ? 0 : parseFloat(normalized);
+        console.log("Convertendo delivery_fee_reais de string para número:", data.delivery_fee_reais, "→", delivery_fee_reais);
+      } else if (typeof data.delivery_fee_reais === 'number') {
+        delivery_fee_reais = data.delivery_fee_reais;
+        console.log("delivery_fee_reais já é um número:", delivery_fee_reais);
+      }
+      
+      if (typeof data.minimum_order_value_reais === 'string') {
+        // Normalize string by replacing comma with dot and handling multiple commas/dots
+        const normalized = data.minimum_order_value_reais.replace(/,/g, '.').trim();
+        minimum_order_value_reais = normalized === '' ? 0 : parseFloat(normalized);
+        console.log("Convertendo minimum_order_value_reais de string para número:", data.minimum_order_value_reais, "→", minimum_order_value_reais);
+      } else if (typeof data.minimum_order_value_reais === 'number') {
+        minimum_order_value_reais = data.minimum_order_value_reais;
+        console.log("minimum_order_value_reais já é um número:", minimum_order_value_reais);
+      }
+    } catch (conversionError) {
+      console.error("Erro na conversão dos valores monetários:", conversionError);
     }
     
-    if (typeof data.minimum_order_value_reais === 'string') {
-      // Normalize string by replacing comma with dot
-      const normalized = data.minimum_order_value_reais.replace(',', '.').trim();
-      minimum_order_value_reais = normalized === '' ? 0 : parseFloat(normalized);
-      console.log("Convertendo minimum_order_value_reais de string para número:", data.minimum_order_value_reais, "→", minimum_order_value_reais);
-    } else if (typeof data.minimum_order_value_reais === 'number') {
-      minimum_order_value_reais = data.minimum_order_value_reais;
-      console.log("minimum_order_value_reais já é um número:", minimum_order_value_reais);
-    }
-    
-    // Force to 0 if NaN
-    if (isNaN(delivery_fee_reais)) {
-      console.log("delivery_fee_reais é NaN, definindo como 0");
+    // Force to 0 if NaN or negative
+    if (isNaN(delivery_fee_reais) || delivery_fee_reais < 0) {
+      console.log("delivery_fee_reais é inválido, definindo como 0");
       delivery_fee_reais = 0;
     }
     
-    if (isNaN(minimum_order_value_reais)) {
-      console.log("minimum_order_value_reais é NaN, definindo como 0");
+    if (isNaN(minimum_order_value_reais) || minimum_order_value_reais < 0) {
+      console.log("minimum_order_value_reais é inválido, definindo como 0");
       minimum_order_value_reais = 0;
     }
     
@@ -400,12 +404,12 @@ export default function AddCustomerPage() {
           city: data.city || "",
           state: data.state || "",
           postal_code: data.postal_code || "",
-          latitude: data.latitude,
-          longitude: data.longitude,
+          latitude: data.latitude === "" ? null : data.latitude,
+          longitude: data.longitude === "" ? null : data.longitude,
           enable_delivery: Boolean(data.enable_delivery),
-          // Convert to cents (integer) for storage
-          delivery_fee: Math.round(delivery_fee_reais * 100),
-          minimum_order_value: Math.round(minimum_order_value_reais * 100),
+          // Convert to cents (integer) for storage - ensure positive values
+          delivery_fee: Math.max(0, Math.round(delivery_fee_reais * 100)),
+          minimum_order_value: Math.max(0, Math.round(minimum_order_value_reais * 100)),
           allowed_delivery_days: data.allowed_delivery_days || [false, true, true, true, true, true, false],
         };
         
