@@ -893,6 +893,12 @@ export default function AddCustomerPage() {
                 type="submit" 
                 className="bg-[#E73664] hover:bg-[#d82c59] rounded-full px-5"
                 disabled={createCustomerMutation.isPending}
+                onClick={(e) => {
+                  e.preventDefault(); // Evita o comportamento padrão do formulário
+                  console.log("Botão Criar Cliente clicado - enviando formulário manualmente");
+                  const formData = customerForm.getValues();
+                  onSubmitCustomer(formData);
+                }}
               >
                 {createCustomerMutation.isPending ? (
                   <>
