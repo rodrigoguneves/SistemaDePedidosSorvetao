@@ -138,7 +138,7 @@ export default function EditCustomerPage() {
 
   // Initialize selected categories and sale units when data is loaded
   useEffect(() => {
-    if (customerCategories && customerCategories.length > 0) {
+    if (customerCategories) {
       console.log("Loading customer categories:", customerCategories);
       
       // Handle both possible data structures (category_id or id property)
@@ -146,25 +146,33 @@ export default function EditCustomerPage() {
         // Check which property exists and use it
         if (cat.category_id !== undefined) return cat.category_id;
         if (cat.id !== undefined) return cat.id;
+        // Try product_category_id as well for flexibility
+        if (cat.product_category_id !== undefined) return cat.product_category_id;
         return null;
       }).filter(id => id !== null);
       
       console.log("Extracted category IDs:", categoryIds);
       
-      if (categoryIds.length > 0) {
-        setSelectedCategories(categoryIds);
-      }
+      // Always set selected categories, even if empty (to clear previous selections)
+      setSelectedCategories(categoryIds);
     }
   }, [customerCategories]);
 
   // Initialize category sale units when data is loaded
   useEffect(() => {
-    if (customerSaleUnits && customerSaleUnits.length > 0) {
+    if (customerSaleUnits) {
       console.log("Loading customer sale units:", customerSaleUnits);
       const unitsByCat: Record<number, number[]> = {};
       
+      // Handle empty array case
+      if (customerSaleUnits.length === 0) {
+        console.log("No customer sale units found");
+        setCategoryUnits({});
+        return;
+      }
+      
       customerSaleUnits.forEach((item: any) => {
-        // Handle both possible property names
+        // Try all possible property names
         const categoryId = item.product_category_id || item.category_id;
         const unitId = item.sale_unit_id;
         
@@ -198,10 +206,21 @@ export default function EditCustomerPage() {
       queryClient.invalidateQueries([`/api/customers/${customerId}/allowed-sale-units`]);
       
       // Then explicitly refetch to ensure we have the data
-      setTimeout(() => {
-        queryClient.refetchQueries([`/api/customers/${customerId}/categories`]);
-        queryClient.refetchQueries([`/api/customers/${customerId}/allowed-sale-units`]);
-      }, 100);
+      const fetchData = async () => {
+        try {
+          console.log("Explicitly fetching customer categories");
+          await queryClient.fetchQuery([`/api/customers/${customerId}/categories`]);
+          
+          console.log("Explicitly fetching customer sale units");
+          await queryClient.fetchQuery([`/api/customers/${customerId}/allowed-sale-units`]);
+          
+          console.log("Data fetching complete");
+        } catch (error) {
+          console.error("Error during explicit data fetch:", error);
+        }
+      };
+      
+      fetchData();
     }
   }, [customerId, queryClient]);
   
@@ -261,7 +280,34 @@ export default function EditCustomerPage() {
         console.log("Error parsing address:", e);
       }
 
-      // Fetch user email if not available in customer data
+      // Set form values first with available data
+      customerForm.reset({
+        company_name: customer.company_name,
+        contact_person: customer.contact_person || "",
+        phone: customer.phone || "",
+        address: customer.address,
+        city: customer.city || "",
+        state: customer.state || "",
+        postal_code: customer.postal_code || "",
+        street,
+        number,
+        neighborhood,
+        complement,
+        cnpj: customer.cnpj || "", // Set CNPJ directly
+        latitude: customer.latitude,
+        longitude: customer.longitude,
+        enable_delivery: customer.enable_delivery,
+        delivery_fee: customer.delivery_fee,
+        delivery_fee_reais: (customer.delivery_fee / 100).toFixed(2),
+        minimum_order_value: customer.minimum_order_value,
+        minimum_order_value_reais: (customer.minimum_order_value / 100).toFixed(2),
+        allowed_delivery_days: customer.allowed_delivery_days,
+        email: "", // Will be updated asynchronously
+        password: "",  // Optional for update
+        user_id: customer.user_id
+      });
+      
+      // Then fetch user email if available
       const fetchUserEmail = async () => {
         if (customer.user_id) {
           try {
@@ -271,55 +317,19 @@ export default function EditCustomerPage() {
             }
             const userData = await res.json();
             console.log("User data loaded:", userData);
-            return userData.email || "";
+            
+            if (userData && userData.email) {
+              // Update just the email field after fetching
+              customerForm.setValue("email", userData.email);
+            }
           } catch (error) {
             console.error("Error fetching user email:", error);
           }
         }
-        return "";
       };
 
-      // Set form values
-      const setFormValues = async () => {
-        let email = "";
-        try {
-          email = await fetchUserEmail();
-        } catch (error) {
-          console.error("Error fetching user email:", error);
-        }
-        
-        // Ensure CNPJ is properly set
-        const cnpj = customer.cnpj || "";
-        console.log("Setting CNPJ value:", cnpj);
-        
-        customerForm.reset({
-          company_name: customer.company_name,
-          contact_person: customer.contact_person || "",
-          phone: customer.phone || "",
-          address: customer.address,
-          city: customer.city || "",
-          state: customer.state || "",
-          postal_code: customer.postal_code || "",
-          street,
-          number,
-          neighborhood,
-          complement,
-          cnpj, // Ensure CNPJ is set correctly
-          latitude: customer.latitude,
-          longitude: customer.longitude,
-          enable_delivery: customer.enable_delivery,
-          delivery_fee: customer.delivery_fee,
-          delivery_fee_reais: (customer.delivery_fee / 100).toFixed(2),
-          minimum_order_value: customer.minimum_order_value,
-          minimum_order_value_reais: (customer.minimum_order_value / 100).toFixed(2),
-          allowed_delivery_days: customer.allowed_delivery_days,
-          email,  // Email field is not editable for existing customers
-          password: "",  // Optional for update
-          user_id: customer.user_id
-        });
-      };
-
-      setFormValues();
+      // Execute email fetch
+      fetchUserEmail();
     }
   }, [customer, customerForm]);
 
@@ -708,7 +718,7 @@ export default function EditCustomerPage() {
                       disabled={true}
                       className="w-full rounded-lg border-gray-300 shadow-sm bg-gray-100 focus:border-[#E73664] focus:ring-[#E73664]"
                       placeholder="contato@empresa.com"
-                      value={customerForm.getValues("email") || ""}
+                      {...customerForm.register("email")}
                     />
                     {customerForm.formState.errors.email && (
                       <p className="mt-1 text-sm text-red-600">
