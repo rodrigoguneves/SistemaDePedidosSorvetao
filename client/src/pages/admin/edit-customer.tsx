@@ -140,14 +140,20 @@ export default function EditCustomerPage() {
   useEffect(() => {
     if (customerCategories && customerCategories.length > 0) {
       console.log("Loading customer categories:", customerCategories);
-      const categoryIds = customerCategories.map((cat: any) => cat.category_id || cat.id);
-      setSelectedCategories(prev => {
-        // Only update if there's a change to avoid re-renders
-        if (JSON.stringify(prev.sort()) !== JSON.stringify(categoryIds.sort())) {
-          return categoryIds;
-        }
-        return prev;
-      });
+      
+      // Handle both possible data structures (category_id or id property)
+      const categoryIds = customerCategories.map((cat: any) => {
+        // Check which property exists and use it
+        if (cat.category_id !== undefined) return cat.category_id;
+        if (cat.id !== undefined) return cat.id;
+        return null;
+      }).filter(id => id !== null);
+      
+      console.log("Extracted category IDs:", categoryIds);
+      
+      if (categoryIds.length > 0) {
+        setSelectedCategories(categoryIds);
+      }
     }
   }, [customerCategories]);
 
@@ -158,39 +164,52 @@ export default function EditCustomerPage() {
       const unitsByCat: Record<number, number[]> = {};
       
       customerSaleUnits.forEach((item: any) => {
-        const categoryId = item.product_category_id;
+        // Handle both possible property names
+        const categoryId = item.product_category_id || item.category_id;
         const unitId = item.sale_unit_id;
         
-        if (!categoryId || !unitId) return;
+        if (!categoryId || !unitId) {
+          console.log("Skipping invalid sale unit entry:", item);
+          return;
+        }
         
         if (!unitsByCat[categoryId]) {
           unitsByCat[categoryId] = [];
         }
-        unitsByCat[categoryId].push(unitId);
+        
+        // Only add if not already in the array
+        if (!unitsByCat[categoryId].includes(unitId)) {
+          unitsByCat[categoryId].push(unitId);
+        }
       });
       
-      setCategoryUnits(prev => {
-        // Compare new values with existing to avoid unnecessary updates
-        if (JSON.stringify(prev) !== JSON.stringify(unitsByCat)) {
-          return unitsByCat;
-        }
-        return prev;
-      });
+      console.log("Processed sale units by category:", unitsByCat);
+      setCategoryUnits(unitsByCat);
     }
   }, [customerSaleUnits]);
   
   // Force refresh categories and sale units on mount
   useEffect(() => {
     if (customerId) {
-      // Manually trigger refetch when component mounts to ensure we have fresh data
-      queryClient.refetchQueries([`/api/customers/${customerId}/categories`]);
-      queryClient.refetchQueries([`/api/customers/${customerId}/allowed-sale-units`]);
+      console.log("Refreshing customer data on mount for ID:", customerId);
+      
+      // Immediately invalidate queries to force a fresh fetch
+      queryClient.invalidateQueries([`/api/customers/${customerId}/categories`]);
+      queryClient.invalidateQueries([`/api/customers/${customerId}/allowed-sale-units`]);
+      
+      // Then explicitly refetch to ensure we have the data
+      setTimeout(() => {
+        queryClient.refetchQueries([`/api/customers/${customerId}/categories`]);
+        queryClient.refetchQueries([`/api/customers/${customerId}/allowed-sale-units`]);
+      }, 100);
     }
-  }, []);
+  }, [customerId, queryClient]);
   
   // Force refresh of categories and sale units when customer ID changes
   useEffect(() => {
     if (customerId) {
+      console.log("Customer ID changed, refreshing data for ID:", customerId);
+      
       // Manually trigger refetch
       queryClient.invalidateQueries([`/api/customers/${customerId}/categories`]);
       queryClient.invalidateQueries([`/api/customers/${customerId}/allowed-sale-units`]);
@@ -220,6 +239,8 @@ export default function EditCustomerPage() {
   // Update form with customer data when loaded
   useEffect(() => {
     if (customer) {
+      console.log("Setting up customer form with data:", customer);
+      
       // Extract address components from address field if possible
       let street = "";
       let number = "";
@@ -245,11 +266,12 @@ export default function EditCustomerPage() {
         if (customer.user_id) {
           try {
             const res = await fetch(`/api/users/${customer.user_id}`);
-            if (res.ok) {
-              const userData = await res.json();
-              console.log("User data loaded:", userData);
-              return userData.email || "";
+            if (!res.ok) {
+              throw new Error(`Failed to fetch user data: ${res.status}`);
             }
+            const userData = await res.json();
+            console.log("User data loaded:", userData);
+            return userData.email || "";
           } catch (error) {
             console.error("Error fetching user email:", error);
           }
@@ -266,6 +288,10 @@ export default function EditCustomerPage() {
           console.error("Error fetching user email:", error);
         }
         
+        // Ensure CNPJ is properly set
+        const cnpj = customer.cnpj || "";
+        console.log("Setting CNPJ value:", cnpj);
+        
         customerForm.reset({
           company_name: customer.company_name,
           contact_person: customer.contact_person || "",
@@ -278,7 +304,7 @@ export default function EditCustomerPage() {
           number,
           neighborhood,
           complement,
-          cnpj: customer.cnpj || "",
+          cnpj, // Ensure CNPJ is set correctly
           latitude: customer.latitude,
           longitude: customer.longitude,
           enable_delivery: customer.enable_delivery,
@@ -684,6 +710,11 @@ export default function EditCustomerPage() {
                       placeholder="contato@empresa.com"
                       value={customerForm.getValues("email") || ""}
                     />
+                    {customerForm.formState.errors.email && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {customerForm.formState.errors.email.message}
+                      </p>
+                    )}
                   </div>
 
                   <div>
