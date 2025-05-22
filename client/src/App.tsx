@@ -19,7 +19,9 @@ import AdminDashboardFlowbite from "@/pages/admin/dashboard-flowbite";
 
 // Customer pages
 import CustomerHome from "@/pages/customer/home";
-import AddCustomerPage from './pages/admin/add-customer';
+import AddCustomerPage from "./pages/admin/add-customer";
+import EditCustomerPage from "./pages/admin/edit-customer";
+import BaseProductsPage from "./pages/admin/base-products";
 
 function Router() {
   return (
@@ -38,7 +40,9 @@ function Router() {
       <ProtectedRoute path="/admin/products" component={React.lazy(() => import("@/pages/admin/produtos"))} />
       <ProtectedRoute path="/admin/customers" component={React.lazy(() => import("@/pages/admin/customers"))} />
       <ProtectedRoute path="/admin/add-customer" component={AddCustomerPage} />
-      
+      <ProtectedRoute path="/admin/edit-customer/:id" component={EditCustomerPage} />
+      <ProtectedRoute path="/admin/base-products" component={BaseProductsPage} />
+
       {/* Catalog Management - New Routes */}
       <ProtectedRoute path="/admin/sale-units" component={React.lazy(() => import("@/pages/admin/sale-units"))} />
       <ProtectedRoute path="/admin/base-products" component={React.lazy(() => import("@/pages/admin/base-products"))} />

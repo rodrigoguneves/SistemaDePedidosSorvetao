@@ -139,26 +139,8 @@ export default function CustomersPage() {
   };
 
   const handleEditCustomer = (customer: Customer) => {
-    setCurrentCustomer(customer);
-    customerForm.reset({
-      company_name: customer.company_name,
-      contact_person: customer.contact_person,
-      phone: customer.phone,
-      address: customer.address,
-      city: customer.city,
-      state: customer.state,
-      postal_code: customer.postal_code,
-      latitude: customer.latitude,
-      longitude: customer.longitude,
-      enable_delivery: customer.enable_delivery,
-      delivery_fee: customer.delivery_fee,
-      minimum_order_value: customer.minimum_order_value,
-      allowed_delivery_days: customer.allowed_delivery_days as boolean[],
-      email: "",  // Não recebemos o email do modelo Customer, apenas do User relacionado
-      password: "",  // Campo opcional para atualização
-      user_id: customer.user_id
-    });
-    setShowAddCustomerModal(true);
+    // Navigate to the edit customer page
+    window.location.href = `/admin/edit-customer/${customer.id}`;
   };
 
   // Mutation para excluir cliente
