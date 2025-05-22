@@ -4,11 +4,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { Users } from "lucide-react";
+import { useForm, useWatch } from "react-hook-form";
+import { Users, TagsIcon } from "lucide-react";
 import { Customer, insertCustomerSchema } from "@shared/schema";
 import { AdminLayout } from "@/layouts/admin-layout";
 import { useLocation, useRoute } from "wouter";
+import { Card, CardContent } from "flowbite-react";
 
 export default function EditCustomerPage() {
   const { toast } = useToast();
@@ -16,6 +17,54 @@ export default function EditCustomerPage() {
   const [location, setLocation] = useLocation();
   const [, params] = useRoute("/admin/edit-customer/:id");
   const customerId = params ? parseInt(params.id) : null;
+  
+  // State for product categories and sale units
+  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
+  const [categoryUnits, setCategoryUnits] = useState<Record<number, number[]>>({});
+
+  // Fetch product categories
+  const { data: productCategories = [] } = useQuery({
+    queryKey: ['/api/categories'],
+    queryFn: async () => {
+      const res = await fetch('/api/categories');
+      if (!res.ok) throw new Error('Failed to fetch categories');
+      return res.json();
+    }
+  });
+
+  // Fetch sale units
+  const { data: saleUnits = [] } = useQuery({
+    queryKey: ['/api/sale-units'],
+    queryFn: async () => {
+      const res = await fetch('/api/sale-units');
+      if (!res.ok) throw new Error('Failed to fetch sale units');
+      return res.json();
+    }
+  });
+
+  // Fetch customer categories
+  const { data: customerCategories = [] } = useQuery({
+    queryKey: [`/api/customers/${customerId}/categories`],
+    queryFn: async () => {
+      if (!customerId) return [];
+      const res = await fetch(`/api/customers/${customerId}/categories`);
+      if (!res.ok) throw new Error('Failed to fetch customer categories');
+      return res.json();
+    },
+    enabled: !!customerId
+  });
+
+  // Fetch customer category sale units
+  const { data: customerSaleUnits = [] } = useQuery({
+    queryKey: [`/api/customers/${customerId}/allowed-sale-units`],
+    queryFn: async () => {
+      if (!customerId) return [];
+      const res = await fetch(`/api/customers/${customerId}/allowed-sale-units`);
+      if (!res.ok) throw new Error('Failed to fetch customer allowed sale units');
+      return res.json();
+    },
+    enabled: !!customerId
+  });
 
   // Fetch customer data
   const { 
@@ -60,6 +109,30 @@ export default function EditCustomerPage() {
   });
 
   // Update form with customer data when loaded
+  // Initialize selected categories and sale units when data is loaded
+  useEffect(() => {
+    if (customerCategories.length > 0) {
+      const categoryIds = customerCategories.map((cat: any) => cat.id);
+      setSelectedCategories(categoryIds);
+    }
+  }, [customerCategories]);
+
+  // Initialize category sale units when data is loaded
+  useEffect(() => {
+    if (customerSaleUnits.length > 0) {
+      const unitsByCat: Record<number, number[]> = {};
+      
+      customerSaleUnits.forEach((item: any) => {
+        if (!unitsByCat[item.product_category_id]) {
+          unitsByCat[item.product_category_id] = [];
+        }
+        unitsByCat[item.product_category_id].push(item.sale_unit_id);
+      });
+      
+      setCategoryUnits(unitsByCat);
+    }
+  }, [customerSaleUnits]);
+
   useEffect(() => {
     if (customer) {
       customerForm.reset({
@@ -82,6 +155,106 @@ export default function EditCustomerPage() {
       });
     }
   }, [customer, customerForm]);
+
+  // Handlers for category selection
+  const handleCategoryChange = (categoryId: number) => {
+    setSelectedCategories(prev => {
+      if (prev.includes(categoryId)) {
+        // If removing category, also remove its sale units
+        setCategoryUnits(prevUnits => {
+          const newUnits = { ...prevUnits };
+          delete newUnits[categoryId];
+          return newUnits;
+        });
+        return prev.filter(id => id !== categoryId);
+      } else {
+        // Define default sale units based on category
+        let defaultUnits: number[] = [];
+        // Balde 10 Litros, Balde 5 Litros, Copo 180ml, Copo 250ml, Itens Avulsos, Pote 1 Litro e Pote 1.8 Litros
+        if ([1, 2, 5, 6, 7, 8, 9].includes(categoryId)) {
+          // Find "unidade" sale unit
+          const unitId = saleUnits.find((unit: any) => unit.unit_name === "Unidade")?.sale_unit_id;
+          if (unitId) defaultUnits = [unitId];
+        } 
+        // Picolés de Fruta e Picolés de Leite
+        else if ([3, 4].includes(categoryId)) {
+          defaultUnits = saleUnits
+            .filter((unit: any) => ["Caixa Completa 24un", "Meia Caixa 12un", "Unidade"].includes(unit.unit_name))
+            .map((unit: any) => unit.sale_unit_id);
+        }
+        // Sorvete no Palito
+        else if (categoryId === 11) {
+          defaultUnits = saleUnits
+            .filter((unit: any) => ["Caixa Completa 16un", "Meia Caixa 8un", "Unidade"].includes(unit.unit_name))
+            .map((unit: any) => unit.sale_unit_id);
+        }
+        // Other categories get all sale units by default
+        else {
+          defaultUnits = saleUnits.map((unit: any) => unit.sale_unit_id);
+        }
+        
+        setCategoryUnits(prevUnits => ({
+          ...prevUnits,
+          [categoryId]: defaultUnits
+        }));
+        
+        return [...prev, categoryId];
+      }
+    });
+  };
+
+  // Handler for sale unit selection
+  const handleSaleUnitChange = (categoryId: number, unitId: number) => {
+    setCategoryUnits(prev => {
+      const currentUnits = prev[categoryId] || [];
+      
+      if (currentUnits.includes(unitId)) {
+        return {
+          ...prev,
+          [categoryId]: currentUnits.filter(id => id !== unitId)
+        };
+      } else {
+        return {
+          ...prev,
+          [categoryId]: [...currentUnits, unitId]
+        };
+      }
+    });
+  };
+
+  // Mutation to update category access
+  const updateCategoryAccessMutation = useMutation({
+    mutationFn: async ({ categoryId, add }: { categoryId: number, add: boolean }) => {
+      const method = add ? 'POST' : 'DELETE';
+      const res = await fetch(`/api/customers/${customerId}/categories/${categoryId}`, {
+        method
+      });
+      
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || 'Error updating category access');
+      }
+      
+      return await res.json();
+    }
+  });
+
+  // Mutation to update sale unit access
+  const updateSaleUnitAccessMutation = useMutation({
+    mutationFn: async ({ categoryId, unitId, add }: { categoryId: number, unitId: number, add: boolean }) => {
+      const method = add ? 'POST' : 'DELETE';
+      const res = await fetch(`/api/customers/${customerId}/categories/${categoryId}/sale-units/${unitId}`, {
+        method
+      });
+      
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || 'Error updating sale unit access');
+      }
+      
+      return await res.json();
+    }
+  });
 
   // Mutation para atualizar cliente
   const updateCustomerMutation = useMutation({
@@ -122,9 +295,83 @@ export default function EditCustomerPage() {
   });
 
   // Handler for form submission
-  const onSubmitCustomer = (data: any) => {
+  const onSubmitCustomer = async (data: any) => {
     console.log("Dados enviados para atualização:", data);
-    updateCustomerMutation.mutate(data);
+    
+    try {
+      // First update the customer basic info
+      await updateCustomerMutation.mutateAsync(data);
+      
+      // Fetch current customer categories
+      const currentCategoriesRes = await fetch(`/api/customers/${customerId}/categories`);
+      if (!currentCategoriesRes.ok) throw new Error('Failed to fetch current categories');
+      const currentCategories = await currentCategoriesRes.json();
+      
+      // Add/remove categories
+      const currentCategoryIds = currentCategories.map((cat: any) => cat.id);
+      const categoriesToAdd = selectedCategories.filter(id => !currentCategoryIds.includes(id));
+      const categoriesToRemove = currentCategoryIds.filter(id => !selectedCategories.includes(id));
+      
+      // Process category additions
+      for (const categoryId of categoriesToAdd) {
+        await updateCategoryAccessMutation.mutateAsync({ categoryId, add: true });
+      }
+      
+      // Process category removals
+      for (const categoryId of categoriesToRemove) {
+        await updateCategoryAccessMutation.mutateAsync({ categoryId, add: false });
+      }
+      
+      // Fetch current sale units access
+      const currentUnitsRes = await fetch(`/api/customers/${customerId}/allowed-sale-units`);
+      if (!currentUnitsRes.ok) throw new Error('Failed to fetch current sale units');
+      const currentUnits = await currentUnitsRes.json();
+      
+      // Group current units by category
+      const currentUnitsByCategory: Record<number, number[]> = {};
+      currentUnits.forEach((item: any) => {
+        if (!currentUnitsByCategory[item.product_category_id]) {
+          currentUnitsByCategory[item.product_category_id] = [];
+        }
+        currentUnitsByCategory[item.product_category_id].push(item.sale_unit_id);
+      });
+      
+      // Update sale units for each category
+      for (const categoryId of selectedCategories) {
+        const current = currentUnitsByCategory[categoryId] || [];
+        const desired = categoryUnits[categoryId] || [];
+        
+        // Units to add
+        for (const unitId of desired) {
+          if (!current.includes(unitId)) {
+            await updateSaleUnitAccessMutation.mutateAsync({ categoryId, unitId, add: true });
+          }
+        }
+        
+        // Units to remove
+        for (const unitId of current) {
+          if (!desired.includes(unitId)) {
+            await updateSaleUnitAccessMutation.mutateAsync({ categoryId, unitId, add: false });
+          }
+        }
+      }
+      
+      toast({
+        title: "Cliente atualizado com sucesso",
+        description: "Todas as informações e acessos foram atualizados.",
+        variant: "default",
+      });
+      
+      // Navigate back to customers page
+      setLocation("/admin/customers");
+      
+    } catch (error: any) {
+      toast({
+        title: "Erro ao atualizar cliente",
+        description: error.message || "Ocorreu um erro ao atualizar o cliente",
+        variant: "destructive",
+      });
+    }
   };
 
   if (isLoading) {
@@ -388,6 +635,114 @@ export default function EditCustomerPage() {
                 </div>
               </div>
 
+              <div className="border-t p-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg"
+                  onClick={() => setLocation("/admin/customers")}
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-white bg-[#E73664] hover:bg-[#d82c59] rounded-lg flex items-center"
+                  disabled={updateCustomerMutation.isPending}
+                >
+                  {updateCustomerMutation.isPending ? (
+                    <>
+                      <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      Processando...
+                    </>
+                  ) : (
+                    "Salvar"
+                  )}
+                </button>
+              </div>
+            {/* Categorias e Unidades de Venda */}
+              <div className="border-t p-6">
+                <div className="flex items-center space-x-2 mb-4">
+                  <div className="bg-pink-100 p-2 rounded-full">
+                    <TagsIcon className="h-5 w-5 text-[#E73664]" />
+                  </div>
+                  <h2 className="text-lg font-medium">Acesso a Produtos</h2>
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Categorias Disponíveis para este Cliente
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                    {productCategories.map((category: any) => (
+                      <label key={category.id} className="flex items-center p-2 border rounded-lg">
+                        <input
+                          type="checkbox"
+                          checked={selectedCategories.includes(category.id)}
+                          onChange={() => handleCategoryChange(category.id)}
+                          className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664]"
+                        />
+                        <span className="ml-2">{category.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                
+                {selectedCategories.length > 0 && (
+                  <div className="space-y-4">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Unidades de Venda Permitidas por Categoria
+                    </label>
+                    
+                    {selectedCategories.map(categoryId => {
+                      const category = productCategories.find((c: any) => c.id === categoryId);
+                      
+                      // Define which sale units to show based on category
+                      let visibleSaleUnits = [];
+                      
+                      // For buckets, cups, miscellaneous, and pots - only show "Unidade"
+                      if ([1, 2, 5, 6, 7, 8, 9].includes(categoryId)) {
+                        visibleSaleUnits = saleUnits.filter((unit: any) => unit.unit_name === "Unidade");
+                      } 
+                      // For Picolés de Fruta e Picolés de Leite
+                      else if ([3, 4].includes(categoryId)) {
+                        visibleSaleUnits = saleUnits.filter((unit: any) => 
+                          ["Caixa Completa 24un", "Meia Caixa 12un", "Unidade"].includes(unit.unit_name)
+                        );
+                      }
+                      // For Sorvete no Palito
+                      else if (categoryId === 11) {
+                        visibleSaleUnits = saleUnits.filter((unit: any) => 
+                          ["Caixa Completa 16un", "Meia Caixa 8un", "Unidade"].includes(unit.unit_name)
+                        );
+                      }
+                      // For other categories, show all sale units
+                      else {
+                        visibleSaleUnits = saleUnits;
+                      }
+                      
+                      return (
+                        <div key={categoryId} className="p-3 border rounded-lg">
+                          <h3 className="font-medium mb-2">{category?.name}</h3>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {visibleSaleUnits.map((unit: any) => (
+                              <label key={unit.sale_unit_id} className="flex items-center p-2 border rounded-md">
+                                <input
+                                  type="checkbox"
+                                  checked={(categoryUnits[categoryId] || []).includes(unit.sale_unit_id)}
+                                  onChange={() => handleSaleUnitChange(categoryId, unit.sale_unit_id)}
+                                  className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664]"
+                                />
+                                <span className="ml-2">{unit.unit_name}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              
               <div className="border-t p-4 flex justify-end gap-2">
                 <button
                   type="button"
