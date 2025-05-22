@@ -110,11 +110,31 @@ export default function AddCustomerPage() {
   const handleCategoryChange = (categoryId: number, checked: boolean) => {
     if (checked) {
       setSelectedCategories(prev => [...prev, categoryId]);
-      // Initialize empty sale units array for this category
-      setCategorySaleUnits(prev => ({
-        ...prev,
-        [categoryId]: []
-      }));
+      
+      // Check if this is one of the auto-associated categories
+      const category = categories.find((c: Category) => c.id === categoryId);
+      const autoAssociatedCategories = [
+        "Balde 10 Litros", "Balde 5 Litros", "Copo 180ml", 
+        "Copo 250ml", "Itens Avulsos", "Pote 1 Litro", "Pote 1.8 Litros"
+      ];
+      
+      const isAutoAssociated = autoAssociatedCategories.includes(category?.name || "");
+      const unidadeSaleUnit = saleUnits.find(unit => unit.unit_name === "Unidade");
+      
+      // Initialize sale units array for this category
+      if (isAutoAssociated && unidadeSaleUnit) {
+        // Auto-associate with "unidade" sale unit
+        setCategorySaleUnits(prev => ({
+          ...prev,
+          [categoryId]: [unidadeSaleUnit.sale_unit_id]
+        }));
+      } else {
+        // Initialize empty array for manual selection
+        setCategorySaleUnits(prev => ({
+          ...prev,
+          [categoryId]: []
+        }));
+      }
     } else {
       setSelectedCategories(prev => prev.filter(id => id !== categoryId));
       // Remove this category from sale units mapping
@@ -752,33 +772,62 @@ export default function AddCustomerPage() {
                     
                     {selectedCategories.map(categoryId => {
                       const category = categories.find((c: Category) => c.id === categoryId);
+                      const autoAssociatedCategories = [
+                        "Balde 10 Litros", "Balde 5 Litros", "Copo 180ml", 
+                        "Copo 250ml", "Itens Avulsos", "Pote 1 Litro", "Pote 1.8 Litros"
+                      ];
+                      
+                      // Check if this category should be auto-associated with "unidade"
+                      const isAutoAssociated = autoAssociatedCategories.includes(category?.name || "");
+                      
+                      // Find the "unidade" sale unit
+                      const unidadeSaleUnit = saleUnits.find(unit => unit.unit_name === "Unidade");
+                      
+                      // Auto-associate if needed
+                      if (isAutoAssociated && unidadeSaleUnit) {
+                        // Make sure "unidade" is selected for this category
+                        if (!categorySaleUnits[categoryId] || 
+                            !categorySaleUnits[categoryId].includes(unidadeSaleUnit.sale_unit_id)) {
+                          handleSaleUnitChange(categoryId, unidadeSaleUnit.sale_unit_id, true);
+                        }
+                      }
+                      
                       return (
                         <div key={categoryId} className="mb-5 p-4 border rounded-lg bg-gray-50">
                           <h4 className="font-semibold mb-2 flex items-center">
                             <Tag className="h-4 w-4 mr-1 text-[#E73664]" />
                             {category?.name}
                           </h4>
-                          <div className="ml-2 grid grid-cols-2 gap-2">
-                            {saleUnits.map((unit: SaleUnit) => (
-                              <div key={unit.sale_unit_id} className="flex items-center p-2">
-                                <input
-                                  type="checkbox"
-                                  id={`unit-${categoryId}-${unit.sale_unit_id}`}
-                                  checked={(categorySaleUnits[categoryId] || []).includes(unit.sale_unit_id)}
-                                  onChange={(e) => handleSaleUnitChange(categoryId, unit.sale_unit_id, e.target.checked)}
-                                  className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664]"
-                                />
-                                <label htmlFor={`unit-${categoryId}-${unit.sale_unit_id}`} className="ml-2">
-                                  <span className="text-sm font-medium">{unit.unit_name}</span>
-                                  {unit.short_description && (
-                                    <span className="text-xs text-gray-500 block">
-                                      {unit.short_description}
-                                    </span>
-                                  )}
-                                </label>
-                              </div>
-                            ))}
-                          </div>
+                          
+                          {isAutoAssociated && unidadeSaleUnit ? (
+                            <div className="ml-2 p-2">
+                              <p className="text-sm text-gray-700 italic">
+                                Esta categoria é automaticamente associada à unidade de venda "<strong>{unidadeSaleUnit.unit_name}</strong>"
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="ml-2 grid grid-cols-2 gap-2">
+                              {saleUnits.map((unit: SaleUnit) => (
+                                <div key={unit.sale_unit_id} className="flex items-center p-2">
+                                  <input
+                                    type="checkbox"
+                                    id={`unit-${categoryId}-${unit.sale_unit_id}`}
+                                    checked={(categorySaleUnits[categoryId] || []).includes(unit.sale_unit_id)}
+                                    onChange={(e) => handleSaleUnitChange(categoryId, unit.sale_unit_id, e.target.checked)}
+                                    className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664]"
+                                  />
+                                  <label htmlFor={`unit-${categoryId}-${unit.sale_unit_id}`} className="ml-2">
+                                    <span className="text-sm font-medium">{unit.unit_name}</span>
+                                    {unit.short_description && (
+                                      <span className="text-xs text-gray-500 block">
+                                        {unit.short_description}
+                                      </span>
+                                    )}
+                                  </label>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
