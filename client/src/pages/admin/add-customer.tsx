@@ -145,6 +145,9 @@ export default function AddCustomerPage() {
   const createCustomerMutation = useMutation({
     mutationFn: async (data: any) => {
       try {
+        console.log("=== INÍCIO DO PROCESSO DE CRIAÇÃO DE CLIENTE ===");
+        console.log("Dados iniciais do formulário:", JSON.stringify(data, null, 2));
+
         // Ensure values are numbers before conversion
         const deliveryFeeReais = typeof data.delivery_fee_reais === 'number' 
           ? data.delivery_fee_reais 
@@ -154,10 +157,20 @@ export default function AddCustomerPage() {
           ? data.minimum_order_value_reais 
           : parseFloat(data.minimum_order_value_reais.replace(',', '.') || '0');
         
+        console.log("Valores de moeda convertidos:", { 
+          deliveryFeeReais, 
+          minOrderReais,
+          deliveryFeeCents: Math.round(deliveryFeeReais * 100),
+          minOrderCents: Math.round(minOrderReais * 100)
+        });
+        
         // Combina os campos de endereço antes de enviar
+        const address = `${data.street}, ${data.number}${data.complement ? `, ${data.complement}` : ''}, ${data.neighborhood}`;
+        console.log("Endereço formatado:", address);
+        
         const formattedData = {
           ...data,
-          address: `${data.street}, ${data.number}${data.complement ? `, ${data.complement}` : ''}, ${data.neighborhood}`,
+          address: address,
           // Convert currency values from reais to centavos with safe conversion
           delivery_fee: Math.round(deliveryFeeReais * 100),
           minimum_order_value: Math.round(minOrderReais * 100),
@@ -175,31 +188,38 @@ export default function AddCustomerPage() {
         delete formattedData.categories;
         delete formattedData.categorySaleUnits;
 
-        console.log("Sending data to API:", formattedData);
+        console.log("Dados formatados para envio:", JSON.stringify(formattedData, null, 2));
 
         // Step 1: Create the customer
+        console.log("Iniciando requisição POST para /api/customers");
         const res = await fetch('/api/customers', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formattedData),
         });
-
+        
+        console.log("Resposta da API recebida - Status:", res.status, res.statusText);
+        
         const responseText = await res.text();
+        console.log("Resposta texto:", responseText);
+        
         let responseData;
         try {
           responseData = responseText ? JSON.parse(responseText) : {};
+          console.log("Resposta JSON parseada:", responseData);
         } catch (e) {
-          console.error("Failed to parse response as JSON:", responseText);
+          console.error("Erro ao fazer parse da resposta como JSON:", responseText);
+          console.error("Erro detalhado:", e);
           throw new Error("Resposta inválida do servidor");
         }
 
         if (!res.ok) {
-          console.error("API error response:", responseData);
+          console.error("Erro na resposta da API:", responseData);
           throw new Error(responseData.message || 'Erro ao criar cliente');
         }
 
         const customer = responseData;
-        console.log("Customer created successfully:", customer);
+        console.log("Cliente criado com sucesso:", customer);
 
         // Step 2: Set category access for the customer
         for (const categoryId of selectedCategories) {
@@ -245,20 +265,35 @@ export default function AddCustomerPage() {
       }
     },
     onSuccess: (data) => {
-      console.log("Customer created successfully, redirecting to customers page", data);
+      console.log("=== CLIENTE CRIADO COM SUCESSO ===", data);
+      
+      // Primeiro, invalidamos as queries para garantir dados atualizados
       queryClient.invalidateQueries({ queryKey: ['/api/customers'] });
+      
       toast({
         title: "Cliente criado com sucesso",
         description: "O novo cliente foi adicionado ao sistema.",
         variant: "default",
       });
+      
+      console.log("Redirecionando para página de clientes...");
+      
       // Ensure we navigate to the customers page
-      setTimeout(() => {
+      try {
         setLocation("/admin/customers");
-      }, 500);
+        console.log("Redirecionamento acionado");
+      } catch (navigationError) {
+        console.error("Erro ao navegar:", navigationError);
+        // Fallback em caso de erro na navegação
+        window.location.href = "/admin/customers";
+      }
     },
     onError: (error: Error) => {
-      console.error("Mutation error:", error);
+      console.error("=== ERRO NA CRIAÇÃO DO CLIENTE ===");
+      console.error("Detalhes do erro:", error);
+      console.error("Mensagem:", error.message);
+      console.error("Stack trace:", error.stack);
+      
       toast({
         title: "Erro ao criar cliente",
         description: error.message || "Ocorreu um erro ao criar o cliente. Verifique os dados e tente novamente.",
@@ -285,10 +320,14 @@ export default function AddCustomerPage() {
 
   // Handler para submit do formulário
   const onSubmitCustomer = (data: any) => {
-    console.log("Form data submitted:", data);
+    console.log("=== INÍCIO DA VALIDAÇÃO DO FORMULÁRIO ===");
+    console.log("Form data submitted:", JSON.stringify(data, null, 2));
+    console.log("Categorias selecionadas:", selectedCategories);
+    console.log("Unidades de venda por categoria:", categorySaleUnits);
     
     // Validate that at least one category is selected if categories are available
     if (categories.length > 0 && selectedCategories.length === 0) {
+      console.log("Erro: Nenhuma categoria selecionada");
       toast({
         title: "Erro na validação",
         description: "Selecione pelo menos uma categoria de produto.",
@@ -300,6 +339,7 @@ export default function AddCustomerPage() {
     // Check all selected categories have at least one sale unit selected
     for (const categoryId of selectedCategories) {
       if (!categorySaleUnits[categoryId] || categorySaleUnits[categoryId].length === 0) {
+        console.log(`Erro: Categoria ${categoryId} não tem unidades de venda selecionadas`);
         toast({
           title: "Erro na validação",
           description: "Selecione pelo menos uma unidade de venda para cada categoria.",
@@ -310,10 +350,14 @@ export default function AddCustomerPage() {
     }
     
     // Ensure required fields are filled
-    if (!data.company_name || !data.email || !data.password || !data.confirm_password) {
+    const requiredFields = ['company_name', 'email', 'password', 'confirm_password'];
+    const missingFields = requiredFields.filter(field => !data[field]);
+    
+    if (missingFields.length > 0) {
+      console.log("Campos obrigatórios faltando:", missingFields);
       toast({
         title: "Campos obrigatórios",
-        description: "Por favor, preencha todos os campos obrigatórios.",
+        description: `Por favor, preencha os seguintes campos obrigatórios: ${missingFields.join(', ')}`,
         variant: "destructive",
       });
       return;
@@ -326,17 +370,22 @@ export default function AddCustomerPage() {
     // Handle various input formats and convert to numbers
     if (typeof data.delivery_fee_reais === 'string') {
       delivery_fee_reais = parseFloat(data.delivery_fee_reais.replace(',', '.') || '0');
+      console.log("Convertendo delivery_fee_reais de string para número:", data.delivery_fee_reais, "→", delivery_fee_reais);
     } else if (typeof data.delivery_fee_reais === 'number') {
       delivery_fee_reais = data.delivery_fee_reais;
+      console.log("delivery_fee_reais já é um número:", delivery_fee_reais);
     }
     
     if (typeof data.minimum_order_value_reais === 'string') {
       minimum_order_value_reais = parseFloat(data.minimum_order_value_reais.replace(',', '.') || '0');
+      console.log("Convertendo minimum_order_value_reais de string para número:", data.minimum_order_value_reais, "→", minimum_order_value_reais);
     } else if (typeof data.minimum_order_value_reais === 'number') {
       minimum_order_value_reais = data.minimum_order_value_reais;
+      console.log("minimum_order_value_reais já é um número:", minimum_order_value_reais);
     }
     
     if (isNaN(delivery_fee_reais) || isNaN(minimum_order_value_reais)) {
+      console.log("Erro: Valores de entrega inválidos", { delivery_fee_reais, minimum_order_value_reais });
       toast({
         title: "Erro nos valores de entrega",
         description: "Os valores de taxa de entrega e pedido mínimo devem ser números válidos.",
@@ -346,9 +395,20 @@ export default function AddCustomerPage() {
     }
     
     if (validatePasswords()) {
-      console.log("Passwords validated, submitting form");
+      console.log("Senhas validadas com sucesso");
       
       try {
+        // Verificando campos de endereço obrigatórios
+        if (!data.street || !data.number || !data.neighborhood) {
+          console.log("Campos de endereço obrigatórios faltando");
+          toast({
+            title: "Campos de endereço obrigatórios",
+            description: "Rua, número e bairro são campos obrigatórios.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
         // Create a copy of data with corrected number formats
         const submissionData = {
           ...data,
@@ -368,10 +428,11 @@ export default function AddCustomerPage() {
           enable_delivery: data.enable_delivery || false
         };
         
-        console.log("Submitting data to API:", submissionData);
+        console.log("Dados preparados para envio:", JSON.stringify(submissionData, null, 2));
+        console.log("Enviando requisição para criação de cliente...");
         createCustomerMutation.mutate(submissionData);
       } catch (error) {
-        console.error("Error preparing form submission:", error);
+        console.error("Erro ao preparar submissão do formulário:", error);
         toast({
           title: "Erro ao processar formulário",
           description: "Ocorreu um erro ao processar os dados do formulário.",
@@ -379,7 +440,7 @@ export default function AddCustomerPage() {
         });
       }
     } else {
-      console.log("Password validation failed");
+      console.log("Validação de senhas falhou");
       toast({
         title: "Erro na validação",
         description: "As senhas não conferem. Por favor, verifique e tente novamente.",

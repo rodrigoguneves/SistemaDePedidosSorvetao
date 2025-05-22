@@ -48,15 +48,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/customers", async (req, res, next) => {
+    console.log("=== RECEBIDO POST /api/customers ===");
+    console.log("Corpo da requisição:", JSON.stringify(req.body, null, 2));
+    
     try {
-      if (!req.isAuthenticated() || (req.user.role !== 'admin' && req.user.role !== 'manager')) {
-        return res.status(403).json({ message: "Acesso negado" });
+      if (!req.isAuthenticated()) {
+        console.log("Erro: Usuário não autenticado");
+        return res.status(403).json({ message: "Acesso negado - Usuário não autenticado" });
+      }
+      
+      if (req.user.role !== 'admin' && req.user.role !== 'manager') {
+        console.log("Erro: Usuário sem permissão. Role:", req.user.role);
+        return res.status(403).json({ message: "Acesso negado - Permissão insuficiente" });
       }
 
-      const validatedData = insertCustomerSchema.parse(req.body);
-      const customer = await storage.createCustomer(validatedData);
-      res.status(201).json(customer);
+      console.log("Autenticação e permissões verificadas com sucesso");
+      
+      try {
+        console.log("Validando dados com schema...");
+        const validatedData = insertCustomerSchema.parse(req.body);
+        console.log("Dados validados com sucesso:", JSON.stringify(validatedData, null, 2));
+        
+        console.log("Criando cliente no banco de dados...");
+        const customer = await storage.createCustomer(validatedData);
+        console.log("Cliente criado com sucesso:", JSON.stringify(customer, null, 2));
+        
+        res.status(201).json(customer);
+        console.log("Resposta 201 enviada com sucesso");
+      } catch (validationError) {
+        console.error("Erro de validação:", validationError);
+        
+        if (validationError instanceof z.ZodError) {
+          const errorDetails = validationError.errors.map(err => ({
+            path: err.path.join('.'),
+            message: err.message
+          }));
+          
+          console.error("Detalhes dos erros de validação:", JSON.stringify(errorDetails, null, 2));
+          return res.status(400).json({ 
+            message: "Erro de validação nos dados", 
+            errors: errorDetails 
+          });
+        }
+        
+        throw validationError;
+      }
     } catch (error) {
+      console.error("Erro não tratado:", error);
       next(error);
     }
   });
