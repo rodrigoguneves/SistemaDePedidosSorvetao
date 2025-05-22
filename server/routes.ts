@@ -65,16 +65,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Autenticação e permissões verificadas com sucesso");
       
       try {
-        console.log("Validando dados com schema...");
-        const validatedData = insertCustomerSchema.parse(req.body);
-        console.log("Dados validados com sucesso:", JSON.stringify(validatedData, null, 2));
+        // First, create user account if email/password provided
+        const { email, password, ...customerData } = req.body;
         
-        console.log("Criando cliente no banco de dados...");
-        const customer = await storage.createCustomer(validatedData);
-        console.log("Cliente criado com sucesso:", JSON.stringify(customer, null, 2));
+        console.log("Verificando se email já existe:", email);
+        const existingUser = await storage.getUserByEmail(email);
+        if (existingUser) {
+          console.log("Email já está em uso:", email);
+          return res.status(400).json({ 
+            message: "Email já está em uso. Por favor, use outro email." 
+          });
+        }
         
-        res.status(201).json(customer);
-        console.log("Resposta 201 enviada com sucesso");
+        console.log("Criando novo usuário com email:", email);
+        // Create user first
+        const newUser = await storage.createUser({
+          email,
+          password,
+          name: customerData.company_name || "Cliente",
+          role: "customer"
+        });
+        
+        console.log("Usuário criado com sucesso:", newUser.id);
+        
+        // Now create customer with user_id
+        console.log("Validando dados do cliente com schema...");
+        // Make sure to attach the user_id to the customer data
+        const customerWithUserId = {
+          ...customerData,
+          user_id: newUser.id
+        };
+        
+        try {
+          const validatedData = insertCustomerSchema.parse(customerWithUserId);
+          console.log("Dados validados com sucesso:", JSON.stringify(validatedData, null, 2));
+          
+          console.log("Criando cliente no banco de dados...");
+          const customer = await storage.createCustomer(validatedData);
+          console.log("Cliente criado com sucesso:", JSON.stringify(customer, null, 2));
+          
+          res.status(201).json(customer);
+          console.log("Resposta 201 enviada com sucesso");
+        } catch (customerError) {
+          console.error("Erro ao criar cliente, revertendo criação do usuário:", customerError);
+          
+          // Try to delete the user we just created to avoid orphaned users
+          try {
+            await storage.hardDeleteUser(newUser.id);
+            console.log("Usuário removido após falha na criação do cliente");
+          } catch (deleteError) {
+            console.error("Erro ao remover usuário após falha:", deleteError);
+          }
+          
+          throw customerError;
+        }
       } catch (validationError) {
         console.error("Erro de validação:", validationError);
         

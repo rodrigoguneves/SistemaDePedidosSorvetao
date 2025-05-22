@@ -148,14 +148,26 @@ export default function AddCustomerPage() {
         console.log("=== INÍCIO DO PROCESSO DE CRIAÇÃO DE CLIENTE ===");
         console.log("Dados iniciais do formulário:", JSON.stringify(data, null, 2));
 
-        // Ensure values are numbers before conversion
-        const deliveryFeeReais = typeof data.delivery_fee_reais === 'number' 
-          ? data.delivery_fee_reais 
-          : parseFloat(data.delivery_fee_reais.replace(',', '.') || '0');
+        // Ensure values are numbers before conversion - fix handling of decimal separators
+        let deliveryFeeReais = 0;
+        if (typeof data.delivery_fee_reais === 'number') {
+          deliveryFeeReais = data.delivery_fee_reais;
+        } else if (typeof data.delivery_fee_reais === 'string') {
+          // Handle both comma and period as decimal separators
+          deliveryFeeReais = parseFloat(data.delivery_fee_reais.replace(',', '.') || '0');
+        }
           
-        const minOrderReais = typeof data.minimum_order_value_reais === 'number' 
-          ? data.minimum_order_value_reais 
-          : parseFloat(data.minimum_order_value_reais.replace(',', '.') || '0');
+        let minOrderReais = 0;
+        if (typeof data.minimum_order_value_reais === 'number') {
+          minOrderReais = data.minimum_order_value_reais;
+        } else if (typeof data.minimum_order_value_reais === 'string') {
+          // Handle both comma and period as decimal separators
+          minOrderReais = parseFloat(data.minimum_order_value_reais.replace(',', '.') || '0');
+        }
+        
+        // Ensure we have valid numbers, not NaN
+        if (isNaN(deliveryFeeReais)) deliveryFeeReais = 0;
+        if (isNaN(minOrderReais)) minOrderReais = 0;
         
         console.log("Valores de moeda convertidos:", { 
           deliveryFeeReais, 
@@ -168,25 +180,25 @@ export default function AddCustomerPage() {
         const address = `${data.street}, ${data.number}${data.complement ? `, ${data.complement}` : ''}, ${data.neighborhood}`;
         console.log("Endereço formatado:", address);
         
+        // Create a clean object with only the fields the API expects
         const formattedData = {
-          ...data,
+          user_id: null, // This will be set by the backend
+          company_name: data.company_name,
+          contact_person: data.contact_person || "",
+          phone: data.phone || "",
+          email: data.email, // Needed for user creation
+          password: data.password, // Needed for user creation
           address: address,
-          // Convert currency values from reais to centavos with safe conversion
+          city: data.city || "",
+          state: data.state || "",
+          postal_code: data.postal_code || "",
+          latitude: data.latitude,
+          longitude: data.longitude,
+          enable_delivery: data.enable_delivery || false,
           delivery_fee: Math.round(deliveryFeeReais * 100),
           minimum_order_value: Math.round(minOrderReais * 100),
+          allowed_delivery_days: data.allowed_delivery_days || [false, true, true, true, true, true, false],
         };
-
-        // Remove unnecessary fields
-        delete formattedData.street;
-        delete formattedData.number;
-        delete formattedData.complement;
-        delete formattedData.neighborhood;
-        delete formattedData.confirm_password;
-        delete formattedData.cnpj;
-        delete formattedData.delivery_fee_reais;
-        delete formattedData.minimum_order_value_reais;
-        delete formattedData.categories;
-        delete formattedData.categorySaleUnits;
 
         console.log("Dados formatados para envio:", JSON.stringify(formattedData, null, 2));
 
@@ -196,71 +208,103 @@ export default function AddCustomerPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formattedData),
+          credentials: 'include', // Important to include credentials for authentication
         });
         
         console.log("Resposta da API recebida - Status:", res.status, res.statusText);
         
-        const responseText = await res.text();
-        console.log("Resposta texto:", responseText);
+        // Get full response text for better debugging
+        let responseText;
+        try {
+          responseText = await res.text();
+          console.log("Resposta texto bruto:", responseText);
+        } catch (textError) {
+          console.error("Erro ao obter texto da resposta:", textError);
+          throw new Error("Erro ao ler resposta do servidor");
+        }
         
+        // Parse response if possible
         let responseData;
         try {
-          responseData = responseText ? JSON.parse(responseText) : {};
-          console.log("Resposta JSON parseada:", responseData);
-        } catch (e) {
+          if (responseText && responseText.trim()) {
+            responseData = JSON.parse(responseText);
+            console.log("Resposta JSON parseada:", responseData);
+          } else {
+            console.log("Resposta vazia do servidor");
+            responseData = {};
+          }
+        } catch (parseError) {
           console.error("Erro ao fazer parse da resposta como JSON:", responseText);
-          console.error("Erro detalhado:", e);
-          throw new Error("Resposta inválida do servidor");
+          console.error("Erro detalhado:", parseError);
+          throw new Error("Resposta inválida do servidor: " + responseText.substring(0, 100));
         }
 
         if (!res.ok) {
-          console.error("Erro na resposta da API:", responseData);
-          throw new Error(responseData.message || 'Erro ao criar cliente');
+          const errorMsg = responseData?.message || `Erro ao criar cliente (Status ${res.status})`;
+          console.error("Erro na resposta da API:", errorMsg);
+          throw new Error(errorMsg);
         }
 
         const customer = responseData;
         console.log("Cliente criado com sucesso:", customer);
 
+        if (!customer || !customer.id) {
+          throw new Error("Resposta da API não contém ID do cliente");
+        }
+
         // Step 2: Set category access for the customer
+        console.log("Adicionando categorias ao cliente:", selectedCategories);
         for (const categoryId of selectedCategories) {
           try {
+            console.log(`Iniciando adição da categoria ${categoryId} ao cliente ${customer.id}...`);
             const categoryRes = await fetch(`/api/customers/${customer.id}/categories/${categoryId}`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
             });
             
+            const categoryStatus = categoryRes.status;
+            console.log(`Resposta para categoria ${categoryId}: Status ${categoryStatus}`);
+            
             if (!categoryRes.ok) {
-              console.warn(`Failed to add category ${categoryId} to customer ${customer.id}`);
+              console.warn(`Falha ao adicionar categoria ${categoryId} ao cliente ${customer.id}`);
             } else {
-              console.log(`Successfully added category ${categoryId} to customer ${customer.id}`);
+              console.log(`Categoria ${categoryId} adicionada com sucesso ao cliente ${customer.id}`);
 
               // Step 3: Set sale unit access for each category
               const unitIds = categorySaleUnits[categoryId] || [];
+              console.log(`Adicionando unidades de venda para categoria ${categoryId}:`, unitIds);
+              
               for (const unitId of unitIds) {
                 try {
+                  console.log(`Iniciando adição da unidade ${unitId} para categoria ${categoryId}...`);
                   const unitRes = await fetch(`/api/customers/${customer.id}/categories/${categoryId}/units/${unitId}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                   });
                   
+                  const unitStatus = unitRes.status;
+                  console.log(`Resposta para unidade ${unitId}: Status ${unitStatus}`);
+                  
                   if (!unitRes.ok) {
-                    console.warn(`Failed to add unit ${unitId} for category ${categoryId} to customer ${customer.id}`);
+                    console.warn(`Falha ao adicionar unidade ${unitId} para categoria ${categoryId}`);
                   } else {
-                    console.log(`Successfully added unit ${unitId} for category ${categoryId} to customer ${customer.id}`);
+                    console.log(`Unidade ${unitId} adicionada com sucesso para categoria ${categoryId}`);
                   }
                 } catch (unitError) {
-                  console.error(`Error adding unit ${unitId}:`, unitError);
+                  console.error(`Erro ao adicionar unidade ${unitId}:`, unitError);
                 }
               }
             }
           } catch (categoryError) {
-            console.error(`Error adding category ${categoryId}:`, categoryError);
+            console.error(`Erro ao adicionar categoria ${categoryId}:`, categoryError);
           }
         }
 
         return customer;
       } catch (error) {
-        console.error("Error in customer creation:", error);
+        console.error("Erro na criação do cliente:", error);
         throw error;
       }
     },
@@ -278,15 +322,24 @@ export default function AddCustomerPage() {
       
       console.log("Redirecionando para página de clientes...");
       
-      // Ensure we navigate to the customers page
-      try {
-        setLocation("/admin/customers");
-        console.log("Redirecionamento acionado");
-      } catch (navigationError) {
-        console.error("Erro ao navegar:", navigationError);
-        // Fallback em caso de erro na navegação
-        window.location.href = "/admin/customers";
-      }
+      // Force page navigation to ensure redirection works
+      setTimeout(() => {
+        try {
+          console.log("Executando redirecionamento para /admin/customers");
+          setLocation("/admin/customers");
+          
+          // Double-check if navigation worked and use fallback if needed
+          setTimeout(() => {
+            if (window.location.pathname !== "/admin/customers") {
+              console.log("Redirecionamento falhou, usando fallback");
+              window.location.href = "/admin/customers";
+            }
+          }, 100);
+        } catch (navigationError) {
+          console.error("Erro ao navegar:", navigationError);
+          window.location.href = "/admin/customers";
+        }
+      }, 500);
     },
     onError: (error: Error) => {
       console.error("=== ERRO NA CRIAÇÃO DO CLIENTE ===");

@@ -453,3 +453,65 @@ After implementing these fixes, the form should:
 - Correctly convert currency values between decimal (R$) and integers (cents)
 - Successfully create new customers
 - Provide clear error messages when validation fails
+# Customer Creation Error Analysis and Fix
+
+## Problem Analysis
+
+After examining the code and the error message shown in the screenshot, I've identified several issues in the customer creation process:
+
+1. **Form Validation Errors**: The UI shows "Erro no formulário" but doesn't provide specific details on what's wrong.
+
+2. **API Communication Problems**: The customer creation process involves multiple API calls:
+   - First creating a user
+   - Then creating a customer record
+   - Finally associating product categories and sale units
+
+3. **Data Conversion Issues**: Currency values need to be properly converted between frontend (decimal R$) and backend (integer centavos).
+
+4. **Navigation Issues**: After customer creation, the page should redirect to the customers list but this is not happening.
+
+## Root Causes
+
+1. **Missing User Creation**: In `add-customer.tsx`, the form collects email and password, but the API call to `/api/customers` doesn't explicitly create a user first.
+
+2. **Incorrect Data Conversion**: The currency values are being converted inconsistently, potentially causing validation errors.
+
+3. **Form Data Structure**: The submission includes unnecessary fields that may be causing validation errors on the server.
+
+4. **Error Handling**: Inadequate error logging makes it difficult to pinpoint the exact issue.
+
+## Solution Plan
+
+### 1. Fix the API Integration Flow
+
+The backend expects a specific data structure for customer creation. We need to:
+
+- Ensure all required fields are properly formatted
+- Remove unnecessary fields before submission
+- Correctly convert currency values from R$ to centavos
+
+### 2. Fix Data Conversion Issues
+
+- Ensure consistent handling of delivery fee and minimum order values
+- Properly convert from frontend decimal values to backend integer values (centavos)
+
+### 3. Improve Error Handling and Logging
+
+- Add more detailed logging to track the entire customer creation process
+- Show more specific error messages to the user
+
+### 4. Fix Navigation After Successful Creation
+
+- Ensure proper redirection to the customers list page after successful creation
+
+## Implementation Steps
+
+1. **Enhanced Error Logging**: Add detailed console logs at key points in the process
+
+2. **Fix Currency Conversion Logic**: Ensure consistent conversion between frontend R$ values and backend centavos
+
+3. **Properly Format API Request**: Strip unnecessary fields and ensure required fields are present
+
+4. **Fix Navigation Logic**: Ensure proper redirection after successful creation
+
+These changes will address the customer creation issues while maintaining the existing application architecture.
