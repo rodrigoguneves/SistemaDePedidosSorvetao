@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import { z } from "zod";
-import { zodResolver } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import { Users, TagsIcon, CheckCircle, User, Building, Phone, MapPin, KeyRound, Truck } from "lucide-react";
 import { Customer, insertCustomerSchema } from "@shared/schema";
