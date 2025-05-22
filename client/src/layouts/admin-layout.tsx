@@ -29,7 +29,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       title: "Painel",
       href: "/admin",
       icon: <LayoutDashboard size={21} />,
-      bgColor: "bg-primary",
+      bgColor: "bg-gray-200",
     },
     {
       title: "Produtos",
