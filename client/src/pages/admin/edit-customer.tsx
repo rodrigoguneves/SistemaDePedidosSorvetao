@@ -596,24 +596,44 @@ export default function EditCustomerPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Taxa de Entrega (em centavos)
+                    Taxa de Entrega (R$)
                   </label>
-                  <input
-                    type="number"
-                    {...customerForm.register("delivery_fee", { valueAsNumber: true })}
-                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
-                  />
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-3 flex items-center text-gray-500">R$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={customer?.delivery_fee ? (customer.delivery_fee / 100).toFixed(2) : "0.00"}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value);
+                        const cents = isNaN(value) ? 0 : Math.round(value * 100);
+                        customerForm.setValue("delivery_fee", cents);
+                      }}
+                      className="w-full pl-10 rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
+                      placeholder="0.00"
+                    />
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Pedido Mínimo para Entrega (em centavos)
+                    Pedido Mínimo para Entrega (R$)
                   </label>
-                  <input
-                    type="number"
-                    {...customerForm.register("minimum_order_value", { valueAsNumber: true })}
-                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
-                  />
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-3 flex items-center text-gray-500">R$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={customer?.minimum_order_value ? (customer.minimum_order_value / 100).toFixed(2) : "0.00"}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value);
+                        const cents = isNaN(value) ? 0 : Math.round(value * 100);
+                        customerForm.setValue("minimum_order_value", cents);
+                      }}
+                      className="w-full pl-10 rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
+                      placeholder="0.00"
+                    />
+                  </div>
                 </div>
 
                 <div className="col-span-2">
