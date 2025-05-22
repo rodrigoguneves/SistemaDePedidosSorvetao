@@ -179,12 +179,28 @@ export default function AddCustomerPage() {
         }
 
         if (!res.ok) {
-          const errorMsg = customer?.message || `Erro ao criar cliente (Status ${res.status})`;
+          // Get detailed error information from the response
+          let errorMsg = `Erro ao criar cliente (Status ${res.status})`;
+          
+          if (customer) {
+            // If we have a parsed response with error details
+            if (customer.message) {
+              errorMsg = customer.message;
+            }
+            
+            // Log detailed error information if available
+            if (customer.errors) {
+              console.error("Erros de validação detalhados:", customer.errors);
+              errorMsg = `${errorMsg}: ${JSON.stringify(customer)}`;
+            }
+          }
+          
           console.error("Erro na resposta da API:", errorMsg);
           throw new Error(errorMsg);
         }
 
         if (!customer || !customer.id) {
+          console.error("Resposta da API sem ID do cliente:", customer);
           throw new Error("Resposta da API não contém ID do cliente");
         }
 
@@ -266,11 +282,32 @@ export default function AddCustomerPage() {
       console.error("=== ERRO NA CRIAÇÃO DO CLIENTE ===");
       console.error("Detalhes do erro:", error);
       
+      // Check if error message contains validation errors
+      let errorDescription = error.message || "Ocorreu um erro ao criar o cliente.";
+      
+      // Try to parse error message for more detailed information
+      try {
+        if (error.message.includes('{')) {
+          const errorJson = JSON.parse(error.message.substring(error.message.indexOf('{')));
+          if (errorJson.errors && Array.isArray(errorJson.errors)) {
+            errorDescription = `Erros de validação: ${errorJson.errors.map((e: any) => `${e.path}: ${e.message}`).join(', ')}`;
+          }
+        }
+      } catch (parseError) {
+        console.log("Não foi possível analisar detalhes do erro:", parseError);
+      }
+      
       toast({
         title: "Erro ao criar cliente",
-        description: error.message || "Ocorreu um erro ao criar o cliente. Verifique os dados e tente novamente.",
+        description: errorDescription,
         variant: "destructive",
       });
+      
+      // Log form validation errors if any
+      const formErrors = customerForm.formState.errors;
+      if (Object.keys(formErrors).length > 0) {
+        console.error("Erros de validação do formulário:", formErrors);
+      }
     }
   });
 
