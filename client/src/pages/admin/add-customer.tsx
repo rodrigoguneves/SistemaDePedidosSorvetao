@@ -150,6 +150,14 @@ export default function AddCustomerPage() {
 
         // Step 1: Create the customer with simplified data
         console.log("Iniciando requisição POST para /api/customers");
+        
+        // First check authentication
+        const authCheck = await fetch('/api/user');
+        if (!authCheck.ok) {
+          throw new Error("Você não está autenticado. Por favor, faça login novamente.");
+        }
+        
+        // Now send the request
         const res = await fetch('/api/customers', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -328,12 +336,28 @@ export default function AddCustomerPage() {
   };
 
   // Handler para submit do formulário
-  const onSubmitCustomer = (data: any) => {
+  const onSubmitCustomer = async (data: any) => {
     console.log("=== INÍCIO DA VALIDAÇÃO DO FORMULÁRIO ===");
     console.log("Form data submitted:", JSON.stringify(data, null, 2));
     console.log("Categorias selecionadas:", selectedCategories);
     console.log("Unidades de venda por categoria:", categorySaleUnits);
     console.log("Form state (errors):", customerForm.formState.errors);
+    
+    // Check credentials first - make sure we're logged in
+    try {
+      const userResponse = await fetch('/api/user');
+      if (!userResponse.ok) {
+        console.error("Usuário não está autenticado");
+        toast({
+          title: "Erro de autenticação",
+          description: "Você precisa estar logado para criar um cliente. Por favor, faça login novamente.",
+          variant: "destructive",
+        });
+        return;
+      }
+    } catch (authError) {
+      console.error("Erro ao verificar autenticação:", authError);
+    }
     
     // Validate that at least one category is selected if categories are available
     if (categories.length > 0 && selectedCategories.length === 0) {
