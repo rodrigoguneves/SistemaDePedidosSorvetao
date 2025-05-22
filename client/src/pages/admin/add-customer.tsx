@@ -151,66 +151,71 @@ export default function AddCustomerPage() {
         // Step 1: Create the customer with simplified data
         console.log("Iniciando requisição POST para /api/customers");
         
-        // First check authentication
-        const authCheck = await fetch('/api/user');
-        if (!authCheck.ok) {
-          throw new Error("Você não está autenticado. Por favor, faça login novamente.");
+        // Verificando autenticação para evitar erros de autorização
+        try {
+          const authCheck = await fetch('/api/user');
+          const authData = await authCheck.json();
+          console.log("Status de autenticação:", authCheck.ok, "Usuário:", authData);
+        } catch (authError) {
+          console.log("Erro ao verificar autenticação, continuando mesmo assim:", authError);
         }
         
-        // Now send the request
-        const res = await fetch('/api/customers', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-          credentials: 'include', // Important to include credentials for authentication
-        });
-        
-        console.log("Resposta da API recebida - Status:", res.status, res.statusText);
-        
-        // For better debugging, always get the full response text
-        const responseText = await res.text();
-        console.log("Resposta texto bruto:", responseText);
-        
-        // Try to parse as JSON if possible
-        let customer;
-        if (responseText && responseText.trim()) {
-          try {
-            customer = JSON.parse(responseText);
-            console.log("Resposta JSON parseada:", customer);
-          } catch (parseError) {
-            console.error("Erro ao fazer parse da resposta como JSON:", responseText);
-            throw new Error("Resposta inválida do servidor: " + responseText.substring(0, 100));
-          }
-        } else {
-          console.log("Resposta vazia do servidor");
-          throw new Error("Servidor retornou resposta vazia");
-        }
-
-        if (!res.ok) {
-          // Get detailed error information from the response
-          let errorMsg = `Erro ao criar cliente (Status ${res.status})`;
+        // Usando XMLHttpRequest para detecção mais precisa de erros
+        return new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
           
-          if (customer) {
-            // If we have a parsed response with error details
-            if (customer.message) {
-              errorMsg = customer.message;
-            }
+          xhr.open('POST', '/api/customers', true);
+          xhr.setRequestHeader('Content-Type', 'application/json');
+          xhr.withCredentials = true;
+          
+          xhr.onload = function() {
+            console.log("XHR resposta recebida:", xhr.status, xhr.statusText);
+            console.log("Corpo da resposta:", xhr.responseText);
             
-            // Log detailed error information if available
-            if (customer.errors) {
-              console.error("Erros de validação detalhados:", customer.errors);
-              errorMsg = `${errorMsg}: ${JSON.stringify(customer)}`;
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const customer = JSON.parse(xhr.responseText);
+                console.log("Cliente criado com sucesso:", customer);
+                
+                if (!customer || !customer.id) {
+                  console.error("Resposta da API sem ID do cliente:", customer);
+                  reject(new Error("Resposta da API não contém ID do cliente"));
+                } else {
+                  resolve(customer);
+                }
+              } catch (e) {
+                console.error("Erro ao fazer parse da resposta:", e);
+                reject(new Error("Erro ao processar resposta do servidor"));
+              }
+            } else {
+              console.error("Erro na resposta:", xhr.status, xhr.responseText);
+              
+              // Tentar extrair mensagem de erro
+              let errorMsg = `Erro ${xhr.status}`;
+              try {
+                const errorData = JSON.parse(xhr.responseText);
+                if (errorData.message) {
+                  errorMsg = errorData.message;
+                }
+                if (errorData.errors) {
+                  console.error("Erros de validação detalhados:", errorData.errors);
+                  errorMsg = `${errorMsg}: ${JSON.stringify(errorData.errors)}`;
+                }
+              } catch (e) {
+                errorMsg = `${errorMsg}: ${xhr.responseText || "Sem detalhes disponíveis"}`;
+              }
+              
+              reject(new Error(errorMsg));
             }
-          }
+          };
           
-          console.error("Erro na resposta da API:", errorMsg);
-          throw new Error(errorMsg);
-        }
-
-        if (!customer || !customer.id) {
-          console.error("Resposta da API sem ID do cliente:", customer);
-          throw new Error("Resposta da API não contém ID do cliente");
-        }
+          xhr.onerror = function() {
+            console.error("Erro de rede na requisição XHR");
+            reject(new Error("Erro de conexão com o servidor"));
+          };
+          
+          xhr.send(JSON.stringify(data));
+        });
 
         console.log("Cliente criado com sucesso:", customer);
 
