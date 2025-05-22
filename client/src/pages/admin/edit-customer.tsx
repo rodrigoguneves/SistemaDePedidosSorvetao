@@ -141,7 +141,13 @@ export default function EditCustomerPage() {
     if (customerCategories && customerCategories.length > 0) {
       console.log("Loading customer categories:", customerCategories);
       const categoryIds = customerCategories.map((cat: any) => cat.id);
-      setSelectedCategories(categoryIds);
+      setSelectedCategories(prev => {
+        // Only update if there's a change to avoid re-renders
+        if (JSON.stringify(prev.sort()) !== JSON.stringify(categoryIds.sort())) {
+          return categoryIds;
+        }
+        return prev;
+      });
     }
   }, [customerCategories]);
 
@@ -158,9 +164,24 @@ export default function EditCustomerPage() {
         unitsByCat[item.product_category_id].push(item.sale_unit_id);
       });
       
-      setCategoryUnits(unitsByCat);
+      setCategoryUnits(prev => {
+        // Compare new values with existing to avoid unnecessary updates
+        if (JSON.stringify(prev) !== JSON.stringify(unitsByCat)) {
+          return unitsByCat;
+        }
+        return prev;
+      });
     }
   }, [customerSaleUnits]);
+  
+  // Force refresh of categories and sale units when customer ID changes
+  useEffect(() => {
+    if (customerId) {
+      // Manually trigger refetch
+      queryClient.invalidateQueries([`/api/customers/${customerId}/categories`]);
+      queryClient.invalidateQueries([`/api/customers/${customerId}/allowed-sale-units`]);
+    }
+  }, [customerId, queryClient]);
   
   // Debug loading state
   useEffect(() => {
@@ -174,6 +195,13 @@ export default function EditCustomerPage() {
       console.log("Customer sale units loaded:", customerSaleUnits);
     }
   }, [customer, customerCategories, customerSaleUnits]);
+
+  // Debug loading state
+  useEffect(() => {
+    if (customer) {
+      console.log("Customer data loaded:", customer);
+    }
+  }, [customer]);
 
   // Update form with customer data when loaded
   useEffect(() => {
@@ -198,31 +226,55 @@ export default function EditCustomerPage() {
         console.log("Error parsing address:", e);
       }
 
-      customerForm.reset({
-        company_name: customer.company_name,
-        contact_person: customer.contact_person || "",
-        phone: customer.phone || "",
-        address: customer.address,
-        city: customer.city || "",
-        state: customer.state || "",
-        postal_code: customer.postal_code || "",
-        street,
-        number,
-        neighborhood,
-        complement,
-        cnpj: customer.cnpj || "",
-        latitude: customer.latitude,
-        longitude: customer.longitude,
-        enable_delivery: customer.enable_delivery,
-        delivery_fee: customer.delivery_fee,
-        delivery_fee_reais: (customer.delivery_fee / 100).toFixed(2),
-        minimum_order_value: customer.minimum_order_value,
-        minimum_order_value_reais: (customer.minimum_order_value / 100).toFixed(2),
-        allowed_delivery_days: customer.allowed_delivery_days,
-        email: "",  // Email field is not editable for existing customers
-        password: "",  // Optional for update
-        user_id: customer.user_id
-      });
+      // Fetch user email if not available in customer data
+      const fetchUserEmail = async () => {
+        if (customer.user_id) {
+          try {
+            const res = await fetch(`/api/users/${customer.user_id}`);
+            if (res.ok) {
+              const userData = await res.json();
+              console.log("User data loaded:", userData);
+              return userData.email || "";
+            }
+          } catch (error) {
+            console.error("Error fetching user email:", error);
+          }
+        }
+        return "";
+      };
+
+      // Set form values
+      const setFormValues = async () => {
+        const email = await fetchUserEmail();
+        
+        customerForm.reset({
+          company_name: customer.company_name,
+          contact_person: customer.contact_person || "",
+          phone: customer.phone || "",
+          address: customer.address,
+          city: customer.city || "",
+          state: customer.state || "",
+          postal_code: customer.postal_code || "",
+          street,
+          number,
+          neighborhood,
+          complement,
+          cnpj: customer.cnpj || "",
+          latitude: customer.latitude,
+          longitude: customer.longitude,
+          enable_delivery: customer.enable_delivery,
+          delivery_fee: customer.delivery_fee,
+          delivery_fee_reais: (customer.delivery_fee / 100).toFixed(2),
+          minimum_order_value: customer.minimum_order_value,
+          minimum_order_value_reais: (customer.minimum_order_value / 100).toFixed(2),
+          allowed_delivery_days: customer.allowed_delivery_days,
+          email,  // Email field is not editable for existing customers
+          password: "",  // Optional for update
+          user_id: customer.user_id
+        });
+      };
+
+      setFormValues();
     }
   }, [customer, customerForm]);
 
@@ -578,7 +630,6 @@ export default function EditCustomerPage() {
                       {...customerForm.register("cnpj")}
                       className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
                       placeholder="00.000.000/0001-00"
-                      defaultValue={customer?.cnpj || ""}
                     />
                     {customerForm.formState.errors.cnpj && (
                       <p className="mt-1 text-sm text-red-600">
@@ -612,6 +663,7 @@ export default function EditCustomerPage() {
                       disabled={true}
                       className="w-full rounded-lg border-gray-300 shadow-sm bg-gray-100 focus:border-[#E73664] focus:ring-[#E73664]"
                       placeholder="contato@empresa.com"
+                      value={customer?.email || ""}
                     />
                   </div>
 
