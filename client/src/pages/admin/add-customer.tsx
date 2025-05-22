@@ -160,115 +160,33 @@ export default function AddCustomerPage() {
           console.log("Erro ao verificar autenticação, continuando mesmo assim:", authError);
         }
         
-        // Usando XMLHttpRequest para detecção mais precisa de erros
-        return new Promise((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          
-          xhr.open('POST', '/api/customers', true);
-          xhr.setRequestHeader('Content-Type', 'application/json');
-          xhr.withCredentials = true;
-          
-          xhr.onload = function() {
-            console.log("XHR resposta recebida:", xhr.status, xhr.statusText);
-            console.log("Corpo da resposta:", xhr.responseText);
-            
-            if (xhr.status >= 200 && xhr.status < 300) {
-              try {
-                const customer = JSON.parse(xhr.responseText);
-                console.log("Cliente criado com sucesso:", customer);
-                
-                if (!customer || !customer.id) {
-                  console.error("Resposta da API sem ID do cliente:", customer);
-                  reject(new Error("Resposta da API não contém ID do cliente"));
-                } else {
-                  resolve(customer);
-                }
-              } catch (e) {
-                console.error("Erro ao fazer parse da resposta:", e);
-                reject(new Error("Erro ao processar resposta do servidor"));
-              }
-            } else {
-              console.error("Erro na resposta:", xhr.status, xhr.responseText);
-              
-              // Tentar extrair mensagem de erro
-              let errorMsg = `Erro ${xhr.status}`;
-              try {
-                const errorData = JSON.parse(xhr.responseText);
-                if (errorData.message) {
-                  errorMsg = errorData.message;
-                }
-                if (errorData.errors) {
-                  console.error("Erros de validação detalhados:", errorData.errors);
-                  errorMsg = `${errorMsg}: ${JSON.stringify(errorData.errors)}`;
-                }
-              } catch (e) {
-                errorMsg = `${errorMsg}: ${xhr.responseText || "Sem detalhes disponíveis"}`;
-              }
-              
-              reject(new Error(errorMsg));
-            }
-          };
-          
-          xhr.onerror = function() {
-            console.error("Erro de rede na requisição XHR");
-            reject(new Error("Erro de conexão com o servidor"));
-          };
-          
-          xhr.send(JSON.stringify(data));
+        // Fazendo a solicitação usando fetch
+        const response = await fetch('/api/customers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+          credentials: 'include'
         });
 
-        console.log("Cliente criado com sucesso:", customer);
-
-        // Step 2: Set category access for the customer
-        console.log("Adicionando categorias ao cliente:", selectedCategories);
-        const categoryPromises = selectedCategories.map(async (categoryId) => {
-          try {
-            console.log(`Adicionando categoria ${categoryId} ao cliente ${customer.id}...`);
-            const categoryRes = await fetch(`/api/customers/${customer.id}/categories/${categoryId}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-            });
-            
-            const categorySuccess = categoryRes.ok;
-            console.log(`Categoria ${categoryId}: ${categorySuccess ? 'Sucesso' : 'Falha'}`);
-            
-            if (categorySuccess) {
-              // Step 3: Set sale unit access for each category
-              const unitIds = categorySaleUnits[categoryId] || [];
-              console.log(`Adicionando unidades de venda para categoria ${categoryId}:`, unitIds);
-              
-              const unitPromises = unitIds.map(async (unitId) => {
-                try {
-                  const unitRes = await fetch(`/api/customers/${customer.id}/categories/${categoryId}/units/${unitId}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                  });
-                  
-                  const unitSuccess = unitRes.ok;
-                  console.log(`Unidade ${unitId} para categoria ${categoryId}: ${unitSuccess ? 'Sucesso' : 'Falha'}`);
-                  return unitSuccess;
-                } catch (unitError) {
-                  console.error(`Erro ao adicionar unidade ${unitId}:`, unitError);
-                  return false;
-                }
-              });
-              
-              await Promise.all(unitPromises);
-            }
-            
-            return categorySuccess;
-          } catch (categoryError) {
-            console.error(`Erro ao adicionar categoria ${categoryId}:`, categoryError);
-            return false;
-          }
-        });
+        console.log("Resposta do servidor:", response.status, response.statusText);
         
-        await Promise.all(categoryPromises);
-        console.log("Processo de adição de categorias e unidades concluído");
-
-        return customer;
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Erro na resposta:", errorText);
+          
+          try {
+            const errorData = JSON.parse(errorText);
+            if (errorData.message) {
+              throw new Error(errorData.message);
+            }
+          } catch (e) {
+            // Se não conseguir analisar como JSON, usa o texto bruto
+            throw new Error(`Erro ${response.status}: ${errorText}`);
+          }
+        }
+        
+        const customerData = await response.json();
+        return customerData;
       } catch (error) {
         console.error("Erro na criação do cliente:", error);
         throw error;
@@ -975,16 +893,6 @@ export default function AddCustomerPage() {
                 type="submit" 
                 className="bg-[#E73664] hover:bg-[#d82c59] rounded-full px-5"
                 disabled={createCustomerMutation.isPending}
-                onClick={() => {
-                  if (Object.keys(customerForm.formState.errors).length > 0) {
-                    console.log("Form has errors:", customerForm.formState.errors);
-                    toast({
-                      title: "Erro no formulário",
-                      description: "Por favor, corrija os erros no formulário antes de continuar.",
-                      variant: "destructive",
-                    });
-                  }
-                }}
               >
                 {createCustomerMutation.isPending ? (
                   <>
