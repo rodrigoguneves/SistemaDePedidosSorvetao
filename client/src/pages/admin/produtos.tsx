@@ -797,7 +797,7 @@ export default function ProdutosPage() {
         {/* Modal de adicionar/editar produto */}
         {showAddProductModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="bg-white rounded-lg shadow-lg max-w-lg w-full">
+            <div className="bg-white !rounded-[28px] shadow-lg max-w-lg w-full">
               <div className="flex items-center border-b p-4">
                 <div className="bg-pink-100 p-3 rounded-full mr-3">
                   <Plus className="h-5 w-5 text-pink-500" />
@@ -970,7 +970,7 @@ export default function ProdutosPage() {
         {/* Modal de adicionar/editar categoria */}
         {showAddCategoryModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="bg-white rounded-lg shadow-lg max-w-lg w-full">
+            <div className="bg-white !rounded-[28px] shadow-lg max-w-lg w-full">
               <div className="flex items-center border-b p-4">
                 <div className="bg-pink-100 p-3 rounded-full mr-3">
                   <Plus className="h-5 w-5 text-pink-500" />
