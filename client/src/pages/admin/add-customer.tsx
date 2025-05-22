@@ -333,6 +333,7 @@ export default function AddCustomerPage() {
     console.log("Form data submitted:", JSON.stringify(data, null, 2));
     console.log("Categorias selecionadas:", selectedCategories);
     console.log("Unidades de venda por categoria:", categorySaleUnits);
+    console.log("Form state (errors):", customerForm.formState.errors);
     
     // Validate that at least one category is selected if categories are available
     if (categories.length > 0 && selectedCategories.length === 0) {
@@ -432,17 +433,20 @@ export default function AddCustomerPage() {
         
         // Create a simplified object with only the fields the API expects
         const submissionData = {
-          company_name: data.company_name,
-          contact_person: data.contact_person || "",
-          phone: data.phone || "",
-          email: data.email,
+          company_name: data.company_name.trim(),
+          contact_person: (data.contact_person || "").trim(),
+          phone: (data.phone || "").trim(),
+          email: data.email.trim(),
           password: data.password,
-          address: address,
-          city: data.city || "",
-          state: data.state || "",
-          postal_code: data.postal_code || "",
-          latitude: data.latitude === "" ? null : data.latitude,
-          longitude: data.longitude === "" ? null : data.longitude,
+          address: address.trim(),
+          city: (data.city || "").trim(),
+          state: (data.state || "").trim(),
+          postal_code: (data.postal_code || "").trim(),
+          // Make sure latitude and longitude are numeric or null
+          latitude: data.latitude === "" || data.latitude === null ? null : 
+                    typeof data.latitude === 'string' ? parseFloat(data.latitude) : data.latitude,
+          longitude: data.longitude === "" || data.longitude === null ? null : 
+                     typeof data.longitude === 'string' ? parseFloat(data.longitude) : data.longitude,
           enable_delivery: Boolean(data.enable_delivery),
           // Convert to cents (integer) for storage - ensure positive values
           delivery_fee: Math.max(0, Math.round(delivery_fee_reais * 100)),

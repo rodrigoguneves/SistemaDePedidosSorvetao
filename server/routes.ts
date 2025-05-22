@@ -50,6 +50,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/customers", async (req, res, next) => {
     console.log("=== RECEBIDO POST /api/customers ===");
     console.log("Corpo da requisição:", JSON.stringify(req.body, null, 2));
+    console.log("Tipo de dados recebidos:", Object.keys(req.body).map(key => `${key}: ${typeof req.body[key]}`));
+    
+    try {
+      // Check what fields are required by the schema
+      console.log("Verificando schema do cliente...");
+      const requiredFields = Object.keys(customers.shape).filter(key => {
+        // @ts-ignore
+        return customers.shape[key].notNull === true;
+      });
+      console.log("Campos obrigatórios do cliente:", requiredFields);
+      
+      // Check which required fields are missing
+      const missingFields = requiredFields.filter(field => !req.body[field] && req.body[field] !== 0 && req.body[field] !== false);
+      console.log("Campos obrigatórios faltando:", missingFields);
+    } catch (err) {
+      console.log("Erro ao verificar campos obrigatórios:", err);
+    }
     
     try {
       if (!req.isAuthenticated()) {
