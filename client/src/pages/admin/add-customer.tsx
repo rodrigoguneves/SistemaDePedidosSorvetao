@@ -146,161 +146,98 @@ export default function AddCustomerPage() {
     mutationFn: async (data: any) => {
       try {
         console.log("=== INÍCIO DO PROCESSO DE CRIAÇÃO DE CLIENTE ===");
-        console.log("Dados iniciais do formulário:", JSON.stringify(data, null, 2));
+        console.log("Dados para envio:", JSON.stringify(data, null, 2));
 
-        // Ensure values are numbers before conversion - fix handling of decimal separators
-        let deliveryFeeReais = 0;
-        if (typeof data.delivery_fee_reais === 'number') {
-          deliveryFeeReais = data.delivery_fee_reais;
-        } else if (typeof data.delivery_fee_reais === 'string') {
-          // Handle both comma and period as decimal separators
-          deliveryFeeReais = parseFloat(data.delivery_fee_reais.replace(',', '.') || '0');
-        }
-          
-        let minOrderReais = 0;
-        if (typeof data.minimum_order_value_reais === 'number') {
-          minOrderReais = data.minimum_order_value_reais;
-        } else if (typeof data.minimum_order_value_reais === 'string') {
-          // Handle both comma and period as decimal separators
-          minOrderReais = parseFloat(data.minimum_order_value_reais.replace(',', '.') || '0');
-        }
-        
-        // Ensure we have valid numbers, not NaN
-        if (isNaN(deliveryFeeReais)) deliveryFeeReais = 0;
-        if (isNaN(minOrderReais)) minOrderReais = 0;
-        
-        console.log("Valores de moeda convertidos:", { 
-          deliveryFeeReais, 
-          minOrderReais,
-          deliveryFeeCents: Math.round(deliveryFeeReais * 100),
-          minOrderCents: Math.round(minOrderReais * 100)
-        });
-        
-        // Combina os campos de endereço antes de enviar
-        const address = `${data.street}, ${data.number}${data.complement ? `, ${data.complement}` : ''}, ${data.neighborhood}`;
-        console.log("Endereço formatado:", address);
-        
-        // Create a clean object with only the fields the API expects
-        const formattedData = {
-          user_id: null, // This will be set by the backend
-          company_name: data.company_name,
-          contact_person: data.contact_person || "",
-          phone: data.phone || "",
-          email: data.email, // Needed for user creation
-          password: data.password, // Needed for user creation
-          address: address,
-          city: data.city || "",
-          state: data.state || "",
-          postal_code: data.postal_code || "",
-          latitude: data.latitude,
-          longitude: data.longitude,
-          enable_delivery: data.enable_delivery || false,
-          delivery_fee: Math.round(deliveryFeeReais * 100),
-          minimum_order_value: Math.round(minOrderReais * 100),
-          allowed_delivery_days: data.allowed_delivery_days || [false, true, true, true, true, true, false],
-        };
-
-        console.log("Dados formatados para envio:", JSON.stringify(formattedData, null, 2));
-
-        // Step 1: Create the customer
+        // Step 1: Create the customer with simplified data
         console.log("Iniciando requisição POST para /api/customers");
         const res = await fetch('/api/customers', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formattedData),
+          body: JSON.stringify(data),
           credentials: 'include', // Important to include credentials for authentication
         });
         
         console.log("Resposta da API recebida - Status:", res.status, res.statusText);
         
-        // Get full response text for better debugging
-        let responseText;
-        try {
-          responseText = await res.text();
-          console.log("Resposta texto bruto:", responseText);
-        } catch (textError) {
-          console.error("Erro ao obter texto da resposta:", textError);
-          throw new Error("Erro ao ler resposta do servidor");
-        }
+        // For better debugging, always get the full response text
+        const responseText = await res.text();
+        console.log("Resposta texto bruto:", responseText);
         
-        // Parse response if possible
-        let responseData;
-        try {
-          if (responseText && responseText.trim()) {
-            responseData = JSON.parse(responseText);
-            console.log("Resposta JSON parseada:", responseData);
-          } else {
-            console.log("Resposta vazia do servidor");
-            responseData = {};
+        // Try to parse as JSON if possible
+        let customer;
+        if (responseText && responseText.trim()) {
+          try {
+            customer = JSON.parse(responseText);
+            console.log("Resposta JSON parseada:", customer);
+          } catch (parseError) {
+            console.error("Erro ao fazer parse da resposta como JSON:", responseText);
+            throw new Error("Resposta inválida do servidor: " + responseText.substring(0, 100));
           }
-        } catch (parseError) {
-          console.error("Erro ao fazer parse da resposta como JSON:", responseText);
-          console.error("Erro detalhado:", parseError);
-          throw new Error("Resposta inválida do servidor: " + responseText.substring(0, 100));
+        } else {
+          console.log("Resposta vazia do servidor");
+          throw new Error("Servidor retornou resposta vazia");
         }
 
         if (!res.ok) {
-          const errorMsg = responseData?.message || `Erro ao criar cliente (Status ${res.status})`;
+          const errorMsg = customer?.message || `Erro ao criar cliente (Status ${res.status})`;
           console.error("Erro na resposta da API:", errorMsg);
           throw new Error(errorMsg);
         }
-
-        const customer = responseData;
-        console.log("Cliente criado com sucesso:", customer);
 
         if (!customer || !customer.id) {
           throw new Error("Resposta da API não contém ID do cliente");
         }
 
+        console.log("Cliente criado com sucesso:", customer);
+
         // Step 2: Set category access for the customer
         console.log("Adicionando categorias ao cliente:", selectedCategories);
-        for (const categoryId of selectedCategories) {
+        const categoryPromises = selectedCategories.map(async (categoryId) => {
           try {
-            console.log(`Iniciando adição da categoria ${categoryId} ao cliente ${customer.id}...`);
+            console.log(`Adicionando categoria ${categoryId} ao cliente ${customer.id}...`);
             const categoryRes = await fetch(`/api/customers/${customer.id}/categories/${categoryId}`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               credentials: 'include',
             });
             
-            const categoryStatus = categoryRes.status;
-            console.log(`Resposta para categoria ${categoryId}: Status ${categoryStatus}`);
+            const categorySuccess = categoryRes.ok;
+            console.log(`Categoria ${categoryId}: ${categorySuccess ? 'Sucesso' : 'Falha'}`);
             
-            if (!categoryRes.ok) {
-              console.warn(`Falha ao adicionar categoria ${categoryId} ao cliente ${customer.id}`);
-            } else {
-              console.log(`Categoria ${categoryId} adicionada com sucesso ao cliente ${customer.id}`);
-
+            if (categorySuccess) {
               // Step 3: Set sale unit access for each category
               const unitIds = categorySaleUnits[categoryId] || [];
               console.log(`Adicionando unidades de venda para categoria ${categoryId}:`, unitIds);
               
-              for (const unitId of unitIds) {
+              const unitPromises = unitIds.map(async (unitId) => {
                 try {
-                  console.log(`Iniciando adição da unidade ${unitId} para categoria ${categoryId}...`);
                   const unitRes = await fetch(`/api/customers/${customer.id}/categories/${categoryId}/units/${unitId}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
                   });
                   
-                  const unitStatus = unitRes.status;
-                  console.log(`Resposta para unidade ${unitId}: Status ${unitStatus}`);
-                  
-                  if (!unitRes.ok) {
-                    console.warn(`Falha ao adicionar unidade ${unitId} para categoria ${categoryId}`);
-                  } else {
-                    console.log(`Unidade ${unitId} adicionada com sucesso para categoria ${categoryId}`);
-                  }
+                  const unitSuccess = unitRes.ok;
+                  console.log(`Unidade ${unitId} para categoria ${categoryId}: ${unitSuccess ? 'Sucesso' : 'Falha'}`);
+                  return unitSuccess;
                 } catch (unitError) {
                   console.error(`Erro ao adicionar unidade ${unitId}:`, unitError);
+                  return false;
                 }
-              }
+              });
+              
+              await Promise.all(unitPromises);
             }
+            
+            return categorySuccess;
           } catch (categoryError) {
             console.error(`Erro ao adicionar categoria ${categoryId}:`, categoryError);
+            return false;
           }
-        }
+        });
+        
+        await Promise.all(categoryPromises);
+        console.log("Processo de adição de categorias e unidades concluído");
 
         return customer;
       } catch (error) {
@@ -311,7 +248,7 @@ export default function AddCustomerPage() {
     onSuccess: (data) => {
       console.log("=== CLIENTE CRIADO COM SUCESSO ===", data);
       
-      // Primeiro, invalidamos as queries para garantir dados atualizados
+      // Invalidamos as queries para garantir dados atualizados
       queryClient.invalidateQueries({ queryKey: ['/api/customers'] });
       
       toast({
@@ -322,30 +259,12 @@ export default function AddCustomerPage() {
       
       console.log("Redirecionando para página de clientes...");
       
-      // Force page navigation to ensure redirection works
-      setTimeout(() => {
-        try {
-          console.log("Executando redirecionamento para /admin/customers");
-          setLocation("/admin/customers");
-          
-          // Double-check if navigation worked and use fallback if needed
-          setTimeout(() => {
-            if (window.location.pathname !== "/admin/customers") {
-              console.log("Redirecionamento falhou, usando fallback");
-              window.location.href = "/admin/customers";
-            }
-          }, 100);
-        } catch (navigationError) {
-          console.error("Erro ao navegar:", navigationError);
-          window.location.href = "/admin/customers";
-        }
-      }, 500);
+      // Redirect with a direct approach first
+      window.location.href = "/admin/customers";
     },
     onError: (error: Error) => {
       console.error("=== ERRO NA CRIAÇÃO DO CLIENTE ===");
       console.error("Detalhes do erro:", error);
-      console.error("Mensagem:", error.message);
-      console.error("Stack trace:", error.stack);
       
       toast({
         title: "Erro ao criar cliente",
@@ -422,7 +341,9 @@ export default function AddCustomerPage() {
     
     // Handle various input formats and convert to numbers
     if (typeof data.delivery_fee_reais === 'string') {
-      delivery_fee_reais = parseFloat(data.delivery_fee_reais.replace(',', '.') || '0');
+      // Normalize string by replacing comma with dot
+      const normalized = data.delivery_fee_reais.replace(',', '.').trim();
+      delivery_fee_reais = normalized === '' ? 0 : parseFloat(normalized);
       console.log("Convertendo delivery_fee_reais de string para número:", data.delivery_fee_reais, "→", delivery_fee_reais);
     } else if (typeof data.delivery_fee_reais === 'number') {
       delivery_fee_reais = data.delivery_fee_reais;
@@ -430,21 +351,24 @@ export default function AddCustomerPage() {
     }
     
     if (typeof data.minimum_order_value_reais === 'string') {
-      minimum_order_value_reais = parseFloat(data.minimum_order_value_reais.replace(',', '.') || '0');
+      // Normalize string by replacing comma with dot
+      const normalized = data.minimum_order_value_reais.replace(',', '.').trim();
+      minimum_order_value_reais = normalized === '' ? 0 : parseFloat(normalized);
       console.log("Convertendo minimum_order_value_reais de string para número:", data.minimum_order_value_reais, "→", minimum_order_value_reais);
     } else if (typeof data.minimum_order_value_reais === 'number') {
       minimum_order_value_reais = data.minimum_order_value_reais;
       console.log("minimum_order_value_reais já é um número:", minimum_order_value_reais);
     }
     
-    if (isNaN(delivery_fee_reais) || isNaN(minimum_order_value_reais)) {
-      console.log("Erro: Valores de entrega inválidos", { delivery_fee_reais, minimum_order_value_reais });
-      toast({
-        title: "Erro nos valores de entrega",
-        description: "Os valores de taxa de entrega e pedido mínimo devem ser números válidos.",
-        variant: "destructive",
-      });
-      return;
+    // Force to 0 if NaN
+    if (isNaN(delivery_fee_reais)) {
+      console.log("delivery_fee_reais é NaN, definindo como 0");
+      delivery_fee_reais = 0;
+    }
+    
+    if (isNaN(minimum_order_value_reais)) {
+      console.log("minimum_order_value_reais é NaN, definindo como 0");
+      minimum_order_value_reais = 0;
     }
     
     if (validatePasswords()) {
@@ -462,26 +386,30 @@ export default function AddCustomerPage() {
           return;
         }
         
-        // Create a copy of data with corrected number formats
+        // Combine address fields
+        const address = `${data.street}, ${data.number}${data.complement ? `, ${data.complement}` : ''}, ${data.neighborhood}`;
+        
+        // Create a simplified object with only the fields the API expects
         const submissionData = {
-          ...data,
-          // Use corrected number values
-          delivery_fee_reais: delivery_fee_reais,
-          minimum_order_value_reais: minimum_order_value_reais,
-          categories: selectedCategories,
-          categorySaleUnits: categorySaleUnits,
-          // Set default values for fields that might be undefined
+          company_name: data.company_name,
           contact_person: data.contact_person || "",
           phone: data.phone || "",
-          postal_code: data.postal_code || "",
+          email: data.email,
+          password: data.password,
+          address: address,
           city: data.city || "",
           state: data.state || "",
-          delivery_fee: data.delivery_fee || 0,
-          minimum_order_value: data.minimum_order_value || 0,
-          enable_delivery: data.enable_delivery || false
+          postal_code: data.postal_code || "",
+          latitude: data.latitude,
+          longitude: data.longitude,
+          enable_delivery: Boolean(data.enable_delivery),
+          // Convert to cents (integer) for storage
+          delivery_fee: Math.round(delivery_fee_reais * 100),
+          minimum_order_value: Math.round(minimum_order_value_reais * 100),
+          allowed_delivery_days: data.allowed_delivery_days || [false, true, true, true, true, true, false],
         };
         
-        console.log("Dados preparados para envio:", JSON.stringify(submissionData, null, 2));
+        console.log("Dados simplificados para envio:", JSON.stringify(submissionData, null, 2));
         console.log("Enviando requisição para criação de cliente...");
         createCustomerMutation.mutate(submissionData);
       } catch (error) {

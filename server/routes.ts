@@ -68,6 +68,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // First, create user account if email/password provided
         const { email, password, ...customerData } = req.body;
         
+        if (!email || !password) {
+          console.log("Email ou senha não fornecidos");
+          return res.status(400).json({ 
+            message: "Email e senha são obrigatórios para criar um cliente" 
+          });
+        }
+        
         console.log("Verificando se email já existe:", email);
         const existingUser = await storage.getUserByEmail(email);
         if (existingUser) {
@@ -79,14 +86,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         console.log("Criando novo usuário com email:", email);
         // Create user first
-        const newUser = await storage.createUser({
-          email,
-          password,
-          name: customerData.company_name || "Cliente",
-          role: "customer"
-        });
-        
-        console.log("Usuário criado com sucesso:", newUser.id);
+        let newUser;
+        try {
+          newUser = await storage.createUser({
+            email,
+            password,
+            name: customerData.company_name || "Cliente",
+            role: "customer"
+          });
+          console.log("Usuário criado com sucesso:", newUser.id);
+        } catch (userError) {
+          console.error("Erro ao criar usuário:", userError);
+          return res.status(400).json({ 
+            message: "Erro ao criar usuário: " + (userError.message || "Erro desconhecido") 
+          });
+        }
         
         // Now create customer with user_id
         console.log("Validando dados do cliente com schema...");
@@ -97,6 +111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
         
         try {
+          // Validate data before inserting
           const validatedData = insertCustomerSchema.parse(customerWithUserId);
           console.log("Dados validados com sucesso:", JSON.stringify(validatedData, null, 2));
           
@@ -117,7 +132,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.error("Erro ao remover usuário após falha:", deleteError);
           }
           
-          throw customerError;
+          if (customerError instanceof z.ZodError) {
+            const errorDetails = customerError.errors.map(err => ({
+              path: err.path.join('.'),
+              message: err.message
+            }));
+            
+            return res.status(400).json({ 
+              message: "Erro de validação nos dados do cliente", 
+              errors: errorDetails 
+            });
+          }
+          
+          return res.status(400).json({ 
+            message: "Erro ao criar cliente: " + (customerError.message || "Erro desconhecido") 
+          });
         }
       } catch (validationError) {
         console.error("Erro de validação:", validationError);
@@ -135,11 +164,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
-        throw validationError;
+        return res.status(400).json({ 
+          message: "Erro de validação: " + (validationError.message || "Erro desconhecido") 
+        });
       }
     } catch (error) {
       console.error("Erro não tratado:", error);
-      next(error);
+      return res.status(500).json({ 
+        message: "Erro interno do servidor: " + (error.message || "Erro desconhecido") 
+      });
     }
   });
 
