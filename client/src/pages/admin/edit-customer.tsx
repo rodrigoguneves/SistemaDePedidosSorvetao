@@ -138,7 +138,8 @@ export default function EditCustomerPage() {
 
   // Initialize selected categories and sale units when data is loaded
   useEffect(() => {
-    if (customerCategories.length > 0) {
+    if (customerCategories && customerCategories.length > 0) {
+      console.log("Loading customer categories:", customerCategories);
       const categoryIds = customerCategories.map((cat: any) => cat.id);
       setSelectedCategories(categoryIds);
     }
@@ -146,7 +147,8 @@ export default function EditCustomerPage() {
 
   // Initialize category sale units when data is loaded
   useEffect(() => {
-    if (customerSaleUnits.length > 0) {
+    if (customerSaleUnits && customerSaleUnits.length > 0) {
+      console.log("Loading customer sale units:", customerSaleUnits);
       const unitsByCat: Record<number, number[]> = {};
       
       customerSaleUnits.forEach((item: any) => {
@@ -159,6 +161,19 @@ export default function EditCustomerPage() {
       setCategoryUnits(unitsByCat);
     }
   }, [customerSaleUnits]);
+  
+  // Debug loading state
+  useEffect(() => {
+    if (customer) {
+      console.log("Customer data loaded:", customer);
+    }
+    if (customerCategories && customerCategories.length > 0) {
+      console.log("Customer categories loaded:", customerCategories);
+    }
+    if (customerSaleUnits && customerSaleUnits.length > 0) {
+      console.log("Customer sale units loaded:", customerSaleUnits);
+    }
+  }, [customer, customerCategories, customerSaleUnits]);
 
   // Update form with customer data when loaded
   useEffect(() => {
@@ -195,7 +210,7 @@ export default function EditCustomerPage() {
         number,
         neighborhood,
         complement,
-        cnpj: "",  // Not stored in current model
+        cnpj: customer.cnpj || "",
         latitude: customer.latitude,
         longitude: customer.longitude,
         enable_delivery: customer.enable_delivery,
@@ -390,6 +405,7 @@ export default function EditCustomerPage() {
         city: (data.city || "").trim(),
         state: (data.state || "").trim(),
         postal_code: (data.postal_code || "").trim(),
+        cnpj: (data.cnpj || "").trim(),
         // Make sure latitude and longitude are numeric or null
         latitude: data.latitude === "" || data.latitude === null ? null : 
                   typeof data.latitude === 'string' ? parseFloat(data.latitude) : data.latitude,
@@ -403,6 +419,8 @@ export default function EditCustomerPage() {
         // Only include password if it's not empty
         password: data.password ? data.password : undefined,
       };
+      
+      console.log("Submission data:", submissionData);
       
       // First update the customer basic info
       await updateCustomerMutation.mutateAsync(submissionData);
@@ -560,6 +578,7 @@ export default function EditCustomerPage() {
                       {...customerForm.register("cnpj")}
                       className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
                       placeholder="00.000.000/0001-00"
+                      defaultValue={customer?.cnpj || ""}
                     />
                     {customerForm.formState.errors.cnpj && (
                       <p className="mt-1 text-sm text-red-600">
