@@ -413,188 +413,193 @@ export default function AddCustomerPage() {
       minimum_order_value_reais = 0;
     }
 
-    if (validatePasswords()) {
-      console.log("Senhas validadas com sucesso");
-
-      try {
-        // Verificando campos de endereço obrigatórios
-        if (!data.street || !data.number || !data.neighborhood) {
-          console.log("Campos de endereço obrigatórios faltando");
-          toast({
-            title: "Campos de endereço obrigatórios",
-            description: "Rua, número e bairro são campos obrigatórios.",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        // Combine address fields
-        const address = `${data.street}, ${data.number}${data.complement ? `, ${data.complement}` : ''}, ${data.neighborhood}`;
-
-        // Create a simplified object with only the fields the API expects
-        const submissionData = {
-          company_name: data.company_name.trim(),
-          contact_person: (data.contact_person || "").trim(),
-          phone: (data.phone || "").trim(),
-          cnpj: (data.cnpj || "").trim(), // Explicitly include CNPJ field
-          email: data.email.trim(),
-          password: data.password,
-          address: address.trim(),
-          city: (data.city || "").trim(),
-          state: (data.state || "").trim(),
-          postal_code: (data.postal_code || "").trim(),
-          // Make sure latitude and longitude are numeric or null
-          latitude: data.latitude === "" || data.latitude === null ? null : 
-                    typeof data.latitude === 'string' ? parseFloat(data.latitude) : data.latitude,
-          longitude: data.longitude === "" || data.longitude === null ? null : 
-                     typeof data.longitude === 'string' ? parseFloat(data.longitude) : data.longitude,
-          enable_delivery: Boolean(data.enable_delivery),
-          // Convert to cents (integer) for storage - ensure positive values
-          delivery_fee: Math.max(0, Math.round(delivery_fee_reais * 100)),
-          minimum_order_value: Math.max(0, Math.round(minimum_order_value_reais * 100)),
-          allowed_delivery_days: data.allowed_delivery_days || [false, true, true, true, true, true, false],
-        };
-
-        console.log("Dados simplificados para envio:", JSON.stringify(submissionData, null, 2));
-        console.log("Enviando requisição para criação de cliente...");
-
-        // Store the selected categories and sale units to use after customer creation
-        const categoriesToAssociate = [...selectedCategories];
-        const unitsToAssociate = {...categorySaleUnits};
-
-        // Explicitly log CNPJ to verify it's being included
-        console.log("CNPJ to be saved:", submissionData.cnpj);
-        console.log("Categorias selecionadas:", categoriesToAssociate);
-        console.log("Unidades de venda selecionadas:", unitsToAssociate);
-
-        // Update mutation to handle category and unit associations after customer creation
-        const createAndAssociate = async () => {
-          try {
-            // First create the customer - ensure CNPJ is explicitly included
-            const payload = {
-              ...submissionData,
-              cnpj: submissionData.cnpj || null,  // Explicitly include CNPJ, even if empty
-            };
-
-            console.log("Full customer creation payload:", payload);
-
-            const response = await fetch('/api/customers', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload),
-              credentials: 'include'
-            });
-
-            if (!response.ok) {
-              const errorText = await response.text();
-              console.error("Erro na resposta:", errorText);
-              throw new Error(errorText);
-            }
-
-            // Get the created customer data
-            const customerData = await response.json();
-            const customerId = customerData.id;
-
-            console.log("Cliente criado com sucesso:", customerData);
-            console.log("Associando categorias e unidades de venda...");
-
-            // Associate categories and sale units sequentially to avoid race conditions
-            for (const categoryId of categoriesToAssociate) {
-              console.log(`Associando categoria ${categoryId} ao cliente ${customerId}...`);
-              try {
-                // First associate the category
-                const categoryResponse = await fetch(`/api/customers/${customerId}/categories/${categoryId}`, {
-                  method: 'POST',
-                  credentials: 'include'
-                });
-
-                if (!categoryResponse.ok) {
-                  console.error(`Erro ao associar categoria ${categoryId}:`, await categoryResponse.text());
-                  continue; // Continue with other categories even if one fails
-                }
-
-                console.log(`Categoria ${categoryId} associada com sucesso ao cliente ${customerId}`);
-
-                // Get the selected sale units for this category
-                const units = unitsToAssociate[categoryId] || [];
-                console.log(`Unidades a associar para categoria ${categoryId}:`, units);
-
-                if (units.length === 0) {
-                  console.warn(`Nenhuma unidade selecionada para categoria ${categoryId}, cliente ${customerId}`);
-                }
-
-                // Associate each sale unit sequentially to ensure reliable operation
-                for (const unitId of units) {
-                  console.log(`Associando unidade ${unitId} à categoria ${categoryId} do cliente ${customerId}...`);
-
-                  try {
-                    const unitResponse = await fetch(`/api/customers/${customerId}/categories/${categoryId}/sale-units/${unitId}`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      credentials: 'include'
-                    });
-
-                    if (!unitResponse.ok) {
-                      const errorText = await unitResponse.text();
-                      console.error(`Erro ao associar unidade ${unitId} à categoria ${categoryId}:`, errorText);
-                    } else {
-                      console.log(`Unidade ${unitId} associada com sucesso à categoria ${categoryId} do cliente ${customerId}`);
-                    }
-                  } catch (unitError) {
-                    console.error(`Erro ao associar unidade ${unitId} à categoria ${categoryId}:`, unitError);
-                  }
-
-                  // Add a small delay between requests to avoid overwhelming the server
-                  await new Promise(resolve => setTimeout(resolve, 50));
-                }
-              } catch (categoryError) {
-                console.error(`Erro ao processar categoria ${categoryId}:`, categoryError);
-              }
-            }
-
-            console.log("Cliente e associações criados com sucesso!");
-
-            // Invalidate queries to refresh data
-            queryClient.invalidateQueries({ queryKey: ['/api/customers'] });
-            queryClient.invalidateQueries({ queryKey: [`/api/customers/${customerId}/categories`] });
-            queryClient.invalidateQueries({ queryKey: [`/api/customers/${customerId}/allowed-sale-units`] });
-
-            toast({
-              title: "Cliente criado com sucesso",
-              description: "O novo cliente e suas associações de produtos foram adicionados.",
-              variant: "default",
-            });
-
-            // Redirect to customers page
-            window.location.href = "/admin/customers";
-
-            return customerData;
-          } catch (error) {
-            console.error("Erro no processo de criação e associação:", error);
-            toast({
-              title: "Erro ao criar cliente",
-              description: error.message || "Ocorreu um erro ao criar o cliente e suas associações.",
-              variant: "destructive",
-            });
-            throw error;
-          }
-        };
-
-        // Execute the creation and association process
-        createAndAssociate();
-      } catch (error) {
-        console.error("Erro ao preparar submissão do formulário:", error);
-        toast({
-          title: "Erro ao processar formulário",
-          description: "Ocorreu um erro ao processar os dados do formulário.",
-          variant: "destructive",
-        });
-      }
-    } else {
+    // Check password validation
+    if (!validatePasswords()) {
       console.log("Validação de senhas falhou");
       toast({
         title: "Erro na validação",
         description: "As senhas não conferem. Por favor, verifique e tente novamente.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log("Senhas validadas com sucesso");
+
+    // Verify required address fields
+    if (!data.street || !data.number || !data.neighborhood) {
+      console.log("Campos de endereço obrigatórios faltando");
+      toast({
+        title: "Campos de endereço obrigatórios",
+        description: "Rua, número e bairro são campos obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Show loading toast to indicate processing
+    toast({
+      title: "Processando",
+      description: "Criando novo cliente e configurando suas permissões...",
+    });
+
+    // Combine address fields
+    const address = `${data.street}, ${data.number}${data.complement ? `, ${data.complement}` : ''}, ${data.neighborhood}`;
+
+    // Create customer submission data object
+    const submissionData = {
+      company_name: data.company_name.trim(),
+      contact_person: (data.contact_person || "").trim(),
+      phone: (data.phone || "").trim(),
+      cnpj: (data.cnpj || "").trim(), // Explicitly include CNPJ field
+      email: data.email.trim(),
+      password: data.password,
+      address: address.trim(),
+      city: (data.city || "").trim(),
+      state: (data.state || "").trim(),
+      postal_code: (data.postal_code || "").trim(),
+      // Make sure latitude and longitude are numeric or null
+      latitude: data.latitude === "" || data.latitude === null ? null : 
+                typeof data.latitude === 'string' ? parseFloat(data.latitude) : data.latitude,
+      longitude: data.longitude === "" || data.longitude === null ? null : 
+                 typeof data.longitude === 'string' ? parseFloat(data.longitude) : data.longitude,
+      enable_delivery: Boolean(data.enable_delivery),
+      // Convert to cents (integer) for storage - ensure positive values
+      delivery_fee: Math.max(0, Math.round(delivery_fee_reais * 100)),
+      minimum_order_value: Math.max(0, Math.round(minimum_order_value_reais * 100)),
+      allowed_delivery_days: data.allowed_delivery_days || [false, true, true, true, true, true, false],
+    };
+
+    console.log("Dados do cliente para envio:", JSON.stringify(submissionData, null, 2));
+    
+    // Store the selected categories and sale units for association
+    const categoriesToAssociate = [...selectedCategories];
+    const unitsToAssociate = {...categorySaleUnits};
+    
+    console.log("CNPJ a ser salvo:", submissionData.cnpj);
+    console.log("Categorias selecionadas:", categoriesToAssociate);
+    console.log("Unidades de venda por categoria:", unitsToAssociate);
+
+    try {
+      // Step 1: Create customer
+      console.log("=== INICIANDO CRIAÇÃO DO CLIENTE ===");
+      const customerResponse = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(submissionData),
+        credentials: 'include'
+      });
+
+      if (!customerResponse.ok) {
+        const errorText = await customerResponse.text();
+        console.error("Erro ao criar cliente:", errorText);
+        toast({
+          title: "Erro ao criar cliente",
+          description: errorText || "Ocorreu um erro ao criar o cliente. Verifique os dados e tente novamente.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Get created customer data with ID
+      const customerData = await customerResponse.json();
+      const customerId = customerData.id;
+      console.log("Cliente criado com sucesso:", customerData);
+      
+      // Step 2: Associate categories and sale units
+      console.log("=== INICIANDO ASSOCIAÇÃO DE CATEGORIAS E UNIDADES ===");
+      let successCount = 0;
+      let errorCount = 0;
+
+      // Process each category sequentially
+      for (const categoryId of categoriesToAssociate) {
+        console.log(`Associando categoria ${categoryId} ao cliente ${customerId}...`);
+        
+        try {
+          // First associate the category to the customer
+          const categoryResponse = await fetch(`/api/customers/${customerId}/categories/${categoryId}`, {
+            method: 'POST',
+            credentials: 'include'
+          });
+
+          if (!categoryResponse.ok) {
+            const errorText = await categoryResponse.text();
+            console.error(`Erro ao associar categoria ${categoryId}:`, errorText);
+            errorCount++;
+            continue; // Skip to next category
+          }
+
+          console.log(`Categoria ${categoryId} associada com sucesso ao cliente ${customerId}`);
+          
+          // Step 3: Associate sale units for this category
+          const units = unitsToAssociate[categoryId] || [];
+          console.log(`Unidades a associar para categoria ${categoryId}:`, units);
+          
+          if (units.length === 0) {
+            console.warn(`Nenhuma unidade selecionada para categoria ${categoryId}, cliente ${customerId}`);
+          }
+
+          // Process each unit for this category sequentially
+          for (const unitId of units) {
+            console.log(`Associando unidade ${unitId} à categoria ${categoryId} do cliente ${customerId}...`);
+            
+            try {
+              // Fixed: Added proper delay and better error handling
+              await new Promise(resolve => setTimeout(resolve, 100)); // Allow server to process previous request
+              
+              const unitResponse = await fetch(`/api/customers/${customerId}/categories/${categoryId}/sale-units/${unitId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include'
+              });
+
+              // Get full response body for better debugging
+              const responseBody = await unitResponse.text();
+              
+              if (!unitResponse.ok) {
+                console.error(`Erro ao associar unidade ${unitId} à categoria ${categoryId}:`, responseBody);
+                errorCount++;
+              } else {
+                console.log(`Unidade ${unitId} associada com sucesso à categoria ${categoryId} do cliente ${customerId}`);
+                successCount++;
+              }
+            } catch (unitError) {
+              console.error(`Erro ao associar unidade ${unitId} à categoria ${categoryId}:`, unitError);
+              errorCount++;
+            }
+          }
+        } catch (categoryError) {
+          console.error(`Erro ao processar categoria ${categoryId}:`, categoryError);
+          errorCount++;
+        }
+      }
+
+      // Refresh client data after all operations
+      queryClient.invalidateQueries({ queryKey: ['/api/customers'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/customers/${customerId}/categories`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/customers/${customerId}/allowed-sale-units`] });
+
+      // Display success message with details
+      console.log(`=== PROCESSO CONCLUÍDO: ${successCount} associações com sucesso, ${errorCount} erros ===`);
+      
+      toast({
+        title: "Cliente criado com sucesso",
+        description: errorCount > 0 
+          ? `Cliente criado, mas ${errorCount} associações falharam. Verifique o console para detalhes.` 
+          : "O novo cliente e suas associações de produtos foram adicionados com sucesso.",
+        variant: "default",
+      });
+
+      // Redirect to customers page
+      setTimeout(() => {
+        window.location.href = "/admin/customers";
+      }, 1500);
+      
+    } catch (error) {
+      console.error("Erro no processo de criação e associação:", error);
+      toast({
+        title: "Erro ao criar cliente",
+        description: error.message || "Ocorreu um erro ao criar o cliente e suas associações.",
         variant: "destructive",
       });
     }

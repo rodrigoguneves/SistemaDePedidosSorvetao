@@ -406,14 +406,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const categoryId = parseInt(req.params.categoryId);
       const unitId = parseInt(req.params.unitId);
 
+      // Validate input parameters
+      if (isNaN(customerId) || isNaN(categoryId) || isNaN(unitId)) {
+        console.error(`[ADD UNIT] Parâmetros inválidos: customerId=${customerId}, categoryId=${categoryId}, unitId=${unitId}`);
+        return res.status(400).json({ 
+          message: "Parâmetros inválidos. Certifique-se que customerId, categoryId e unitId são números válidos." 
+        });
+      }
+
       console.log(`[ADD UNIT] Adicionando unidade ${unitId} à categoria ${categoryId} do cliente ${customerId}`);
 
       try {
-        // Verificar se a categoria existe para o cliente
+        // Step 1: Verify customer exists
+        const customer = await storage.getCustomer(customerId);
+        if (!customer) {
+          console.error(`[ADD UNIT] Cliente ${customerId} não encontrado`);
+          return res.status(404).json({ message: "Cliente não encontrado" });
+        }
+        
+        // Step 2: Verify category exists
+        const category = await storage.getProductCategory(categoryId);
+        if (!category) {
+          console.error(`[ADD UNIT] Categoria ${categoryId} não encontrada`);
+          return res.status(404).json({ message: "Categoria não encontrada" });
+        }
+
+        // Step 3: Verify sale unit exists
+        const saleUnit = await storage.getSaleUnit(unitId);
+        if (!saleUnit) {
+          console.error(`[ADD UNIT] Unidade de venda ${unitId} não encontrada`);
+          return res.status(404).json({ message: "Unidade de venda não encontrada" });
+        }
+        
+        // Step 4: Verify if the category is already associated with the customer
         const clientCategories = await storage.getCustomerCategories(customerId);
         let categoryExists = false;
         
-        // Improved category existence check handling different response formats
+        // Enhanced category existence check handling different response formats
         if (Array.isArray(clientCategories)) {
           categoryExists = clientCategories.some((cat: any) => {
             // Handle different possible structures
@@ -433,42 +462,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
+        // Step 5: Associate category if not already associated
         if (!categoryExists) {
           console.log(`[ADD UNIT] Categoria ${categoryId} não está associada ao cliente ${customerId}, associando agora...`);
-          // Associar a categoria primeiro
           const categoryAdded = await storage.addCategoryToCustomer(customerId, categoryId);
+          
           if (!categoryAdded) {
             console.error(`[ADD UNIT] Falha ao associar a categoria ${categoryId} ao cliente ${customerId}`);
-            return res.status(400).json({ 
-              message: "Não foi possível associar a categoria ao cliente"
+            return res.status(500).json({ 
+              message: "Erro interno: Não foi possível associar a categoria ao cliente"
             });
           }
+          
           console.log(`[ADD UNIT] Categoria ${categoryId} adicionada com sucesso ao cliente ${customerId}`);
+          
+          // Wait a moment to ensure the database has processed the category association
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } else {
+          console.log(`[ADD UNIT] Categoria ${categoryId} já está associada ao cliente ${customerId}`);
         }
         
-        // Agora adicionar a unidade de venda
+        // Step 6: Check if sale unit is already associated
+        const existingUnits = await storage.getCustomerAllowedSaleUnits(customerId, categoryId);
+        const unitAlreadyAssociated = existingUnits.some((unit: any) => 
+          unit.sale_unit_id === unitId || (unit.id !== undefined && unit.id === unitId)
+        );
+        
+        if (unitAlreadyAssociated) {
+          console.log(`[ADD UNIT] Unidade ${unitId} já está associada à categoria ${categoryId} do cliente ${customerId}`);
+          return res.status(200).json({ 
+            message: "Unidade de venda já está associada",
+            customer_id: customerId,
+            category_id: categoryId,
+            unit_id: unitId,
+            status: "already_exists"
+          });
+        }
+        
+        // Step 7: Add the sale unit to the customer-category
         console.log(`[ADD UNIT] Tentando adicionar unidade ${unitId} à categoria ${categoryId} do cliente ${customerId}`);
         const success = await storage.addCategorySaleUnitToCustomer(customerId, categoryId, unitId);
+        
         if (!success) {
           console.error(`[ADD UNIT] Falha ao adicionar unidade de venda ${unitId} à categoria ${categoryId}`);
-          return res.status(400).json({ 
-            message: "Não foi possível adicionar a unidade de venda à categoria do cliente" 
+          return res.status(500).json({ 
+            message: "Erro interno: Não foi possível adicionar a unidade de venda à categoria do cliente" 
           });
         }
 
         console.log(`[ADD UNIT] Unidade ${unitId} adicionada com sucesso à categoria ${categoryId} do cliente ${customerId}`);
-        res.status(200).json({ 
+        
+        // Step 8: Verify the association was created successfully
+        const updatedUnits = await storage.getCustomerAllowedSaleUnits(customerId, categoryId);
+        const associationVerified = updatedUnits.some((unit: any) => 
+          unit.sale_unit_id === unitId || (unit.id !== undefined && unit.id === unitId)
+        );
+        
+        if (!associationVerified) {
+          console.warn(`[ADD UNIT] Aviso: A unidade parece ter sido adicionada, mas não foi encontrada na verificação`);
+        }
+        
+        res.status(201).json({ 
           message: "Unidade de venda adicionada com sucesso",
           customer_id: customerId,
           category_id: categoryId,
-          unit_id: unitId
+          unit_id: unitId,
+          status: "created",
+          verification: associationVerified ? "confirmed" : "pending"
         });
       } catch (storageError) {
-        console.error(`[ADD UNIT] Erro ao processar adição de unidade de venda:`, storageError);
+        console.error(`[ADD UNIT] Erro detalhado ao processar adição de unidade de venda:`, storageError);
+        
+        // Determine if this is a database constraint violation
+        const errorMessage = storageError.message || "";
+        if (errorMessage.includes("duplicate key") || errorMessage.includes("unique constraint")) {
+          return res.status(409).json({
+            message: "Esta unidade de venda já está associada a esta categoria para este cliente",
+            details: errorMessage
+          });
+        }
+        
         throw storageError;
       }
     } catch (error) {
       console.error("[ADD UNIT] Erro ao adicionar unidade de venda:", error);
+      
+      if (!res.headersSent) {
+        return res.status(500).json({
+          message: "Erro interno ao adicionar unidade de venda",
+          details: error.message
+        });
+      }
+      
       next(error);
     }
   });

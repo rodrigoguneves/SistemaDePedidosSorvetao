@@ -43,14 +43,14 @@ export interface IStorage {
   updateProductCategory(id: number, category: Partial<ProductCategory>): Promise<ProductCategory | undefined>;
   softDeleteProductCategory(id: number): Promise<boolean>;
   hardDeleteProductCategory(id: number): Promise<boolean>;
-  
+
   // Sale Units
   getSaleUnit(id: number): Promise<SaleUnit | undefined>;
   getSaleUnits(): Promise<SaleUnit[]>;
   getSaleUnitsByProductType(productTypeTag: string): Promise<SaleUnit[]>;
   createSaleUnit(saleUnit: InsertSaleUnit): Promise<SaleUnit>;
   updateSaleUnit(id: number, saleUnit: Partial<SaleUnit>): Promise<SaleUnit | undefined>;
-  
+
   // Base Products
   getBaseProduct(id: number): Promise<BaseProduct | undefined>;
   getBaseProducts(includeDeleted?: boolean): Promise<BaseProduct[]>;
@@ -58,7 +58,7 @@ export interface IStorage {
   createBaseProduct(baseProduct: InsertBaseProduct): Promise<BaseProduct>;
   updateBaseProduct(id: number, baseProduct: Partial<BaseProduct>): Promise<BaseProduct | undefined>;
   softDeleteBaseProduct(id: number): Promise<boolean>;
-  
+
   // Product Sale Versions
   getProductSaleVersion(id: number): Promise<ProductSaleVersion | undefined>;
   getProductSaleVersionsByBaseProduct(baseProductId: number, onlyActive?: boolean): Promise<ProductSaleVersion[]>;
@@ -328,17 +328,17 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return !!deletedProduct;
   }
-  
+
   // Sale Units implementation
   async getSaleUnit(id: number): Promise<SaleUnit | undefined> {
     const [unit] = await db.select().from(saleUnits).where(eq(saleUnits.sale_unit_id, id));
     return unit;
   }
-  
+
   async getSaleUnits(): Promise<SaleUnit[]> {
     return db.select().from(saleUnits).orderBy(saleUnits.unit_name);
   }
-  
+
   async getSaleUnitsByProductType(productTypeTag: string): Promise<SaleUnit[]> {
     // Look for units where the specified tag is in the applicable_product_type_tags array
     // or where 'ALL' is in the array (indicating it's applicable to all products)
@@ -346,12 +346,12 @@ export class DatabaseStorage implements IStorage {
       .where(sql`${saleUnits.applicable_product_type_tags} @> ARRAY[${productTypeTag}]::text[] OR ${saleUnits.applicable_product_type_tags} @> ARRAY['ALL']::text[]`)
       .orderBy(saleUnits.unit_name);
   }
-  
+
   async createSaleUnit(saleUnit: InsertSaleUnit): Promise<SaleUnit> {
     const [createdUnit] = await db.insert(saleUnits).values(saleUnit).returning();
     return createdUnit;
   }
-  
+
   async updateSaleUnit(id: number, saleUnit: Partial<SaleUnit>): Promise<SaleUnit | undefined> {
     const [updatedUnit] = await db
       .update(saleUnits)
@@ -360,7 +360,7 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return updatedUnit;
   }
-  
+
   // Base Products implementation
   async getBaseProduct(id: number): Promise<BaseProduct | undefined> {
     const [product] = await db.select().from(baseProducts).where(and(
@@ -369,7 +369,7 @@ export class DatabaseStorage implements IStorage {
     ));
     return product;
   }
-  
+
   async getBaseProducts(includeDeleted: boolean = false): Promise<BaseProduct[]> {
     if (includeDeleted) {
       return db.select().from(baseProducts).orderBy(baseProducts.base_product_name);
@@ -378,7 +378,7 @@ export class DatabaseStorage implements IStorage {
       .where(isNull(baseProducts.deleted_at))
       .orderBy(baseProducts.base_product_name);
   }
-  
+
   async getBaseProductsByCategory(categoryId: number, includeDeleted: boolean = false): Promise<BaseProduct[]> {
     if (includeDeleted) {
       return db.select().from(baseProducts)
@@ -392,12 +392,12 @@ export class DatabaseStorage implements IStorage {
       ))
       .orderBy(baseProducts.base_product_name);
   }
-  
+
   async createBaseProduct(baseProduct: InsertBaseProduct): Promise<BaseProduct> {
     const [createdProduct] = await db.insert(baseProducts).values(baseProduct).returning();
     return createdProduct;
   }
-  
+
   async updateBaseProduct(id: number, baseProduct: Partial<BaseProduct>): Promise<BaseProduct | undefined> {
     const [updatedProduct] = await db
       .update(baseProducts)
@@ -406,7 +406,7 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return updatedProduct;
   }
-  
+
   async softDeleteBaseProduct(id: number): Promise<boolean> {
     const [result] = await db
       .update(baseProducts)
@@ -415,57 +415,57 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return !!result;
   }
-  
+
   // Product Sale Versions implementation
   async getProductSaleVersion(id: number): Promise<ProductSaleVersion | undefined> {
     const [version] = await db.select().from(productSaleVersions)
       .where(eq(productSaleVersions.product_version_id, id));
     return version;
   }
-  
+
   // Alias method for backward compatibility
   async getProductVersions(): Promise<ProductSaleVersion[]> {
     return this.getProductSaleVersions();
   }
-  
+
   // Get all product sale versions
   async getProductSaleVersions(): Promise<ProductSaleVersion[]> {
     return db.select().from(productSaleVersions)
       .orderBy(productSaleVersions.product_version_id);
   }
-  
+
   async getProductSaleVersionsByBaseProduct(baseProductId: number, onlyActive: boolean = true): Promise<ProductSaleVersion[]> {
     let query = db.select().from(productSaleVersions)
       .where(eq(productSaleVersions.base_product_id, baseProductId));
-    
+
     if (onlyActive) {
       query = query.where(eq(productSaleVersions.is_active, true));
     }
-    
+
     return query.orderBy(productSaleVersions.price);
   }
-  
+
   async getProductSaleVersionsBySaleUnit(saleUnitId: number, onlyActive: boolean = true): Promise<ProductSaleVersion[]> {
     let query = db.select().from(productSaleVersions)
       .where(eq(productSaleVersions.sale_unit_id, saleUnitId));
-    
+
     if (onlyActive) {
       query = query.where(eq(productSaleVersions.is_active, true));
     }
-    
+
     return query.orderBy(productSaleVersions.price);
   }
-  
+
   async createProductSaleVersion(productSaleVersion: InsertProductSaleVersion): Promise<ProductSaleVersion> {
     const [createdVersion] = await db.insert(productSaleVersions).values(productSaleVersion).returning();
     return createdVersion;
   }
-  
+
   // Alias method for backward compatibility
   async createProductVersion(productSaleVersion: InsertProductSaleVersion): Promise<ProductSaleVersion> {
     return this.createProductSaleVersion(productSaleVersion);
   }
-  
+
   async updateProductSaleVersion(id: number, productSaleVersion: Partial<ProductSaleVersion>): Promise<ProductSaleVersion | undefined> {
     const [updatedVersion] = await db
       .update(productSaleVersions)
@@ -525,36 +525,75 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCustomerAllowedSaleUnits(customerId: number, categoryId: number): Promise<SaleUnit[]> {
-    const result = await db
-      .select().from(saleUnits)
-      .innerJoin(
-        customerCategoryAllowedSaleUnits, 
-        eq(customerCategoryAllowedSaleUnits.sale_unit_id, saleUnits.sale_unit_id)
-      )
-      .where(and(
-        eq(customerCategoryAllowedSaleUnits.customer_id, customerId),
-        eq(customerCategoryAllowedSaleUnits.product_category_id, categoryId)
-      ))
-      .orderBy(saleUnits.unit_name);
+    try {
+      console.log(`[STORAGE] Buscando unidades de venda permitidas para cliente ${customerId}, categoria ${categoryId}`);
 
-    return result;
+      const result = await db
+        .select({
+          sale_unit_id: saleUnits.sale_unit_id,
+          unit_name: saleUnits.unit_name,
+          short_description: saleUnits.short_description,
+          base_equivalent_quantity: saleUnits.base_equivalent_quantity,
+        })
+        .from(customerCategoryAllowedSaleUnits)
+        .innerJoin(
+          saleUnits,
+          eq(customerCategoryAllowedSaleUnits.sale_unit_id, saleUnits.sale_unit_id)
+        )
+        .where(
+          and(
+            eq(customerCategoryAllowedSaleUnits.customer_id, customerId),
+            eq(customerCategoryAllowedSaleUnits.product_category_id, categoryId)
+          )
+        );
+
+      console.log(`[STORAGE] Encontradas ${result.length} unidades de venda para cliente ${customerId}, categoria ${categoryId}`);
+
+      // If no results, verify if the customer-category association exists
+      if (result.length === 0) {
+        const categoryAssociation = await db
+          .select()
+          .from(customerCategories)
+          .where(
+            and(
+              eq(customerCategories.customer_id, customerId),
+              eq(customerCategories.category_id, categoryId)
+            )
+          );
+
+        if (categoryAssociation.length === 0) {
+          console.log(`[STORAGE] Aviso: Cliente ${customerId} não está associado à categoria ${categoryId}`);
+        } else {
+          console.log(`[STORAGE] Aviso: Cliente ${customerId} está associado à categoria ${categoryId}, mas não tem unidades de venda associadas`);
+        }
+      }
+
+      return result;
+    } catch (error) {
+      console.error(`[STORAGE] Erro ao buscar unidades de venda permitidas para cliente ${customerId}, categoria ${categoryId}:`, error);
+      // Log more detailed error information
+      if (error.code || error.message) {
+        console.error(`[STORAGE] Detalhes do erro: Código: ${error.code}, Mensagem: ${error.message}`);
+      }
+      return [];
+    }
   }
 
   async getCustomerProductVersions(customerId: number): Promise<ProductSaleVersion[]> {
     // Get categories the customer has access to
     const customerCategories = await this.getCustomerCategories(customerId);
     const categoryIds = customerCategories.map(category => category.id);
-    
+
     if (categoryIds.length === 0) {
       return [];
     }
-    
+
     // Get allowed sale units for each category
     const allowedSaleUnits = await db
       .select()
       .from(customerCategoryAllowedSaleUnits)
       .where(eq(customerCategoryAllowedSaleUnits.customer_id, customerId));
-    
+
     // Group allowed sale units by category
     const saleUnitsByCategory = allowedSaleUnits.reduce((acc: Record<number, number[]>, curr) => {
       if (!acc[curr.product_category_id]) {
@@ -563,12 +602,12 @@ export class DatabaseStorage implements IStorage {
       acc[curr.product_category_id].push(curr.sale_unit_id);
       return acc;
     }, {});
-    
+
     // Get all product versions for the allowed categories and sale units
     const productVersionsPromises = categoryIds.map(async (categoryId) => {
       const allowedSaleUnitIds = saleUnitsByCategory[categoryId] || [];
       if (allowedSaleUnitIds.length === 0) return [];
-      
+
       return db
         .select()
         .from(productSaleVersions)
@@ -583,10 +622,10 @@ export class DatabaseStorage implements IStorage {
           isNull(baseProducts.deleted_at)
         ));
     });
-    
+
     const productVersionsResults = await Promise.all(productVersionsPromises);
     const allProductVersions = productVersionsResults.flat();
-    
+
     // Remove duplicates if any
     return Array.from(
       new Map(allProductVersions.map(v => [v.product_version_id, v])).values()
@@ -631,10 +670,50 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return !!result;
   }
-  
+
   // New methods for customer catalog access
   async addCategorySaleUnitToCustomer(customerId: number, categoryId: number, saleUnitId: number): Promise<boolean> {
     try {
+      console.log(`[STORAGE] Tentando adicionar unidade ${saleUnitId} à categoria ${categoryId} do cliente ${customerId}`);
+
+      // First check if the association already exists to avoid duplicates
+      const existingAssociation = await db
+        .select()
+        .from(customerCategoryAllowedSaleUnits)
+        .where(
+          and(
+            eq(customerCategoryAllowedSaleUnits.customer_id, customerId),
+            eq(customerCategoryAllowedSaleUnits.product_category_id, categoryId),
+            eq(customerCategoryAllowedSaleUnits.sale_unit_id, saleUnitId)
+          )
+        );
+
+      if (existingAssociation.length > 0) {
+        console.log(`[STORAGE] Associação já existe para cliente ${customerId}, categoria ${categoryId}, unidade ${saleUnitId}`);
+        return true; // Association already exists, consider it a success
+      }
+
+      // Now make sure the customer-category association exists
+      const categoryAssociation = await db
+        .select()
+        .from(customerCategories)
+        .where(
+          and(
+            eq(customerCategories.customer_id, customerId),
+            eq(customerCategories.category_id, categoryId)
+          )
+        );
+
+      if (categoryAssociation.length === 0) {
+        console.log(`[STORAGE] Cliente ${customerId} não está associado à categoria ${categoryId}, criando associação...`);
+        // Create the customer-category association first
+        await db.insert(customerCategories).values({
+          customer_id: customerId,
+          category_id: categoryId
+        });
+      }
+
+      // Now create the sale unit association
       const [result] = await db
         .insert(customerCategoryAllowedSaleUnits)
         .values({
@@ -643,10 +722,40 @@ export class DatabaseStorage implements IStorage {
           sale_unit_id: saleUnitId
         })
         .returning();
-      return !!result;
+
+      // Verify the insert was successful
+      const verification = await db
+        .select()
+        .from(customerCategoryAllowedSaleUnits)
+        .where(
+          and(
+            eq(customerCategoryAllowedSaleUnits.customer_id, customerId),
+            eq(customerCategoryAllowedSaleUnits.product_category_id, categoryId),
+            eq(customerCategoryAllowedSaleUnits.sale_unit_id, saleUnitId)
+          )
+        );
+
+      const success = verification.length > 0;
+      console.log(`[STORAGE] Associação ${success ? 'criada com sucesso' : 'falhou'} para cliente ${customerId}, categoria ${categoryId}, unidade ${saleUnitId}`);
+
+      return success;
     } catch (error) {
-      // Handle potential duplicate insertion error
-      console.error("Error adding sale unit to customer category:", error);
+      console.error(
+        "[STORAGE] Erro ao adicionar unidade de venda à categoria do cliente:",
+        error,
+        "Dados:",
+        { customerId, categoryId, saleUnitId }
+      );
+
+      // Check if this is a duplicate key error (which would mean the association already exists)
+      if (error.message && (
+          error.message.includes('duplicate key') || 
+          error.message.includes('unique constraint')
+      )) {
+        console.log(`[STORAGE] Ignorando erro de duplicação para cliente ${customerId}, categoria ${categoryId}, unidade ${saleUnitId}`);
+        return true; // Consider it a success if it's just a duplicate
+      }
+
       return false;
     }
   }
