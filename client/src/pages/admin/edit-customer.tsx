@@ -548,17 +548,48 @@ export default function EditCustomerPage() {
   // Mutation to update sale unit access
   const updateSaleUnitAccessMutation = useMutation({
     mutationFn: async ({ categoryId, unitId, add }: { categoryId: number, unitId: number, add: boolean }) => {
+      console.log(`${add ? 'Adicionando' : 'Removendo'} unidade ${unitId} para categoria ${categoryId} do cliente ${customerId}`);
+      
       const method = add ? 'POST' : 'DELETE';
       const res = await fetch(`/api/customers/${customerId}/categories/${categoryId}/sale-units/${unitId}`, {
-        method
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
       });
 
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || 'Error updating sale unit access');
+        let errorMessage = `Erro ao ${add ? 'adicionar' : 'remover'} unidade de venda`;
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          // Se não conseguir parsear o JSON, usa o texto da resposta
+          errorMessage = await res.text();
+        }
+        console.error(`Erro na requisição para ${method} ${res.url}:`, errorMessage);
+        throw new Error(errorMessage);
       }
 
-      return await res.json();
+      console.log(`Unidade ${unitId} ${add ? 'adicionada' : 'removida'} com sucesso para categoria ${categoryId}`);
+      
+      // A resposta pode ser vazia para algumas APIs, nesse caso retornamos um objeto simples
+      try {
+        return await res.json();
+      } catch (e) {
+        return { success: true };
+      }
+    },
+    onSuccess: () => {
+      // Invalidamos queries relacionadas para atualizar a UI
+      queryClient.invalidateQueries({ queryKey: [`/api/customers/${customerId}/allowed-sale-units`] });
+    },
+    onError: (error: Error) => {
+      console.error("Erro na mutação de unidade de venda:", error);
+      toast({
+        title: "Erro ao atualizar unidade de venda",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   });
 
@@ -724,6 +755,23 @@ export default function EditCustomerPage() {
         try {
           await updateCategoryAccessMutation.mutateAsync({ categoryId, add: true });
           console.log(`Categoria ${categoryId} adicionada com sucesso`);
+          
+          // Após adicionar a categoria, imediatamente adicione as unidades de venda selecionadas
+          const unitsForCategory = categoryUnits[categoryId] || [];
+          console.log(`Adicionando ${unitsForCategory.length} unidades para categoria ${categoryId}:`, unitsForCategory);
+          
+          for (const unitId of unitsForCategory) {
+            try {
+              await updateSaleUnitAccessMutation.mutateAsync({ 
+                categoryId, 
+                unitId, 
+                add: true 
+              });
+              console.log(`Unidade ${unitId} adicionada com sucesso à categoria ${categoryId}`);
+            } catch (unitError) {
+              console.error(`Erro ao adicionar unidade ${unitId} à categoria ${categoryId}:`, unitError);
+            }
+          }
         } catch (error) {
           console.error(`Erro ao adicionar categoria ${categoryId}:`, error);
         }
@@ -733,6 +781,9 @@ export default function EditCustomerPage() {
       for (const categoryId of categoriesToRemove) {
         console.log(`Removendo categoria ${categoryId}...`);
         try {
+          // Ao remover uma categoria, todas as suas unidades são automaticamente removidas devido
+          // à constraint 'on delete cascade' no banco de dados, mas vamos registrar isso
+          console.log(`As unidades associadas à categoria ${categoryId} serão removidas automaticamente`);
           await updateCategoryAccessMutation.mutateAsync({ categoryId, add: false });
           console.log(`Categoria ${categoryId} removida com sucesso`);
         } catch (error) {
@@ -740,7 +791,7 @@ export default function EditCustomerPage() {
         }
       }
 
-      console.log("Atualizando associações de unidades de venda...");
+      console.log("Atualizando associações de unidades de venda para categorias existentes...");
       
       // Fetch current sale units access
       const currentUnitsRes = await fetch(`/api/customers/${customerId}/allowed-sale-units`);
@@ -750,6 +801,10 @@ export default function EditCustomerPage() {
       }
       const currentUnits = await currentUnitsRes.json();
       console.log("Unidades atuais:", currentUnits);
+      
+      // Log das unidades atuais vs desejadas
+      console.log("Unidades atuais por categoria:", currentUnitsByCategory);
+      console.log("Unidades desejadas por categoria:", categoryUnits);
 
       // Group current units by category
       const currentUnitsByCategory: Record<number, number[]> = {};

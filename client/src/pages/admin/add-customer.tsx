@@ -464,6 +464,8 @@ export default function AddCustomerPage() {
 
         // Explicitly log CNPJ to verify it's being included
         console.log("CNPJ to be saved:", submissionData.cnpj);
+        console.log("Categorias selecionadas:", categoriesToAssociate);
+        console.log("Unidades de venda selecionadas:", unitsToAssociate);
 
         // Update mutation to handle category and unit associations after customer creation
         const createAndAssociate = async () => {
@@ -496,10 +498,14 @@ export default function AddCustomerPage() {
             console.log("Cliente criado com sucesso:", customerData);
             console.log("Associando categorias e unidades de venda...");
 
-            // Associate categories
+            // Array para armazenar todas as promises de associação
+            const associationPromises = [];
+
+            // Associate categories 
             for (const categoryId of categoriesToAssociate) {
               console.log(`Associando categoria ${categoryId} ao cliente ${customerId}...`);
               try {
+                // Primeiro associamos a categoria
                 const categoryResponse = await fetch(`/api/customers/${customerId}/categories/${categoryId}`, {
                   method: 'POST',
                   credentials: 'include'
@@ -512,39 +518,53 @@ export default function AddCustomerPage() {
 
                 console.log(`Categoria ${categoryId} associada com sucesso ao cliente ${customerId}`);
 
-                // Associate sale units for this category
+                // Verificamos quais unidades de venda foram selecionadas para esta categoria
                 const units = unitsToAssociate[categoryId] || [];
                 console.log(`Unidades a associar para categoria ${categoryId}:`, units);
 
+                if (units.length === 0) {
+                  console.warn(`Nenhuma unidade selecionada para categoria ${categoryId}, cliente ${customerId}`);
+                }
+
+                // Criamos uma promise para cada unidade de venda a ser associada
                 for (const unitId of units) {
                   console.log(`Associando unidade ${unitId} à categoria ${categoryId} do cliente ${customerId}...`);
 
-                  try {
-                    // Use the correct API endpoint for sale unit association
-                    const unitResponse = await fetch(`/api/customers/${customerId}/categories/${categoryId}/sale-units/${unitId}`, {
-                      method: 'POST',
-                      credentials: 'include'
-                    });
-
-                    if (!unitResponse.ok) {
-                      const errorText = await unitResponse.text();
-                      console.error(`Erro ao associar unidade ${unitId}:`, errorText);
-                    } else {
-                      console.log(`Unidade ${unitId} associada com sucesso à categoria ${categoryId}`);
+                  // Adicionamos cada promise ao array para controle
+                  const unitPromise = fetch(`/api/customers/${customerId}/categories/${categoryId}/sale-units/${unitId}`, {
+                    method: 'POST',
+                    credentials: 'include'
+                  })
+                  .then(response => {
+                    if (!response.ok) {
+                      return response.text().then(text => {
+                        throw new Error(`Erro ao associar unidade ${unitId}: ${text}`);
+                      });
                     }
-                  } catch (unitError) {
-                    console.error(`Erro ao associar unidade ${unitId}:`, unitError);
-                  }
+                    console.log(`Unidade ${unitId} associada com sucesso à categoria ${categoryId}`);
+                    return true;
+                  })
+                  .catch(error => {
+                    console.error(`Erro ao associar unidade ${unitId}:`, error);
+                    return false;
+                  });
+
+                  associationPromises.push(unitPromise);
                 }
               } catch (categoryError) {
                 console.error(`Erro ao processar categoria ${categoryId}:`, categoryError);
               }
             }
 
+            // Esperamos todas as associações de unidades serem concluídas
+            await Promise.all(associationPromises);
+
             console.log("Cliente e associações criados com sucesso!");
 
             // Invalidate queries to refresh data
             queryClient.invalidateQueries({ queryKey: ['/api/customers'] });
+            queryClient.invalidateQueries({ queryKey: [`/api/customers/${customerId}/categories`] });
+            queryClient.invalidateQueries({ queryKey: [`/api/customers/${customerId}/allowed-sale-units`] });
 
             toast({
               title: "Cliente criado com sucesso",

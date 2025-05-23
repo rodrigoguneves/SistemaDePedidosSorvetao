@@ -406,18 +406,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const categoryId = parseInt(req.params.categoryId);
       const unitId = parseInt(req.params.unitId);
 
-      console.log(`Adicionando unidade ${unitId} à categoria ${categoryId} do cliente ${customerId}`);
+      console.log(`[ADD UNIT] Adicionando unidade ${unitId} à categoria ${categoryId} do cliente ${customerId}`);
 
-      const success = await storage.addCategorySaleUnitToCustomer(customerId, categoryId, unitId);
-      if (!success) {
-        console.error("Falha ao adicionar unidade de venda");
-        return res.status(400).json({ message: "Não foi possível adicionar a unidade de venda à categoria do cliente" });
+      try {
+        // Verificar se a categoria existe para o cliente
+        const clientCategories = await storage.getCustomerCategories(customerId);
+        const categoryExists = clientCategories.some((cat: any) => {
+          // Verificar considerando diferentes estruturas possíveis
+          const catId = cat.id || cat.category_id || (cat.productCategories && cat.productCategories.id);
+          return catId === categoryId;
+        });
+
+        if (!categoryExists) {
+          console.error(`[ADD UNIT] Categoria ${categoryId} não está associada ao cliente ${customerId}`);
+          // Tente associar a categoria primeiro
+          console.log(`[ADD UNIT] Tentando associar a categoria ${categoryId} ao cliente ${customerId} primeiro`);
+          await storage.addCategoryToCustomer(customerId, categoryId);
+        }
+        
+        // Agora tente adicionar a unidade de venda
+        const success = await storage.addCategorySaleUnitToCustomer(customerId, categoryId, unitId);
+        if (!success) {
+          console.error(`[ADD UNIT] Falha ao adicionar unidade de venda ${unitId} à categoria ${categoryId}`);
+          return res.status(400).json({ message: "Não foi possível adicionar a unidade de venda à categoria do cliente" });
+        }
+
+        console.log(`[ADD UNIT] Unidade ${unitId} adicionada com sucesso à categoria ${categoryId} do cliente ${customerId}`);
+        res.status(200).json({ message: "Unidade de venda adicionada com sucesso" });
+      } catch (storageError) {
+        console.error(`[ADD UNIT] Erro ao processar adição de unidade de venda:`, storageError);
+        throw storageError;
       }
-
-      console.log(`Unidade ${unitId} adicionada com sucesso à categoria ${categoryId} do cliente ${customerId}`);
-      res.status(201).json({ message: "Unidade de venda adicionada com sucesso" });
     } catch (error) {
-      console.error("Erro ao adicionar unidade de venda:", error);
+      console.error("[ADD UNIT] Erro ao adicionar unidade de venda:", error);
       next(error);
     }
   });
