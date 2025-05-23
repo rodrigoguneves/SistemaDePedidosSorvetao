@@ -134,11 +134,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Make sure to attach the user_id and CNPJ to the customer data
         const customerWithUserId = {
           ...customerData,
-          cnpj: cnpj || null, // Explicitly include CNPJ, defaulting to null if not provided
+          cnpj: cnpj !== undefined ? (cnpj === "" ? null : cnpj) : null, // Properly handle empty string CNPJ
           user_id: newUser.id
         };
         
-        console.log("CNPJ a ser salvo:", customerWithUserId.cnpj);
+        console.log("CNPJ a ser salvo:", customerWithUserId.cnpj, "tipo:", typeof customerWithUserId.cnpj);
         
         try {
           // Validate data before inserting
@@ -220,13 +220,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Ensure the CNPJ field is properly handled
       const updatedData = { ...req.body };
-      console.log("CNPJ recebido:", updatedData.cnpj);
+      console.log("CNPJ recebido:", updatedData.cnpj, "tipo:", typeof updatedData.cnpj);
       
-      // If CNPJ is an empty string, convert it to null
+      // If CNPJ is an empty string, convert it to null but keep valid values
       if (updatedData.cnpj === "") {
+        console.log("Convertendo CNPJ vazio para null");
         updatedData.cnpj = null;
+      } else if (updatedData.cnpj === undefined) {
+        // Don't override existing CNPJ if not provided
+        console.log("CNPJ não foi fornecido na requisição, não alterando");
+        delete updatedData.cnpj;
+      } else {
+        console.log("Mantendo CNPJ como está:", updatedData.cnpj);
       }
       
+      console.log("Dados a serem enviados para updateCustomer:", updatedData);
       const customer = await storage.updateCustomer(customerId, updatedData);
       if (!customer) {
         return res.status(404).json({ message: "Cliente não encontrado" });
@@ -388,7 +396,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       if (!req.isAuthenticated() || (req.user.role !== 'admin' && req.user.role !== 'manager')) {
 
-  app.post("/api/customers/:id/categories/:categoryId/units/:unitId", async (req, res, next) => {
+  app.post("/api/customers/:id/categories/:categoryId/sale-units/:unitId", async (req, res, next) => {
     try {
       if (!req.isAuthenticated() || (req.user.role !== 'admin' && req.user.role !== 'manager')) {
         return res.status(403).json({ message: "Acesso negado" });
@@ -398,18 +406,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const categoryId = parseInt(req.params.categoryId);
       const unitId = parseInt(req.params.unitId);
 
+      console.log(`Adicionando unidade ${unitId} à categoria ${categoryId} do cliente ${customerId}`);
+
       const success = await storage.addCategorySaleUnitToCustomer(customerId, categoryId, unitId);
       if (!success) {
+        console.error("Falha ao adicionar unidade de venda");
         return res.status(400).json({ message: "Não foi possível adicionar a unidade de venda à categoria do cliente" });
       }
 
+      console.log(`Unidade ${unitId} adicionada com sucesso à categoria ${categoryId} do cliente ${customerId}`);
       res.status(201).json({ message: "Unidade de venda adicionada com sucesso" });
     } catch (error) {
+      console.error("Erro ao adicionar unidade de venda:", error);
       next(error);
     }
   });
 
-  app.delete("/api/customers/:id/categories/:categoryId/units/:unitId", async (req, res, next) => {
+  app.delete("/api/customers/:id/categories/:categoryId/sale-units/:unitId", async (req, res, next) => {
     try {
       if (!req.isAuthenticated() || (req.user.role !== 'admin' && req.user.role !== 'manager')) {
         return res.status(403).json({ message: "Acesso negado" });
@@ -419,13 +432,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const categoryId = parseInt(req.params.categoryId);
       const unitId = parseInt(req.params.unitId);
 
+      console.log(`Removendo unidade ${unitId} da categoria ${categoryId} do cliente ${customerId}`);
+
       const success = await storage.removeCategorySaleUnitFromCustomer(customerId, categoryId, unitId);
       if (!success) {
+        console.error("Falha ao remover unidade de venda");
         return res.status(404).json({ message: "Relação cliente-categoria-unidade não encontrada" });
       }
 
+      console.log(`Unidade ${unitId} removida com sucesso da categoria ${categoryId} do cliente ${customerId}`);
       res.status(204).send();
     } catch (error) {
+      console.error("Erro ao remover unidade de venda:", error);
       next(error);
     }
   });

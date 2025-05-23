@@ -667,9 +667,14 @@ export default function EditCustomerPage() {
       };
 
       console.log("Dados para atualização do cliente:", JSON.stringify(submissionData, null, 2));
+      console.log("CNPJ a ser salvo:", submissionData.cnpj);
 
-      // First update the customer basic info
-      const updatedCustomer = await updateCustomerMutation.mutateAsync(submissionData);
+      // First update the customer basic info - explicitly include all fields
+      const updatedCustomer = await updateCustomerMutation.mutateAsync({
+        ...submissionData,
+        id: customerId,
+        cnpj: submissionData.cnpj // Explicitly pass CNPJ to ensure it's included
+      });
       console.log("Cliente atualizado com sucesso:", updatedCustomer);
 
       console.log("Atualizando associações de categorias...");

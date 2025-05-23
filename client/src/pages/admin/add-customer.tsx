@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
@@ -110,21 +109,21 @@ export default function AddCustomerPage() {
   const handleCategoryChange = (categoryId: number, checked: boolean) => {
     if (checked) {
       setSelectedCategories(prev => [...prev, categoryId]);
-      
+
       // Check if this is one of the auto-associated categories
       const category = categories.find((c: Category) => c.id === categoryId);
       const autoAssociatedCategories = [
         "Balde 10 Litros", "Balde 5 Litros", "Copo 180ml", 
         "Copo 250ml", "Itens Avulsos", "Pote 1 Litro", "Pote 1.8 Litros"
       ];
-      
+
       // Categorias com unidades de venda específicas
       const isPicklesCategory = ["Picolés de Fruta", "Picolés de Leite"].includes(category?.name || "");
       const isIceCreamStickCategory = category?.name === "Sorvete no Palito";
-      
+
       const isAutoAssociated = autoAssociatedCategories.includes(category?.name || "");
       const unidadeSaleUnit = saleUnits.find(unit => unit.unit_name === "Unidade");
-      
+
       // Initialize sale units array for this category
       if (isAutoAssociated && unidadeSaleUnit) {
         // Auto-associate with "unidade" sale unit
@@ -136,13 +135,13 @@ export default function AddCustomerPage() {
         // Para Picolés de Fruta e Picolés de Leite, associamos automaticamente as unidades específicas
         const caixaCompleta = saleUnits.find(unit => unit.unit_name === "Caixa Completa 24un");
         const meiaCaixa = saleUnits.find(unit => unit.unit_name === "Meia Caixa 12un");
-        
+
         const preSelectedUnits = [
           unidadeSaleUnit?.sale_unit_id,
           caixaCompleta?.sale_unit_id,
           meiaCaixa?.sale_unit_id
         ].filter(Boolean) as number[];
-        
+
         setCategorySaleUnits(prev => ({
           ...prev,
           [categoryId]: preSelectedUnits
@@ -151,13 +150,13 @@ export default function AddCustomerPage() {
         // Para Sorvete no Palito, associamos automaticamente as unidades específicas
         const caixaCompleta = saleUnits.find(unit => unit.unit_name === "Caixa Completa 16un");
         const meiaCaixa = saleUnits.find(unit => unit.unit_name === "Meia Caixa 8un");
-        
+
         const preSelectedUnits = [
           unidadeSaleUnit?.sale_unit_id,
           caixaCompleta?.sale_unit_id,
           meiaCaixa?.sale_unit_id
         ].filter(Boolean) as number[];
-        
+
         setCategorySaleUnits(prev => ({
           ...prev,
           [categoryId]: preSelectedUnits
@@ -204,7 +203,7 @@ export default function AddCustomerPage() {
 
         // Step 1: Create the customer with simplified data
         console.log("Iniciando requisição POST para /api/customers");
-        
+
         // Verificando autenticação para evitar erros de autorização
         try {
           const authCheck = await fetch('/api/user');
@@ -213,7 +212,7 @@ export default function AddCustomerPage() {
         } catch (authError) {
           console.log("Erro ao verificar autenticação, continuando mesmo assim:", authError);
         }
-        
+
         // Fazendo a solicitação usando fetch
         const response = await fetch('/api/customers', {
           method: 'POST',
@@ -223,11 +222,11 @@ export default function AddCustomerPage() {
         });
 
         console.log("Resposta do servidor:", response.status, response.statusText);
-        
+
         if (!response.ok) {
           const errorText = await response.text();
           console.error("Erro na resposta:", errorText);
-          
+
           try {
             const errorData = JSON.parse(errorText);
             if (errorData.message) {
@@ -238,7 +237,7 @@ export default function AddCustomerPage() {
             throw new Error(`Erro ${response.status}: ${errorText}`);
           }
         }
-        
+
         const customerData = await response.json();
         return customerData;
       } catch (error) {
@@ -248,28 +247,28 @@ export default function AddCustomerPage() {
     },
     onSuccess: (data) => {
       console.log("=== CLIENTE CRIADO COM SUCESSO ===", data);
-      
+
       // Invalidamos as queries para garantir dados atualizados
       queryClient.invalidateQueries({ queryKey: ['/api/customers'] });
-      
+
       toast({
         title: "Cliente criado com sucesso",
         description: "O novo cliente foi adicionado ao sistema.",
         variant: "default",
       });
-      
+
       console.log("Redirecionando para página de clientes...");
-      
+
       // Redirect with a direct approach first
       window.location.href = "/admin/customers";
     },
     onError: (error: Error) => {
       console.error("=== ERRO NA CRIAÇÃO DO CLIENTE ===");
       console.error("Detalhes do erro:", error);
-      
+
       // Check if error message contains validation errors
       let errorDescription = error.message || "Ocorreu um erro ao criar o cliente.";
-      
+
       // Try to parse error message for more detailed information
       try {
         if (error.message.includes('{')) {
@@ -281,13 +280,13 @@ export default function AddCustomerPage() {
       } catch (parseError) {
         console.log("Não foi possível analisar detalhes do erro:", parseError);
       }
-      
+
       toast({
         title: "Erro ao criar cliente",
         description: errorDescription,
         variant: "destructive",
       });
-      
+
       // Log form validation errors if any
       const formErrors = customerForm.formState.errors;
       if (Object.keys(formErrors).length > 0) {
@@ -319,7 +318,7 @@ export default function AddCustomerPage() {
     console.log("Categorias selecionadas:", selectedCategories);
     console.log("Unidades de venda por categoria:", categorySaleUnits);
     console.log("Form state (errors):", customerForm.formState.errors);
-    
+
     // Check credentials first - make sure we're logged in
     try {
       const userResponse = await fetch('/api/user');
@@ -335,7 +334,7 @@ export default function AddCustomerPage() {
     } catch (authError) {
       console.error("Erro ao verificar autenticação:", authError);
     }
-    
+
     // Validate that at least one category is selected if categories are available
     if (categories.length > 0 && selectedCategories.length === 0) {
       console.log("Erro: Nenhuma categoria selecionada");
@@ -346,7 +345,7 @@ export default function AddCustomerPage() {
       });
       return;
     }
-    
+
     // Check all selected categories have at least one sale unit selected
     for (const categoryId of selectedCategories) {
       if (!categorySaleUnits[categoryId] || categorySaleUnits[categoryId].length === 0) {
@@ -359,11 +358,11 @@ export default function AddCustomerPage() {
         return;
       }
     }
-    
+
     // Ensure required fields are filled
     const requiredFields = ['company_name', 'email', 'password', 'confirm_password'];
     const missingFields = requiredFields.filter(field => !data[field]);
-    
+
     if (missingFields.length > 0) {
       console.log("Campos obrigatórios faltando:", missingFields);
       toast({
@@ -373,11 +372,11 @@ export default function AddCustomerPage() {
       });
       return;
     }
-    
+
     // Properly handle currency values (ensure they are numbers)
     let delivery_fee_reais = 0;
     let minimum_order_value_reais = 0;
-    
+
     try {
       // Handle various input formats and convert to numbers
       if (typeof data.delivery_fee_reais === 'string') {
@@ -389,7 +388,7 @@ export default function AddCustomerPage() {
         delivery_fee_reais = data.delivery_fee_reais;
         console.log("delivery_fee_reais já é um número:", delivery_fee_reais);
       }
-      
+
       if (typeof data.minimum_order_value_reais === 'string') {
         // Normalize string by replacing comma with dot and handling multiple commas/dots
         const normalized = data.minimum_order_value_reais.replace(/,/g, '.').trim();
@@ -402,21 +401,21 @@ export default function AddCustomerPage() {
     } catch (conversionError) {
       console.error("Erro na conversão dos valores monetários:", conversionError);
     }
-    
+
     // Force to 0 if NaN or negative
     if (isNaN(delivery_fee_reais) || delivery_fee_reais < 0) {
       console.log("delivery_fee_reais é inválido, definindo como 0");
       delivery_fee_reais = 0;
     }
-    
+
     if (isNaN(minimum_order_value_reais) || minimum_order_value_reais < 0) {
       console.log("minimum_order_value_reais é inválido, definindo como 0");
       minimum_order_value_reais = 0;
     }
-    
+
     if (validatePasswords()) {
       console.log("Senhas validadas com sucesso");
-      
+
       try {
         // Verificando campos de endereço obrigatórios
         if (!data.street || !data.number || !data.neighborhood) {
@@ -428,10 +427,10 @@ export default function AddCustomerPage() {
           });
           return;
         }
-        
+
         // Combine address fields
         const address = `${data.street}, ${data.number}${data.complement ? `, ${data.complement}` : ''}, ${data.neighborhood}`;
-        
+
         // Create a simplified object with only the fields the API expects
         const submissionData = {
           company_name: data.company_name.trim(),
@@ -455,80 +454,107 @@ export default function AddCustomerPage() {
           minimum_order_value: Math.max(0, Math.round(minimum_order_value_reais * 100)),
           allowed_delivery_days: data.allowed_delivery_days || [false, true, true, true, true, true, false],
         };
-        
+
         console.log("Dados simplificados para envio:", JSON.stringify(submissionData, null, 2));
         console.log("Enviando requisição para criação de cliente...");
-        
+
         // Store the selected categories and sale units to use after customer creation
         const categoriesToAssociate = [...selectedCategories];
         const unitsToAssociate = {...categorySaleUnits};
-        
+
+        // Explicitly log CNPJ to verify it's being included
+        console.log("CNPJ to be saved:", submissionData.cnpj);
+
         // Update mutation to handle category and unit associations after customer creation
         const createAndAssociate = async () => {
           try {
-            // First create the customer
+            // First create the customer - ensure CNPJ is explicitly included
+            const payload = {
+              ...submissionData,
+              cnpj: submissionData.cnpj || null,  // Explicitly include CNPJ, even if empty
+            };
+
+            console.log("Full customer creation payload:", payload);
+
             const response = await fetch('/api/customers', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(submissionData),
+              body: JSON.stringify(payload),
               credentials: 'include'
             });
-            
+
             if (!response.ok) {
               const errorText = await response.text();
               console.error("Erro na resposta:", errorText);
               throw new Error(errorText);
             }
-            
+
             // Get the created customer data
             const customerData = await response.json();
             const customerId = customerData.id;
-            
+
             console.log("Cliente criado com sucesso:", customerData);
             console.log("Associando categorias e unidades de venda...");
-            
+
             // Associate categories
             for (const categoryId of categoriesToAssociate) {
               console.log(`Associando categoria ${categoryId} ao cliente ${customerId}...`);
-              const categoryResponse = await fetch(`/api/customers/${customerId}/categories/${categoryId}`, {
-                method: 'POST',
-                credentials: 'include'
-              });
-              
-              if (!categoryResponse.ok) {
-                console.error(`Erro ao associar categoria ${categoryId}:`, await categoryResponse.text());
-                continue; // Continue with other categories even if one fails
-              }
-              
-              // Associate sale units for this category
-              const units = unitsToAssociate[categoryId] || [];
-              for (const unitId of units) {
-                console.log(`Associando unidade ${unitId} à categoria ${categoryId} do cliente ${customerId}...`);
-                const unitResponse = await fetch(`/api/customers/${customerId}/categories/${categoryId}/sale-units/${unitId}`, {
+              try {
+                const categoryResponse = await fetch(`/api/customers/${customerId}/categories/${categoryId}`, {
                   method: 'POST',
                   credentials: 'include'
                 });
-                
-                if (!unitResponse.ok) {
-                  console.error(`Erro ao associar unidade ${unitId}:`, await unitResponse.text());
+
+                if (!categoryResponse.ok) {
+                  console.error(`Erro ao associar categoria ${categoryId}:`, await categoryResponse.text());
+                  continue; // Continue with other categories even if one fails
                 }
+
+                console.log(`Categoria ${categoryId} associada com sucesso ao cliente ${customerId}`);
+
+                // Associate sale units for this category
+                const units = unitsToAssociate[categoryId] || [];
+                console.log(`Unidades a associar para categoria ${categoryId}:`, units);
+
+                for (const unitId of units) {
+                  console.log(`Associando unidade ${unitId} à categoria ${categoryId} do cliente ${customerId}...`);
+
+                  try {
+                    // Use the correct API endpoint for sale unit association
+                    const unitResponse = await fetch(`/api/customers/${customerId}/categories/${categoryId}/sale-units/${unitId}`, {
+                      method: 'POST',
+                      credentials: 'include'
+                    });
+
+                    if (!unitResponse.ok) {
+                      const errorText = await unitResponse.text();
+                      console.error(`Erro ao associar unidade ${unitId}:`, errorText);
+                    } else {
+                      console.log(`Unidade ${unitId} associada com sucesso à categoria ${categoryId}`);
+                    }
+                  } catch (unitError) {
+                    console.error(`Erro ao associar unidade ${unitId}:`, unitError);
+                  }
+                }
+              } catch (categoryError) {
+                console.error(`Erro ao processar categoria ${categoryId}:`, categoryError);
               }
             }
-            
+
             console.log("Cliente e associações criados com sucesso!");
-            
+
             // Invalidate queries to refresh data
             queryClient.invalidateQueries({ queryKey: ['/api/customers'] });
-            
+
             toast({
               title: "Cliente criado com sucesso",
               description: "O novo cliente e suas associações de produtos foram adicionados.",
               variant: "default",
             });
-            
+
             // Redirect to customers page
             window.location.href = "/admin/customers";
-            
+
             return customerData;
           } catch (error) {
             console.error("Erro no processo de criação e associação:", error);
@@ -540,7 +566,7 @@ export default function AddCustomerPage() {
             throw error;
           }
         };
-        
+
         // Execute the creation and association process
         createAndAssociate();
       } catch (error) {
@@ -888,20 +914,20 @@ export default function AddCustomerPage() {
                 {selectedCategories.length > 0 && (
                   <div>
                     <h3 className="text-sm font-medium text-gray-700 mb-3">Selecione as unidades de venda para cada categoria:</h3>
-                    
+
                     {selectedCategories.map(categoryId => {
                       const category = categories.find((c: Category) => c.id === categoryId);
                       const autoAssociatedCategories = [
                         "Balde 10 Litros", "Balde 5 Litros", "Copo 180ml", 
                         "Copo 250ml", "Itens Avulsos", "Pote 1 Litro", "Pote 1.8 Litros"
                       ];
-                      
+
                       // Check if this category should be auto-associated with "unidade"
                       const isAutoAssociated = autoAssociatedCategories.includes(category?.name || "");
-                      
+
                       // Find the "unidade" sale unit
                       const unidadeSaleUnit = saleUnits.find(unit => unit.unit_name === "Unidade");
-                      
+
                       // Auto-associate if needed
                       if (isAutoAssociated && unidadeSaleUnit) {
                         // Make sure "unidade" is selected for this category
@@ -910,14 +936,14 @@ export default function AddCustomerPage() {
                           handleSaleUnitChange(categoryId, unidadeSaleUnit.sale_unit_id, true);
                         }
                       }
-                      
+
                       return (
                         <div key={categoryId} className="mb-5 p-4 border rounded-lg bg-gray-50">
                           <h4 className="font-semibold mb-2 flex items-center">
                             <Tag className="h-4 w-4 mr-1 text-[#E73664]" />
                             {category?.name}
                           </h4>
-                          
+
                           {isAutoAssociated && unidadeSaleUnit ? (
                             <div className="ml-2 p-2">
                               <p className="text-sm text-gray-700 italic">
@@ -930,15 +956,15 @@ export default function AddCustomerPage() {
                                 // Filtra as unidades de venda com base na categoria
                                 const isPicklesCategory = ["Picolés de Fruta", "Picolés de Leite"].includes(category?.name || "");
                                 const isIceCreamStickCategory = category?.name === "Sorvete no Palito";
-                                
+
                                 let filteredUnits = [...saleUnits];
-                                
+
                                 if (isPicklesCategory) {
                                   // Apenas "Caixa Completa 24un", "Meia Caixa 12un" e "Unidade"
                                   filteredUnits = saleUnits.filter(unit => 
                                     ["Caixa Completa 24un", "Meia Caixa 12un", "Unidade"].includes(unit.unit_name)
                                   );
-                                  
+
                                   return (
                                     <div className="w-full">
                                       <p className="text-sm text-gray-700 italic mb-3">
@@ -970,7 +996,7 @@ export default function AddCustomerPage() {
                                   filteredUnits = saleUnits.filter(unit => 
                                     ["Caixa Completa 16un", "Meia Caixa 8un", "Unidade"].includes(unit.unit_name)
                                   );
-                                  
+
                                   return (
                                     <div className="w-full">
                                       <p className="text-sm text-gray-700 italic mb-3">
