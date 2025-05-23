@@ -1,0 +1,33 @@
+Sistema de Pedidos Sorvetão
+Gem personalizado
+
+Mostrar raciocínio
+Ok, entendi. Você está refinando o problema anterior: especificamente, ao criar um novo cliente, a parte de registrar quais unidades de venda (sale units) ele pode comprar dentro das categorias de produtos associadas a ele não está funcionando.
+
+Isso é crítico para a personalização do catálogo do cliente. Aqui está um prompt em inglês que você pode usar para relatar esse erro específico:
+
+Subject: Critical Issue: Allowed Sale Units per Product Category Not Saving for New Customers
+
+Description:
+When creating a new customer via the 'New Customer' form in the administrator panel, there is an issue with correctly registering the specific sale units that the customer is permitted to purchase from within their assigned product categories. While product categories might be getting associated with the customer, the crucial subsequent step of defining and saving which sale units (e.g., 'Unit', 'Half Box 12pcs', 'Full Box 24pcs') are available to that customer for those specific categories is failing.
+
+Specific Problem:
+The data linking the customer to a product category AND then to the specific allowed sale units for that category (which should be stored in a table like CustomerCategoryAllowedSaleUnits or an equivalent structure) is not being created or is being created incorrectly.
+
+Expected Behavior:
+
+When an administrator assigns one or more product categories to a new customer.
+And then, for each of those assigned product categories, the administrator selects the specific sale units that this customer is allowed to purchase.
+This granular permission (Customer -> Product Category -> Allowed Sale Unit) must be correctly saved to the database.
+Subsequently, when the customer logs into their portal, their product catalog should only display products from their assigned categories, and for those products, only offer them in the specifically permitted sale units.
+Impact:
+
+Administrator Panel: The intended configuration of customer-specific purchasing options (sale units per category) is not being applied during new customer creation.
+Database Integrity: The CustomerCategoryAllowedSaleUnits table (or equivalent) is not being populated correctly for new customers.
+Customer Portal: Customers will either see all sale units for their assigned categories (if the restriction fails open) or potentially no sale units/products if the logic defaults to a restrictive state due to missing permissions. This leads to an incorrect product offering.
+To Be Verified/Checked:
+
+Frontend Form (New Customer Form): Confirm that the UI elements for selecting allowed sale units per assigned category are correctly capturing the administrator's selections and that this data is being included in the payload sent to the backend upon form submission.
+Backend API Endpoint (Create Customer): Ensure the API endpoint is designed to receive this potentially nested data structure (customer details, then a list of assigned categories, and for each category, a list of allowed sale unit IDs).
+Backend Logic (Create Customer Service): Verify that the service layer logic correctly processes this input and makes the appropriate insertions into the CustomerCategoryAllowedSaleUnits table, linking customer_id, product_category_id, and sale_unit_id.
+Priority: High – This is critical for the correct functioning of customer-specific catalogs and the B2B ordering process.
