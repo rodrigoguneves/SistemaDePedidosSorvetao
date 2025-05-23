@@ -79,22 +79,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log("Tipo de dados recebidos:", Object.keys(req.body).map(key => `${key}: ${typeof req.body[key]}`));
     
     try {
-      // Check what fields are required by the schema
-      console.log("Verificando schema do cliente...");
-      const requiredFields = Object.keys(customers.shape).filter(key => {
-        // @ts-ignore
-        return customers.shape[key].notNull === true;
-      });
-      console.log("Campos obrigatórios do cliente:", requiredFields);
-      
-      // Check which required fields are missing
-      const missingFields = requiredFields.filter(field => !req.body[field] && req.body[field] !== 0 && req.body[field] !== false);
-      console.log("Campos obrigatórios faltando:", missingFields);
-    } catch (err) {
-      console.log("Erro ao verificar campos obrigatórios:", err);
-    }
-    
-    try {
       if (!req.isAuthenticated()) {
         console.log("Erro: Usuário não autenticado");
         return res.status(403).json({ message: "Acesso negado - Usuário não autenticado" });
@@ -109,7 +93,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       try {
         // First, create user account if email/password provided
-        const { email, password, ...customerData } = req.body;
+        const { email, password, cnpj, ...customerData } = req.body;
         
         if (!email || !password) {
           console.log("Email ou senha não fornecidos");
@@ -147,11 +131,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Now create customer with user_id
         console.log("Validando dados do cliente com schema...");
-        // Make sure to attach the user_id to the customer data
+        // Make sure to attach the user_id and CNPJ to the customer data
         const customerWithUserId = {
           ...customerData,
+          cnpj: cnpj || null, // Explicitly include CNPJ, defaulting to null if not provided
           user_id: newUser.id
         };
+        
+        console.log("CNPJ a ser salvo:", customerWithUserId.cnpj);
         
         try {
           // Validate data before inserting
@@ -225,14 +212,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Acesso negado" });
       }
 
+      console.log("=== RECEBIDO PATCH /api/customers/:id ===");
+      console.log("Cliente ID:", req.params.id);
+      console.log("Corpo da requisição:", JSON.stringify(req.body, null, 2));
+
       const customerId = parseInt(req.params.id);
-      const customer = await storage.updateCustomer(customerId, req.body);
+      
+      // Ensure the CNPJ field is properly handled
+      const updatedData = { ...req.body };
+      console.log("CNPJ recebido:", updatedData.cnpj);
+      
+      // If CNPJ is an empty string, convert it to null
+      if (updatedData.cnpj === "") {
+        updatedData.cnpj = null;
+      }
+      
+      const customer = await storage.updateCustomer(customerId, updatedData);
       if (!customer) {
         return res.status(404).json({ message: "Cliente não encontrado" });
       }
 
+      console.log("Cliente atualizado com sucesso:", JSON.stringify(customer, null, 2));
       res.json(customer);
     } catch (error) {
+      console.error("Erro ao atualizar cliente:", error);
       next(error);
     }
   });

@@ -603,6 +603,11 @@ export default function EditCustomerPage() {
   // Handler for form submission
   const onSubmitCustomer = async (data: any) => {
     try {
+      console.log("=== INÍCIO DA ATUALIZAÇÃO DO CLIENTE ===");
+      console.log("Form data submitted:", JSON.stringify(data, null, 2));
+      console.log("Categorias selecionadas:", selectedCategories);
+      console.log("Unidades de venda por categoria:", categoryUnits);
+      
       // Handle address combining
       const address = `${data.street}, ${data.number}${data.complement ? `, ${data.complement}` : ''}, ${data.neighborhood}`;
 
@@ -637,7 +642,7 @@ export default function EditCustomerPage() {
         minimum_order_value_reais = 0;
       }
 
-      // Prepare submission data
+      // Prepare submission data - explicitly include CNPJ
       const submissionData = {
         company_name: data.company_name.trim(),
         contact_person: (data.contact_person || "").trim(),
@@ -646,7 +651,7 @@ export default function EditCustomerPage() {
         city: (data.city || "").trim(),
         state: (data.state || "").trim(),
         postal_code: (data.postal_code || "").trim(),
-        cnpj: (data.cnpj || "").trim(),
+        cnpj: (data.cnpj || "").trim(), // Ensure CNPJ is included
         // Make sure latitude and longitude are numeric or null
         latitude: data.latitude === "" || data.latitude === null ? null : 
                   typeof data.latitude === 'string' ? parseFloat(data.latitude) : data.latitude,
@@ -661,64 +666,170 @@ export default function EditCustomerPage() {
         password: data.password ? data.password : undefined,
       };
 
-      console.log("Submission data:", submissionData);
+      console.log("Dados para atualização do cliente:", JSON.stringify(submissionData, null, 2));
 
       // First update the customer basic info
-      await updateCustomerMutation.mutateAsync(submissionData);
+      const updatedCustomer = await updateCustomerMutation.mutateAsync(submissionData);
+      console.log("Cliente atualizado com sucesso:", updatedCustomer);
 
+      console.log("Atualizando associações de categorias...");
+      
       // Fetch current customer categories
       const currentCategoriesRes = await fetch(`/api/customers/${customerId}/categories`);
-      if (!currentCategoriesRes.ok) throw new Error('Failed to fetch current categories');
+      if (!currentCategoriesRes.ok) {
+        console.error("Erro ao buscar categorias atuais:", await currentCategoriesRes.text());
+        throw new Error('Falha ao buscar categorias atuais');
+      }
       const currentCategories = await currentCategoriesRes.json();
+      console.log("Categorias atuais:", currentCategories);
 
       // Add/remove categories
-      const currentCategoryIds = currentCategories.map((cat: any) => cat.id);
+      let currentCategoryIds: number[] = [];
+      try {
+        // Handle different response formats
+        if (Array.isArray(currentCategories)) {
+          currentCategoryIds = currentCategories.map((cat: any) => {
+            if (typeof cat === 'number') return cat;
+            if (cat && typeof cat === 'object') {
+              // Try to find the category ID in various possible properties
+              if (cat.id !== undefined) return cat.id;
+              if (cat.category_id !== undefined) return cat.category_id;
+              if (cat.product_category_id !== undefined) return cat.product_category_id;
+            }
+            return null;
+          }).filter(id => id !== null) as number[];
+        }
+      } catch (err) {
+        console.error("Erro ao extrair IDs de categoria:", err);
+        currentCategoryIds = [];
+      }
+      
+      console.log("IDs de categorias atuais:", currentCategoryIds);
+      console.log("IDs de categorias selecionadas:", selectedCategories);
+      
       const categoriesToAdd = selectedCategories.filter(id => !currentCategoryIds.includes(id));
       const categoriesToRemove = currentCategoryIds.filter(id => !selectedCategories.includes(id));
+      
+      console.log("Categorias a adicionar:", categoriesToAdd);
+      console.log("Categorias a remover:", categoriesToRemove);
 
       // Process category additions
       for (const categoryId of categoriesToAdd) {
-        await updateCategoryAccessMutation.mutateAsync({ categoryId, add: true });
+        console.log(`Adicionando categoria ${categoryId}...`);
+        try {
+          await updateCategoryAccessMutation.mutateAsync({ categoryId, add: true });
+          console.log(`Categoria ${categoryId} adicionada com sucesso`);
+        } catch (error) {
+          console.error(`Erro ao adicionar categoria ${categoryId}:`, error);
+        }
       }
 
       // Process category removals
       for (const categoryId of categoriesToRemove) {
-        await updateCategoryAccessMutation.mutateAsync({ categoryId, add: false });
+        console.log(`Removendo categoria ${categoryId}...`);
+        try {
+          await updateCategoryAccessMutation.mutateAsync({ categoryId, add: false });
+          console.log(`Categoria ${categoryId} removida com sucesso`);
+        } catch (error) {
+          console.error(`Erro ao remover categoria ${categoryId}:`, error);
+        }
       }
 
+      console.log("Atualizando associações de unidades de venda...");
+      
       // Fetch current sale units access
       const currentUnitsRes = await fetch(`/api/customers/${customerId}/allowed-sale-units`);
-      if (!currentUnitsRes.ok) throw new Error('Failed to fetch current sale units');
+      if (!currentUnitsRes.ok) {
+        console.error("Erro ao buscar unidades atuais:", await currentUnitsRes.text());
+        throw new Error('Falha ao buscar unidades de venda atuais');
+      }
       const currentUnits = await currentUnitsRes.json();
+      console.log("Unidades atuais:", currentUnits);
 
       // Group current units by category
       const currentUnitsByCategory: Record<number, number[]> = {};
-      currentUnits.forEach((item: any) => {
-        if (!currentUnitsByCategory[item.product_category_id]) {
-          currentUnitsByCategory[item.product_category_id] = [];
-        }
-        currentUnitsByCategory[item.product_category_id].push(item.sale_unit_id);
-      });
+      try {
+        currentUnits.forEach((item: any) => {
+          if (!item) return;
+          
+          let productCategoryId = null;
+          let saleUnitId = null;
+          
+          // Handle different response structures
+          if (item.product_category_id !== undefined) {
+            productCategoryId = item.product_category_id;
+          } else if (item.category_id !== undefined) {
+            productCategoryId = item.category_id;
+          } else if (item.customerCategory && item.customerCategory.category_id !== undefined) {
+            productCategoryId = item.customerCategory.category_id;
+          }
+          
+          if (item.sale_unit_id !== undefined) {
+            saleUnitId = item.sale_unit_id;
+          }
+          
+          if (productCategoryId === null || saleUnitId === null) {
+            console.log("Unidade de venda com estrutura inválida:", item);
+            return;
+          }
+          
+          if (!currentUnitsByCategory[productCategoryId]) {
+            currentUnitsByCategory[productCategoryId] = [];
+          }
+          
+          if (!currentUnitsByCategory[productCategoryId].includes(saleUnitId)) {
+            currentUnitsByCategory[productCategoryId].push(saleUnitId);
+          }
+        });
+      } catch (err) {
+        console.error("Erro ao processar unidades de venda atuais:", err);
+      }
+      
+      console.log("Unidades de venda agrupadas por categoria:", currentUnitsByCategory);
+      console.log("Unidades de venda desejadas por categoria:", categoryUnits);
 
       // Update sale units for each category
       for (const categoryId of selectedCategories) {
         const current = currentUnitsByCategory[categoryId] || [];
         const desired = categoryUnits[categoryId] || [];
+        
+        console.log(`Categoria ${categoryId} - unidades atuais:`, current);
+        console.log(`Categoria ${categoryId} - unidades desejadas:`, desired);
 
         // Units to add
         for (const unitId of desired) {
           if (!current.includes(unitId)) {
-            await updateSaleUnitAccessMutation.mutateAsync({ categoryId, unitId, add: true });
+            console.log(`Adicionando unidade ${unitId} à categoria ${categoryId}...`);
+            try {
+              await updateSaleUnitAccessMutation.mutateAsync({ categoryId, unitId, add: true });
+              console.log(`Unidade ${unitId} adicionada com sucesso à categoria ${categoryId}`);
+            } catch (error) {
+              console.error(`Erro ao adicionar unidade ${unitId} à categoria ${categoryId}:`, error);
+            }
           }
         }
 
         // Units to remove
         for (const unitId of current) {
           if (!desired.includes(unitId)) {
-            await updateSaleUnitAccessMutation.mutateAsync({ categoryId, unitId, add: false });
+            console.log(`Removendo unidade ${unitId} da categoria ${categoryId}...`);
+            try {
+              await updateSaleUnitAccessMutation.mutateAsync({ categoryId, unitId, add: false });
+              console.log(`Unidade ${unitId} removida com sucesso da categoria ${categoryId}`);
+            } catch (error) {
+              console.error(`Erro ao remover unidade ${unitId} da categoria ${categoryId}:`, error);
+            }
           }
         }
       }
+
+      console.log("=== ATUALIZAÇÃO DO CLIENTE CONCLUÍDA COM SUCESSO ===");
+      
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['/api/customers'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/customers/${customerId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/customers/${customerId}/categories`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/customers/${customerId}/allowed-sale-units`] });
 
       toast({
         title: "Cliente atualizado com sucesso",
@@ -730,6 +841,7 @@ export default function EditCustomerPage() {
       setLocation("/admin/customers");
 
     } catch (error: any) {
+      console.error("=== ERRO AO ATUALIZAR CLIENTE ===", error);
       toast({
         title: "Erro ao atualizar cliente",
         description: error.message || "Ocorreu um erro ao atualizar o cliente",

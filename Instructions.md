@@ -1,194 +1,133 @@
-# Edit Customer Form Data Loading Issues - Analysis and Fix Plan
+# Customer Data Saving Issues - Analysis and Fix Plan
 
-## Problem Summary
-When editing an existing customer, the form doesn't fully populate with all customer data:
-1. CNPJ (Tax ID) field is not pre-filled
-2. Customer Email field is not pre-filled
-3. Product catalog access settings and their sale units are not loading correctly
+## Issue Summary
 
-## Root Cause Analysis
+Three critical data points are not being correctly saved when creating or editing customers:
 
-After examining the codebase, I've identified several key issues:
+1. **CNPJ (Brazilian Tax ID)** - Not being saved in the database
+2. **Product Categories** - Customer-to-category associations not being saved properly
+3. **Sale Units per Category** - Specific sale units for each category not being saved
+
+## Root Causes Analysis
 
 ### 1. CNPJ Field Issue
-- The `CNPJ` field is used in the form but is **not defined in the database schema** for the customers table
-- Looking at the code in `edit-customer.tsx`, there are attempts to set the CNPJ value during form initialization:
-  ```javascript
-  const cnpjValue = customer.cnpj || "";
-  console.log("Setting CNPJ value:", cnpjValue);
-  ```
-  But since it's not in the database schema, the value is always undefined/null
 
-### 2. Email Field Issue
-- Email is stored in the `users` table (not the `customers` table)
-- The email is fetched separately from a different API endpoint (`/api/users/${customer.user_id}`)
-- Error logs show consistent failures when fetching user email: `"Error fetching user email:",{}`
-- There appears to be an issue with the API endpoint or error handling in the email fetch logic
+**Problem**: The CNPJ field is defined in the schema (`shared/schema.ts`) but not correctly processed or saved during customer creation/update.
 
-### 3. Product Catalog Access Issues
-- There's a disconnection between how categories and their allowed sale units are loaded
-- The state management for the `categoryUnits` doesn't properly initialize with the data from API responses
-- The form doesn't correctly populate the selected sale units for each category
-- Console logs show: `"Processed sale units by category:",{}` indicating empty data
+**Code Analysis**:
+- The CNPJ field is defined in the database schema but is optional
+- In `add-customer.tsx`, the CNPJ value is collected but not explicitly included in the final API request
+- In `edit-customer.tsx`, even though the form shows the CNPJ field, when updating the customer the field may not be included in the API request
 
-## Detailed Fix Plan
+### 2. Category Selection Issue
 
-### 1. Fix CNPJ Field Issue
+**Problem**: Selected product categories for a customer are collected in the forms but not properly associated with the customer in the database.
 
-The CNPJ field needs to be added to the database schema, since it's being used in the UI. There are two approaches:
+**Code Analysis**:
+- In `add-customer.tsx`, there's no explicit code to link the selected categories to the newly created customer after the customer is created
+- The selections are made and stored in local state variables but never sent to the backend
+- Similar issues occur in `edit-customer.tsx` where the UI allows for category selection, but the mutation doesn't include this data
 
-#### Approach A: Add CNPJ to Database Schema (Recommended)
-1. Modify the `customers` table in `shared/schema.ts` to include the CNPJ field:
-   ```typescript
-   export const customers = pgTable('customers', {
-     // existing fields...
-     cnpj: text('cnpj'),
-     // other fields...
-   });
-   ```
-2. Run a database migration to add the field to the table
-3. Update form handling to properly save and load this field
+### 3. Sale Units Association Issue
 
-#### Approach B: Temporary Solution (Quick Fix)
-If schema changes are not immediately possible, modify the form loading logic to handle missing CNPJ:
+**Problem**: For each product category a customer has access to, the specific sale units (like "Unit", "Half Box") are not being saved.
+
+**Code Analysis**:
+- The UI collects the data correctly in both forms using the `categorySaleUnits` state
+- However, this data doesn't get passed to the backend API in the API requests
+- The `categoryUnits` data structure needs to be sent to the API after the customer creation/update
+
+## Proposed Fixes
+
+### 1. Fix CNPJ Field
+
+1. Ensure the CNPJ field is explicitly included in the API request payloads in both `add-customer.tsx` and `edit-customer.tsx`
+2. Verify the server routes correctly process the CNPJ field
+
+### 2. Fix Category and Sale Unit Association
+
+1. **Add Customer Flow**:
+   - After successful customer creation, implement sequential API calls to associate selected categories and their sale units
+   - Add proper error handling and visual feedback during this process
+
+2. **Edit Customer Flow**:
+   - Ensure all selected categories and sale units are properly synced with the database on save
+   - Implement proper category/sale unit association management (add/remove)
+
+### 3. Add Debug Logging
+
+- Add comprehensive logging for troubleshooting
+- Log key data at important points in the data flow to help identify issues
+
+## Implementation Details
+
+### 1. Fix for Add Customer Page
+
+The main issue in `add-customer.tsx` is that it creates a customer but doesn't follow up with API calls to establish the category and sale unit relationships. We need to implement these follow-up API calls after customer creation.
+
 ```javascript
-// In edit-customer.tsx, ensure CNPJ is properly handled
-useEffect(() => {
-  if (customer) {
-    // Existing code...
-    
-    // Ensure CNPJ is properly set with fallback
-    setTimeout(() => {
-      customerForm.setValue("cnpj", customer.cnpj || "");
-    }, 100);
+// Pseudocode for add-customer.tsx fix:
+createCustomerMutation.onSuccess = async (data) => {
+  const customerId = data.id;
+
+  // Create promises for all category associations
+  const categoryPromises = selectedCategories.map(categoryId => 
+    fetch(`/api/customers/${customerId}/categories/${categoryId}`, {
+      method: 'POST'
+    }));
+
+  // Wait for all category associations to complete
+  await Promise.all(categoryPromises);
+
+  // Now create promises for all sale unit associations
+  const unitPromises = [];
+  for (const categoryId of selectedCategories) {
+    const units = categorySaleUnits[categoryId] || [];
+    for (const unitId of units) {
+      unitPromises.push(
+        fetch(`/api/customers/${customerId}/categories/${categoryId}/sale-units/${unitId}`, {
+          method: 'POST'
+        })
+      );
+    }
   }
-}, [customer]);
+
+  // Wait for all unit associations to complete
+  await Promise.all(unitPromises);
+
+  // Then redirect and show success message
+  // ...existing code
+}
 ```
 
-### 2. Fix Email Field Issue
+### 2. Fix for Edit Customer Page 
 
-The issue is likely with the API endpoint for fetching user details or error handling:
+The edit page needs similar handling but must also manage removing unselected categories and units:
 
-1. Enhance error handling in the user email fetch process:
-   ```javascript
-   // In edit-customer.tsx
-   if (customer.user_id) {
-     const fetchUserEmail = async () => {
-       try {
-         console.log(`Fetching user email for user_id: ${customer.user_id}`);
-         const res = await fetch(`/api/users/${customer.user_id}`, {
-           headers: { 'Cache-Control': 'no-cache' }
-         });
-         
-         if (!res.ok) {
-           throw new Error(`Failed to fetch user data: ${res.status}`);
-         }
-         
-         const userData = await res.json();
-         console.log("User data loaded:", userData);
-         
-         if (userData && userData.email) {
-           customerForm.setValue("email", userData.email);
-         }
-       } catch (error) {
-         console.error("Error fetching user email:", error);
-         // Set a fallback or default value
-         customerForm.setValue("email", "Email não disponível");
-       }
-     };
-     
-     fetchUserEmail();
-   }
-   ```
+```javascript
+// Pseudocode for edit-customer.tsx fix:
+onSubmitCustomer = async (data) => {
+  // First update customer data including CNPJ
+  const customer = await updateCustomerMutation.mutateAsync({
+    ...data,
+    cnpj: data.cnpj // Explicitly include CNPJ
+  });
 
-2. Verify the API endpoint exists and works:
-   - Check `server/routes.ts` for `/api/users/:id` endpoint
-   - Ensure it properly returns user data including email
-   - Add more detailed error logging on the server side
+  // Then update categories and sale units
+  // ...existing code for adding/removing categories
 
-### 3. Fix Product Catalog Access Settings
+  // Then update sale units for each category
+  // ...existing code for adding/removing sale units
+}
+```
 
-The issue is in how the category-to-sale-units mapping is loaded and managed:
+### 3. Ensure Server Routes Handle CNPJ
 
-1. Improve data loading and structure initialization:
-   ```javascript
-   // In edit-customer.tsx
-   useEffect(() => {
-     if (customerSaleUnits && customerSaleUnits.length > 0) {
-       console.log("Loading customer sale units:", customerSaleUnits);
-       
-       // Create a new object to hold category -> unit IDs mapping
-       const unitsByCat: Record<number, number[]> = {};
-       
-       // Process each customer sale unit
-       customerSaleUnits.forEach((unit: any) => {
-         const catId = unit.product_category_id;
-         const uId = unit.sale_unit_id;
-         
-         // Initialize array if needed
-         if (!unitsByCat[catId]) {
-           unitsByCat[catId] = [];
-         }
-         
-         // Add unit ID to category's array
-         unitsByCat[catId].push(uId);
-       });
-       
-       console.log("Processed sale units by category:", unitsByCat);
-       
-       // Set state with processed data
-       setCategoryUnits(unitsByCat);
-     }
-   }, [customerSaleUnits]);
-   ```
-
-2. Add explicit category selection state update:
-   ```javascript
-   // In edit-customer.tsx
-   useEffect(() => {
-     if (customerCategories && customerCategories.length > 0) {
-       console.log("Setting selected categories:", customerCategories);
-       
-       // Extract category IDs and update selected categories
-       const categoryIds = customerCategories.map((cat: any) => cat.id);
-       setSelectedCategories(categoryIds);
-     }
-   }, [customerCategories]);
-   ```
-
-3. Ensure API returns complete data:
-   - Review `server/routes.ts` and `server/storage.ts` for the implementation of:
-     - `/api/customers/:id/categories`
-     - `/api/customers/:id/allowed-sale-units`
-   - Verify SQL queries are returning all necessary fields
-   - Add more detailed logging on the server side
-
-## Implementation Strategy
-
-The recommended order of implementation:
-
-1. Start with the Email field fix, as it requires no schema changes
-2. Fix the Product Catalog Access settings, as it's mainly front-end state management
-3. Address the CNPJ field issue last, as it may require schema changes
+Verify server routes correctly process the CNPJ field in all customer-related operations.
 
 ## Testing Plan
 
-1. After implementing each fix, test the Edit Customer form with customers who have:
-   - Different CNPJ values (including empty/null values)
-   - Different email configurations
-   - Various product category and sale unit access settings
-
-2. Verify in the browser console that:
-   - The API requests succeed without errors
-   - The data is correctly loaded and displayed
-   - The form state is properly initialized
-
-3. Test saving changes to ensure the data is preserved correctly
-
-## Expected Outcome
-
-After implementing these fixes:
-- The CNPJ field will properly display the customer's tax ID
-- The email field will show the correct customer email with appropriate fallbacks
-- Product categories and their sale units will be correctly displayed and editable
-- The form will provide a complete view of all customer data
+1. Create a new customer with a CNPJ and verify it's saved
+2. Assign categories and sale units to a customer and verify associations
+3. Edit a customer, changing categories and sale units, and verify changes are saved
+4. Check database entries to ensure all relationships are correctly established

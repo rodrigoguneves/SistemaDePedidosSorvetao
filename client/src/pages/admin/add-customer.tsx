@@ -437,6 +437,7 @@ export default function AddCustomerPage() {
           company_name: data.company_name.trim(),
           contact_person: (data.contact_person || "").trim(),
           phone: (data.phone || "").trim(),
+          cnpj: (data.cnpj || "").trim(), // Explicitly include CNPJ field
           email: data.email.trim(),
           password: data.password,
           address: address.trim(),
@@ -457,7 +458,91 @@ export default function AddCustomerPage() {
         
         console.log("Dados simplificados para envio:", JSON.stringify(submissionData, null, 2));
         console.log("Enviando requisição para criação de cliente...");
-        createCustomerMutation.mutate(submissionData);
+        
+        // Store the selected categories and sale units to use after customer creation
+        const categoriesToAssociate = [...selectedCategories];
+        const unitsToAssociate = {...categorySaleUnits};
+        
+        // Update mutation to handle category and unit associations after customer creation
+        const createAndAssociate = async () => {
+          try {
+            // First create the customer
+            const response = await fetch('/api/customers', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(submissionData),
+              credentials: 'include'
+            });
+            
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error("Erro na resposta:", errorText);
+              throw new Error(errorText);
+            }
+            
+            // Get the created customer data
+            const customerData = await response.json();
+            const customerId = customerData.id;
+            
+            console.log("Cliente criado com sucesso:", customerData);
+            console.log("Associando categorias e unidades de venda...");
+            
+            // Associate categories
+            for (const categoryId of categoriesToAssociate) {
+              console.log(`Associando categoria ${categoryId} ao cliente ${customerId}...`);
+              const categoryResponse = await fetch(`/api/customers/${customerId}/categories/${categoryId}`, {
+                method: 'POST',
+                credentials: 'include'
+              });
+              
+              if (!categoryResponse.ok) {
+                console.error(`Erro ao associar categoria ${categoryId}:`, await categoryResponse.text());
+                continue; // Continue with other categories even if one fails
+              }
+              
+              // Associate sale units for this category
+              const units = unitsToAssociate[categoryId] || [];
+              for (const unitId of units) {
+                console.log(`Associando unidade ${unitId} à categoria ${categoryId} do cliente ${customerId}...`);
+                const unitResponse = await fetch(`/api/customers/${customerId}/categories/${categoryId}/sale-units/${unitId}`, {
+                  method: 'POST',
+                  credentials: 'include'
+                });
+                
+                if (!unitResponse.ok) {
+                  console.error(`Erro ao associar unidade ${unitId}:`, await unitResponse.text());
+                }
+              }
+            }
+            
+            console.log("Cliente e associações criados com sucesso!");
+            
+            // Invalidate queries to refresh data
+            queryClient.invalidateQueries({ queryKey: ['/api/customers'] });
+            
+            toast({
+              title: "Cliente criado com sucesso",
+              description: "O novo cliente e suas associações de produtos foram adicionados.",
+              variant: "default",
+            });
+            
+            // Redirect to customers page
+            window.location.href = "/admin/customers";
+            
+            return customerData;
+          } catch (error) {
+            console.error("Erro no processo de criação e associação:", error);
+            toast({
+              title: "Erro ao criar cliente",
+              description: error.message || "Ocorreu um erro ao criar o cliente e suas associações.",
+              variant: "destructive",
+            });
+            throw error;
+          }
+        };
+        
+        // Execute the creation and association process
+        createAndAssociate();
       } catch (error) {
         console.error("Erro ao preparar submissão do formulário:", error);
         toast({
