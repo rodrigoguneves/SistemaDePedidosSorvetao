@@ -731,6 +731,9 @@ export default function EditCustomerPage() {
               if (cat.id !== undefined) return cat.id;
               if (cat.category_id !== undefined) return cat.category_id;
               if (cat.product_category_id !== undefined) return cat.product_category_id;
+              if (cat.product_categories && cat.product_categories.id !== undefined) {
+                return cat.product_categories.id;
+              }
             }
             return null;
           }).filter(id => id !== null) as number[];
@@ -749,6 +752,20 @@ export default function EditCustomerPage() {
       console.log("Categorias a adicionar:", categoriesToAdd);
       console.log("Categorias a remover:", categoriesToRemove);
 
+      // First, process category removals to clean up
+      for (const categoryId of categoriesToRemove) {
+        console.log(`Removendo categoria ${categoryId}...`);
+        try {
+          // When removing a category, all its associated units are automatically removed
+          // due to the 'on delete cascade' constraint in the database
+          console.log(`As unidades associadas à categoria ${categoryId} serão removidas automaticamente`);
+          await updateCategoryAccessMutation.mutateAsync({ categoryId, add: false });
+          console.log(`Categoria ${categoryId} removida com sucesso`);
+        } catch (error) {
+          console.error(`Erro ao remover categoria ${categoryId}:`, error);
+        }
+      }
+
       // Process category additions
       for (const categoryId of categoriesToAdd) {
         console.log(`Adicionando categoria ${categoryId}...`);
@@ -756,7 +773,7 @@ export default function EditCustomerPage() {
           await updateCategoryAccessMutation.mutateAsync({ categoryId, add: true });
           console.log(`Categoria ${categoryId} adicionada com sucesso`);
           
-          // Após adicionar a categoria, imediatamente adicione as unidades de venda selecionadas
+          // After adding the category, immediately add the selected sale units
           const unitsForCategory = categoryUnits[categoryId] || [];
           console.log(`Adicionando ${unitsForCategory.length} unidades para categoria ${categoryId}:`, unitsForCategory);
           
@@ -768,26 +785,14 @@ export default function EditCustomerPage() {
                 add: true 
               });
               console.log(`Unidade ${unitId} adicionada com sucesso à categoria ${categoryId}`);
+              // Add a small delay between requests to avoid overwhelming the server
+              await new Promise(resolve => setTimeout(resolve, 50));
             } catch (unitError) {
               console.error(`Erro ao adicionar unidade ${unitId} à categoria ${categoryId}:`, unitError);
             }
           }
         } catch (error) {
           console.error(`Erro ao adicionar categoria ${categoryId}:`, error);
-        }
-      }
-
-      // Process category removals
-      for (const categoryId of categoriesToRemove) {
-        console.log(`Removendo categoria ${categoryId}...`);
-        try {
-          // Ao remover uma categoria, todas as suas unidades são automaticamente removidas devido
-          // à constraint 'on delete cascade' no banco de dados, mas vamos registrar isso
-          console.log(`As unidades associadas à categoria ${categoryId} serão removidas automaticamente`);
-          await updateCategoryAccessMutation.mutateAsync({ categoryId, add: false });
-          console.log(`Categoria ${categoryId} removida com sucesso`);
-        } catch (error) {
-          console.error(`Erro ao remover categoria ${categoryId}:`, error);
         }
       }
 
@@ -802,10 +807,6 @@ export default function EditCustomerPage() {
       const currentUnits = await currentUnitsRes.json();
       console.log("Unidades atuais:", currentUnits);
       
-      // Log das unidades atuais vs desejadas
-      console.log("Unidades atuais por categoria:", currentUnitsByCategory);
-      console.log("Unidades desejadas por categoria:", categoryUnits);
-
       // Group current units by category
       const currentUnitsByCategory: Record<number, number[]> = {};
       try {
@@ -848,8 +849,11 @@ export default function EditCustomerPage() {
       console.log("Unidades de venda agrupadas por categoria:", currentUnitsByCategory);
       console.log("Unidades de venda desejadas por categoria:", categoryUnits);
 
-      // Update sale units for each category
-      for (const categoryId of selectedCategories) {
+      // For categories that were not added or removed, update the sale units
+      const existingCategories = selectedCategories.filter(id => !categoriesToAdd.includes(id));
+      
+      // Update sale units for each remaining category
+      for (const categoryId of existingCategories) {
         const current = currentUnitsByCategory[categoryId] || [];
         const desired = categoryUnits[categoryId] || [];
         
@@ -863,6 +867,8 @@ export default function EditCustomerPage() {
             try {
               await updateSaleUnitAccessMutation.mutateAsync({ categoryId, unitId, add: true });
               console.log(`Unidade ${unitId} adicionada com sucesso à categoria ${categoryId}`);
+              // Add a small delay between requests
+              await new Promise(resolve => setTimeout(resolve, 50));
             } catch (error) {
               console.error(`Erro ao adicionar unidade ${unitId} à categoria ${categoryId}:`, error);
             }
@@ -876,6 +882,8 @@ export default function EditCustomerPage() {
             try {
               await updateSaleUnitAccessMutation.mutateAsync({ categoryId, unitId, add: false });
               console.log(`Unidade ${unitId} removida com sucesso da categoria ${categoryId}`);
+              // Add a small delay between requests
+              await new Promise(resolve => setTimeout(resolve, 50));
             } catch (error) {
               console.error(`Erro ao remover unidade ${unitId} da categoria ${categoryId}:`, error);
             }

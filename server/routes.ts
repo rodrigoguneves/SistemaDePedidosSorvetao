@@ -411,28 +411,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         // Verificar se a categoria existe para o cliente
         const clientCategories = await storage.getCustomerCategories(customerId);
-        const categoryExists = clientCategories.some((cat: any) => {
-          // Verificar considerando diferentes estruturas possíveis
-          const catId = cat.id || cat.category_id || (cat.productCategories && cat.productCategories.id);
-          return catId === categoryId;
-        });
+        let categoryExists = false;
+        
+        // Improved category existence check handling different response formats
+        if (Array.isArray(clientCategories)) {
+          categoryExists = clientCategories.some((cat: any) => {
+            // Handle different possible structures
+            if (typeof cat === 'number') return cat === categoryId;
+            if (!cat || typeof cat !== 'object') return false;
+            
+            // Check direct properties
+            if (cat.id !== undefined && cat.id === categoryId) return true;
+            if (cat.category_id !== undefined && cat.category_id === categoryId) return true;
+            if (cat.product_category_id !== undefined && cat.product_category_id === categoryId) return true;
+            
+            // Check nested objects
+            if (cat.productCategories && cat.productCategories.id === categoryId) return true;
+            if (cat.product_categories && cat.product_categories.id === categoryId) return true;
+            
+            return false;
+          });
+        }
 
         if (!categoryExists) {
-          console.error(`[ADD UNIT] Categoria ${categoryId} não está associada ao cliente ${customerId}`);
-          // Tente associar a categoria primeiro
-          console.log(`[ADD UNIT] Tentando associar a categoria ${categoryId} ao cliente ${customerId} primeiro`);
-          await storage.addCategoryToCustomer(customerId, categoryId);
+          console.log(`[ADD UNIT] Categoria ${categoryId} não está associada ao cliente ${customerId}, associando agora...`);
+          // Associar a categoria primeiro
+          const categoryAdded = await storage.addCategoryToCustomer(customerId, categoryId);
+          if (!categoryAdded) {
+            console.error(`[ADD UNIT] Falha ao associar a categoria ${categoryId} ao cliente ${customerId}`);
+            return res.status(400).json({ 
+              message: "Não foi possível associar a categoria ao cliente"
+            });
+          }
+          console.log(`[ADD UNIT] Categoria ${categoryId} adicionada com sucesso ao cliente ${customerId}`);
         }
         
-        // Agora tente adicionar a unidade de venda
+        // Agora adicionar a unidade de venda
+        console.log(`[ADD UNIT] Tentando adicionar unidade ${unitId} à categoria ${categoryId} do cliente ${customerId}`);
         const success = await storage.addCategorySaleUnitToCustomer(customerId, categoryId, unitId);
         if (!success) {
           console.error(`[ADD UNIT] Falha ao adicionar unidade de venda ${unitId} à categoria ${categoryId}`);
-          return res.status(400).json({ message: "Não foi possível adicionar a unidade de venda à categoria do cliente" });
+          return res.status(400).json({ 
+            message: "Não foi possível adicionar a unidade de venda à categoria do cliente" 
+          });
         }
 
         console.log(`[ADD UNIT] Unidade ${unitId} adicionada com sucesso à categoria ${categoryId} do cliente ${customerId}`);
-        res.status(200).json({ message: "Unidade de venda adicionada com sucesso" });
+        res.status(200).json({ 
+          message: "Unidade de venda adicionada com sucesso",
+          customer_id: customerId,
+          category_id: categoryId,
+          unit_id: unitId
+        });
       } catch (storageError) {
         console.error(`[ADD UNIT] Erro ao processar adição de unidade de venda:`, storageError);
         throw storageError;

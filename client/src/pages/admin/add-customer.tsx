@@ -311,7 +311,7 @@ export default function AddCustomerPage() {
     return true;
   };
 
-  // Handler para submit do formulário
+  // Handler for form submission
   const onSubmitCustomer = async (data: any) => {
     console.log("=== INÍCIO DA VALIDAÇÃO DO FORMULÁRIO ===");
     console.log("Form data submitted:", JSON.stringify(data, null, 2));
@@ -498,14 +498,11 @@ export default function AddCustomerPage() {
             console.log("Cliente criado com sucesso:", customerData);
             console.log("Associando categorias e unidades de venda...");
 
-            // Array para armazenar todas as promises de associação
-            const associationPromises = [];
-
-            // Associate categories 
+            // Associate categories and sale units sequentially to avoid race conditions
             for (const categoryId of categoriesToAssociate) {
               console.log(`Associando categoria ${categoryId} ao cliente ${customerId}...`);
               try {
-                // Primeiro associamos a categoria
+                // First associate the category
                 const categoryResponse = await fetch(`/api/customers/${customerId}/categories/${categoryId}`, {
                   method: 'POST',
                   credentials: 'include'
@@ -518,7 +515,7 @@ export default function AddCustomerPage() {
 
                 console.log(`Categoria ${categoryId} associada com sucesso ao cliente ${customerId}`);
 
-                // Verificamos quais unidades de venda foram selecionadas para esta categoria
+                // Get the selected sale units for this category
                 const units = unitsToAssociate[categoryId] || [];
                 console.log(`Unidades a associar para categoria ${categoryId}:`, units);
 
@@ -526,38 +523,34 @@ export default function AddCustomerPage() {
                   console.warn(`Nenhuma unidade selecionada para categoria ${categoryId}, cliente ${customerId}`);
                 }
 
-                // Criamos uma promise para cada unidade de venda a ser associada
+                // Associate each sale unit sequentially to ensure reliable operation
                 for (const unitId of units) {
                   console.log(`Associando unidade ${unitId} à categoria ${categoryId} do cliente ${customerId}...`);
 
-                  // Adicionamos cada promise ao array para controle
-                  const unitPromise = fetch(`/api/customers/${customerId}/categories/${categoryId}/sale-units/${unitId}`, {
-                    method: 'POST',
-                    credentials: 'include'
-                  })
-                  .then(response => {
-                    if (!response.ok) {
-                      return response.text().then(text => {
-                        throw new Error(`Erro ao associar unidade ${unitId}: ${text}`);
-                      });
-                    }
-                    console.log(`Unidade ${unitId} associada com sucesso à categoria ${categoryId}`);
-                    return true;
-                  })
-                  .catch(error => {
-                    console.error(`Erro ao associar unidade ${unitId}:`, error);
-                    return false;
-                  });
+                  try {
+                    const unitResponse = await fetch(`/api/customers/${customerId}/categories/${categoryId}/sale-units/${unitId}`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include'
+                    });
 
-                  associationPromises.push(unitPromise);
+                    if (!unitResponse.ok) {
+                      const errorText = await unitResponse.text();
+                      console.error(`Erro ao associar unidade ${unitId} à categoria ${categoryId}:`, errorText);
+                    } else {
+                      console.log(`Unidade ${unitId} associada com sucesso à categoria ${categoryId} do cliente ${customerId}`);
+                    }
+                  } catch (unitError) {
+                    console.error(`Erro ao associar unidade ${unitId} à categoria ${categoryId}:`, unitError);
+                  }
+
+                  // Add a small delay between requests to avoid overwhelming the server
+                  await new Promise(resolve => setTimeout(resolve, 50));
                 }
               } catch (categoryError) {
                 console.error(`Erro ao processar categoria ${categoryId}:`, categoryError);
               }
             }
-
-            // Esperamos todas as associações de unidades serem concluídas
-            await Promise.all(associationPromises);
 
             console.log("Cliente e associações criados com sucesso!");
 
@@ -809,7 +802,7 @@ export default function AddCustomerPage() {
                       Cidade
                     </label>
                     <input
-                      {...customerForm.register("city")}
+                      {{...customerForm.register("city")}
                       className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
                       placeholder="São Paulo"
                     />

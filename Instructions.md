@@ -1,3 +1,70 @@
+# Critical Issue: Sale Units Not Being Saved Correctly for New Customers
+
+## Problem Analysis
+
+When creating a new customer via the 'New Customer' form, there's an issue with correctly registering the sale units that customers are permitted to purchase from within their assigned product categories. This affects both new customer creation and customer editing.
+
+### Identified Issues:
+
+1. **Customer Creation**:
+   - The customer data itself is saved correctly, including CNPJ
+   - Categories are being associated with the customer
+   - The **critical failure** is that sale units are not being properly associated with the customer-category relationship
+
+2. **Database Structure**:
+   - The system uses a `customer_category_allowed_sale_units` table which creates a many-to-many-to-many relationship:
+     - Customer to Category to Sale Unit
+   - This table needs entries for each combination of customer, category, and allowed sale unit
+
+3. **Workflow Analysis**:
+   - In the frontend, data is collected correctly in both forms
+   - The issue occurs in the data submission process
+
+## Root Causes
+
+1. **Add Customer Form**:
+   - While the customer and categories are created correctly, there's no code to properly associate the selected sale units with the customer-category relationship
+   - Sale unit information is collected in the form but not properly sent to the server
+
+2. **Edit Customer Form**:
+   - Similar issue where sale unit changes may not be properly synchronized with the database
+
+3. **API Endpoints**:
+   - The backend API endpoints are correctly implemented but not properly utilized in the frontend code
+
+## Implementation Plan
+
+### 1. Fix New Customer Creation (add-customer.tsx)
+
+- Update the customer creation process to handle the customer-category-sale unit associations
+- After the customer is created, for each selected category:
+  1. Associate the category with the customer
+  2. For each sale unit selected for that category, create the appropriate association
+
+### 2. Fix Customer Editing (edit-customer.tsx)
+
+- Enhance the customer update process to properly synchronize the category and sale unit associations
+- Implement proper comparison logic to add/remove associations as needed
+
+### 3. Verify API Endpoints
+
+- Confirm the backend properly handles the customer-category-sale unit associations
+- Ensure proper error handling and validation
+
+## Expected Outcome
+
+After implementing these changes:
+1. When creating a new customer, all selected categories and their allowed sale units will be properly saved in the database
+2. When editing a customer, any changes to categories or their allowed sale units will be properly synchronized
+3. Customers will only see products in the specific sale units that have been assigned to them
+
+## Testing Strategy
+
+1. Create a new customer with specific categories and sale units
+2. Verify the associations are correctly saved in the database
+3. Edit an existing customer, modifying categories and sale units
+4. Verify the changes are correctly reflected in the database
+
 # Customer Data Saving Issues - Analysis and Fix Plan
 
 ## Issue Summary
