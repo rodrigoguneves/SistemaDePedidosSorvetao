@@ -802,7 +802,7 @@ export default function AddCustomerPage() {
                       Cidade
                     </label>
                     <input
-                      {{...customerForm.register("city")}
+                      {...customerForm.register("city")}
                       className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
                       placeholder="São Paulo"
                     />
