@@ -161,25 +161,51 @@ export default function AddCustomerPage() {
         
         return prev.filter(id => id !== categoryId);
       } else {
-        // If it's a category with single unit, automatically add the unit
+        // Category selected - add default units based on category type
         const category = productCategories.find((c: any) => c.id === categoryId);
-        const isSingleUnitCategory = category && ["Balde 10 Litros", "Pote 1 Litro", "Balde 5 Litros", 
-                                                "Copo 250ml", "Copo 180ml", "Itens Avulsos", 
-                                                "Pote 1.8 Litros"].includes(category.name);
         
-        if (isSingleUnitCategory) {
-          // Find the unit sale unit
-          const unitSaleUnit = saleUnits.find((unit: any) => 
-            unit.name === "Unidade" || unit.name === "unidade" || 
-            unit.unit_name === "Unidade" || unit.unit_name === "unidade");
+        // Single unit categories (only have "Unidade")
+        const singleUnitCategories = ["Balde 10 Litros", "Pote 1 Litro", "Balde 5 Litros", 
+                                    "Copo 250ml", "Copo 180ml", "Itens Avulsos", 
+                                    "Pote 1.8 Litros"];
+        const picolesFrutaLeiteCategories = ["Picolés de Fruta", "Picolés de Leite"];
+        const picolesEspeciaisPremiumCategories = ["Picolés Especiais", "Picolés Premium"];
+        const sorveteNoPalitoCategories = ["Sorvete no Palito"];
+        
+        if (category) {
+          let unitIdsToAdd: number[] = [];
           
-          if (unitSaleUnit) {
-            // Automatically select the "unit" sale unit for this category
-            const unitId = unitSaleUnit.id || unitSaleUnit.sale_unit_id;
-            console.log("Auto-selecting unit for single-unit category:", { categoryId, unitId });
+          if (singleUnitCategories.includes(category.name)) {
+            // Find the "Unidade" sale unit
+            const unitSaleUnit = saleUnits.find((unit: any) => unit.unit_name === "Unidade");
+            if (unitSaleUnit) {
+              unitIdsToAdd = [unitSaleUnit.sale_unit_id];
+            }
+          } 
+          else if (picolesFrutaLeiteCategories.includes(category.name)) {
+            // For "Picolés de Fruta" and "Picolés de Leite"
+            unitIdsToAdd = saleUnits
+              .filter((unit: any) => ["Unidade", "Caixa Completa 24un", "Meia Caixa 12un"].includes(unit.unit_name))
+              .map((unit: any) => unit.sale_unit_id);
+          }
+          else if (picolesEspeciaisPremiumCategories.includes(category.name)) {
+            // For "Picolés Especiais" and "Picolés Premium"
+            unitIdsToAdd = saleUnits
+              .filter((unit: any) => ["Unidade", "Caixa Completa"].includes(unit.unit_name))
+              .map((unit: any) => unit.sale_unit_id);
+          }
+          else if (sorveteNoPalitoCategories.includes(category.name)) {
+            // For "Sorvete no Palito"
+            unitIdsToAdd = saleUnits
+              .filter((unit: any) => ["Unidade", "Caixa Completa 16un", "Meia Caixa 8un"].includes(unit.unit_name))
+              .map((unit: any) => unit.sale_unit_id);
+          }
+          
+          // Set the default unit IDs for this category
+          if (unitIdsToAdd.length > 0) {
             setCategoryUnits(prevUnits => ({
               ...prevUnits,
-              [categoryId]: [unitId]
+              [categoryId]: unitIdsToAdd
             }));
           }
         }
@@ -561,13 +587,33 @@ export default function AddCustomerPage() {
 
                 <div className="space-y-3">
                   {productCategories.map((category: any) => {
-                    // Determine if category has multiple sale units or just the default "unit"
-                    const categoryHasMultipleSaleUnits = 
-                      !["Balde 10 Litros", "Pote 1 Litro", "Balde 5 Litros", "Copo 250ml", 
-                        "Copo 180ml", "Itens Avulsos", "Pote 1.8 Litros"].includes(category.name);
+                    // Determine category type based on name for proper sale unit display
+                    const singleUnitCategories = ["Balde 10 Litros", "Pote 1 Litro", "Balde 5 Litros", "Copo 250ml", 
+                        "Copo 180ml", "Itens Avulsos", "Pote 1.8 Litros"];
+                    const picolesFrutaLeiteCategories = ["Picolés de Fruta", "Picolés de Leite"];
+                    const picolesEspeciaisPremiumCategories = ["Picolés Especiais", "Picolés Premium"];
+                    const sorveteNoPalitoCategories = ["Sorvete no Palito"];
                     
-                    // Filter relevant sale units for categories with multiple options
-                    const relevantSaleUnits = categoryHasMultipleSaleUnits ? saleUnits : [];
+                    const categoryHasMultipleSaleUnits = !singleUnitCategories.includes(category.name);
+                    
+                    // Filter relevant sale units for this category
+                    let relevantSaleUnits = [];
+                    
+                    if (picolesFrutaLeiteCategories.includes(category.name)) {
+                        relevantSaleUnits = saleUnits.filter((unit: any) => 
+                            ["Unidade", "Caixa Completa 24un", "Meia Caixa 12un"].includes(unit.unit_name)
+                        );
+                    } else if (picolesEspeciaisPremiumCategories.includes(category.name)) {
+                        relevantSaleUnits = saleUnits.filter((unit: any) => 
+                            ["Unidade", "Caixa Completa"].includes(unit.unit_name)
+                        );
+                    } else if (sorveteNoPalitoCategories.includes(category.name)) {
+                        relevantSaleUnits = saleUnits.filter((unit: any) => 
+                            ["Unidade", "Caixa Completa 16un", "Meia Caixa 8un"].includes(unit.unit_name)
+                        );
+                    } else if (categoryHasMultipleSaleUnits) {
+                        relevantSaleUnits = saleUnits;
+                    }
                     
                     // For categories with single unit, find the "unit" sale unit
                     const unitSaleUnit = saleUnits.find(unit => 
@@ -600,7 +646,7 @@ export default function AddCustomerPage() {
                                     onChange={() => handleUnitSelection(category.id, unit.id || unit.sale_unit_id)}
                                     className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664]"
                                   />
-                                  <span className="text-sm">{unit.name || unit.unit_name}</span>
+                                  <span className="text-sm">{unit.unit_name}</span>
                                 </label>
                               ))}
                             </div>
