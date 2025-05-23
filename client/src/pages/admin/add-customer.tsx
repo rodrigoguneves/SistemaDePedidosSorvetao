@@ -170,13 +170,16 @@ export default function AddCustomerPage() {
         if (isSingleUnitCategory) {
           // Find the unit sale unit
           const unitSaleUnit = saleUnits.find((unit: any) => 
-            unit.name === "Unidade" || unit.name === "unidade");
+            unit.name === "Unidade" || unit.name === "unidade" || 
+            unit.unit_name === "Unidade" || unit.unit_name === "unidade");
           
           if (unitSaleUnit) {
             // Automatically select the "unit" sale unit for this category
+            const unitId = unitSaleUnit.id || unitSaleUnit.sale_unit_id;
+            console.log("Auto-selecting unit for single-unit category:", { categoryId, unitId });
             setCategoryUnits(prevUnits => ({
               ...prevUnits,
-              [categoryId]: [unitSaleUnit.id]
+              [categoryId]: [unitId]
             }));
           }
         }
@@ -188,6 +191,7 @@ export default function AddCustomerPage() {
 
   // Handle unit selection for a category
   const handleUnitSelection = (categoryId: number, unitId: number) => {
+    console.log("Toggling unit selection:", { categoryId, unitId });
     setCategoryUnits(prev => {
       const currentUnits = prev[categoryId] || [];
       if (currentUnits.includes(unitId)) {
@@ -566,7 +570,9 @@ export default function AddCustomerPage() {
                     const relevantSaleUnits = categoryHasMultipleSaleUnits ? saleUnits : [];
                     
                     // For categories with single unit, find the "unit" sale unit
-                    const unitSaleUnit = saleUnits.find(unit => unit.name === "Unidade" || unit.name === "unidade");
+                    const unitSaleUnit = saleUnits.find(unit => 
+                      (unit.name === "Unidade" || unit.name === "unidade" || 
+                       unit.unit_name === "Unidade" || unit.unit_name === "unidade"));
                     
                     return (
                       <div key={category.id} className="border rounded-lg p-4">
@@ -586,15 +592,15 @@ export default function AddCustomerPage() {
                         {selectedCategories.includes(category.id) && categoryHasMultipleSaleUnits && (
                           <div className="mt-3 pl-6 pt-2 border-t">
                             <div className="space-y-1">
-                              {relevantSaleUnits.map((unit: any) => (
-                                <label key={unit.id} className="flex items-center space-x-2 py-1">
+                              {saleUnits.map((unit: any) => (
+                                <label key={unit.id || unit.sale_unit_id} className="flex items-center space-x-2 py-1">
                                   <input
                                     type="checkbox"
-                                    checked={(categoryUnits[category.id] || []).includes(unit.id)}
-                                    onChange={() => handleUnitSelection(category.id, unit.id)}
+                                    checked={(categoryUnits[category.id] || []).includes(unit.id || unit.sale_unit_id)}
+                                    onChange={() => handleUnitSelection(category.id, unit.id || unit.sale_unit_id)}
                                     className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664]"
                                   />
-                                  <span className="text-sm">{unit.name}</span>
+                                  <span className="text-sm">{unit.name || unit.unit_name}</span>
                                 </label>
                               ))}
                             </div>
