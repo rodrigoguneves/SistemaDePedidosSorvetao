@@ -3,7 +3,7 @@ import {
   InsertProductCategory, Product, InsertProduct, Order, InsertOrder,
   OrderItem, InsertOrderItem, Payment, InsertPayment, FinancialAccount, 
   InsertFinancialAccount, FinancialCategory, InsertFinancialCategory,
-  FinancialTransaction, InsertFinancialTransaction, SaleUnit, InsertSaleUnit,
+  FinancialTransaction, InsertFinancialFinancialTransaction, SaleUnit, InsertSaleUnit,
   BaseProduct, InsertBaseProduct, ProductSaleVersion, InsertProductSaleVersion,
   CustomerCategoryAllowedSaleUnit,
   users, customers, productCategories, products, customerCategories, 
@@ -1044,6 +1044,51 @@ export class DatabaseStorage implements IStorage {
       .where(eq(financialTransactions.id, id))
       .returning();
     return !!deletedTransaction;
+  }
+
+  // Check if a customer-category association exists
+  async checkCustomerCategoryExists(customerId: number, categoryId: number) {
+    const result = await db.select({ count: sql`count(*)` })
+      .from(customerCategories)
+      .where(and(
+        eq(customerCategories.customer_id, customerId),
+        eq(customerCategories.category_id, categoryId)
+      ));
+
+    return (result[0]?.count || 0) > 0;
+  }
+
+  // Add a sale unit to a customer category
+  async addSaleUnitToCustomerCategory(customerId: number, categoryId: number, saleUnitId: number) {
+    try {
+      console.log(`[STORAGE] Associando unidade de venda ${saleUnitId} ao cliente ${customerId} na categoria ${categoryId}`);
+
+      // Check if the association already exists to avoid duplicates
+      const existing = await db.select()
+        .from(customerCategoryAllowedSaleUnits)
+        .where(and(
+          eq(customerCategoryAllowedSaleUnits.customer_id, customerId),
+          eq(customerCategoryAllowedSaleUnits.product_category_id, categoryId),
+          eq(customerCategoryAllowedSaleUnits.sale_unit_id, saleUnitId)
+        ));
+
+      if (existing.length > 0) {
+        console.log(`[STORAGE] Unidade de venda ${saleUnitId} já associada ao cliente ${customerId} na categoria ${categoryId}`);
+        return; // Already exists, no need to insert
+      }
+
+      // Insert the new association
+      await db.insert(customerCategoryAllowedSaleUnits).values({
+        customer_id: customerId,
+        product_category_id: categoryId,
+        sale_unit_id: saleUnitId
+      });
+
+      console.log(`[STORAGE] Unidade de venda ${saleUnitId} associada com sucesso ao cliente ${customerId} na categoria ${categoryId}`);
+    } catch (error) {
+      console.error(`[STORAGE] Falha ao associar unidade de venda ${saleUnitId} ao cliente ${customerId} na categoria ${categoryId}:`, error);
+      throw error;
+    }
   }
 }
 

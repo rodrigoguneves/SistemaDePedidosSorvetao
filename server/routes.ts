@@ -14,7 +14,7 @@ import { eq } from "drizzle-orm";
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication routes
   setupAuth(app);
-  
+
   // Get user by ID - needed for customer form email display
   app.get("/api/users/:id", async (req, res, next) => {
     try {
@@ -25,7 +25,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = parseInt(req.params.id);
       console.log(`Fetching user details for ID: ${userId}`);
       const user = await storage.getUser(userId);
-      
+
       if (!user) {
         console.log(`User not found for ID: ${userId}`);
         return res.status(404).json({ message: "Usuário não encontrado" });
@@ -77,31 +77,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log("=== RECEBIDO POST /api/customers ===");
     console.log("Corpo da requisição:", JSON.stringify(req.body, null, 2));
     console.log("Tipo de dados recebidos:", Object.keys(req.body).map(key => `${key}: ${typeof req.body[key]}`));
-    
+
     try {
       if (!req.isAuthenticated()) {
         console.log("Erro: Usuário não autenticado");
         return res.status(403).json({ message: "Acesso negado - Usuário não autenticado" });
       }
-      
+
       if (req.user.role !== 'admin' && req.user.role !== 'manager') {
         console.log("Erro: Usuário sem permissão. Role:", req.user.role);
         return res.status(403).json({ message: "Acesso negado - Permissão insuficiente" });
       }
 
       console.log("Autenticação e permissões verificadas com sucesso");
-      
+
       try {
         // First, create user account if email/password provided
         const { email, password, cnpj, ...customerData } = req.body;
-        
+
         if (!email || !password) {
           console.log("Email ou senha não fornecidos");
           return res.status(400).json({ 
             message: "Email e senha são obrigatórios para criar um cliente" 
           });
         }
-        
+
         console.log("Verificando se email já existe:", email);
         const existingUser = await storage.getUserByEmail(email);
         if (existingUser) {
@@ -110,7 +110,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: "Email já está em uso. Por favor, use outro email." 
           });
         }
-        
+
         console.log("Criando novo usuário com email:", email);
         // Create user first
         let newUser;
@@ -128,7 +128,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: "Erro ao criar usuário: " + (userError.message || "Erro desconhecido") 
           });
         }
-        
+
         // Now create customer with user_id
         console.log("Validando dados do cliente com schema...");
         // Make sure to attach the user_id and CNPJ to the customer data
@@ -137,23 +137,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           cnpj: cnpj !== undefined ? (cnpj === "" ? null : cnpj) : null, // Properly handle empty string CNPJ
           user_id: newUser.id
         };
-        
+
         console.log("CNPJ a ser salvo:", customerWithUserId.cnpj, "tipo:", typeof customerWithUserId.cnpj);
-        
+
         try {
           // Validate data before inserting
           const validatedData = insertCustomerSchema.parse(customerWithUserId);
           console.log("Dados validados com sucesso:", JSON.stringify(validatedData, null, 2));
-          
+
           console.log("Criando cliente no banco de dados...");
           const customer = await storage.createCustomer(validatedData);
           console.log("Cliente criado com sucesso:", JSON.stringify(customer, null, 2));
-          
+
           res.status(201).json(customer);
           console.log("Resposta 201 enviada com sucesso");
         } catch (customerError) {
           console.error("Erro ao criar cliente, revertendo criação do usuário:", customerError);
-          
+
           // Try to delete the user we just created to avoid orphaned users
           try {
             await storage.hardDeleteUser(newUser.id);
@@ -161,39 +161,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } catch (deleteError) {
             console.error("Erro ao remover usuário após falha:", deleteError);
           }
-          
+
           if (customerError instanceof z.ZodError) {
             const errorDetails = customerError.errors.map(err => ({
               path: err.path.join('.'),
               message: err.message
             }));
-            
+
             return res.status(400).json({ 
               message: "Erro de validação nos dados do cliente", 
               errors: errorDetails 
             });
           }
-          
+
           return res.status(400).json({ 
             message: "Erro ao criar cliente: " + (customerError.message || "Erro desconhecido") 
           });
         }
       } catch (validationError) {
         console.error("Erro de validação:", validationError);
-        
+
         if (validationError instanceof z.ZodError) {
           const errorDetails = validationError.errors.map(err => ({
             path: err.path.join('.'),
             message: err.message
           }));
-          
+
           console.error("Detalhes dos erros de validação:", JSON.stringify(errorDetails, null, 2));
           return res.status(400).json({ 
             message: "Erro de validação nos dados", 
             errors: errorDetails 
           });
         }
-        
+
         return res.status(400).json({ 
           message: "Erro de validação: " + (validationError.message || "Erro desconhecido") 
         });
@@ -217,11 +217,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Corpo da requisição:", JSON.stringify(req.body, null, 2));
 
       const customerId = parseInt(req.params.id);
-      
+
       // Ensure the CNPJ field is properly handled
       const updatedData = { ...req.body };
       console.log("CNPJ recebido:", updatedData.cnpj, "tipo:", typeof updatedData.cnpj);
-      
+
       // If CNPJ is an empty string, convert it to null but keep valid values
       if (updatedData.cnpj === "") {
         console.log("Convertendo CNPJ vazio para null");
@@ -233,7 +233,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         console.log("Mantendo CNPJ como está:", updatedData.cnpj);
       }
-      
+
       console.log("Dados a serem enviados para updateCustomer:", updatedData);
       const customer = await storage.updateCustomer(customerId, updatedData);
       if (!customer) {
@@ -295,7 +295,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       next(error);
     }
   });
-  
+
   // Endpoint to get all allowed sale units for a customer across all categories
   app.get("/api/customers/:id/allowed-sale-units", async (req, res, next) => {
     try {
@@ -313,36 +313,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const customerId = parseInt(req.params.id);
       console.log(`Fetching all allowed sale units for customer ID: ${customerId}`);
-      
+
       // Get all customer categories first
       const categories = await storage.getCustomerCategories(customerId);
-      
+
       if (!categories || categories.length === 0) {
         console.log(`No categories found for customer ID: ${customerId}`);
         return res.json([]);
       }
-      
+
       // For each category, get allowed sale units
       let allSaleUnits = [];
-      
+
       for (const category of categories) {
         const categoryId = category.id;
-        
+
         try {
           const units = await storage.getCustomerAllowedSaleUnits(customerId, categoryId);
-          
+
           // Add category ID to each sale unit for client-side processing
           const unitsWithCategory = units.map(unit => ({
             ...unit,
             product_category_id: categoryId
           }));
-          
+
           allSaleUnits = [...allSaleUnits, ...unitsWithCategory];
         } catch (err) {
           console.error(`Error fetching sale units for customer ${customerId}, category ${categoryId}:`, err);
         }
       }
-      
+
       console.log(`Found ${allSaleUnits.length} allowed sale units for customer ID: ${customerId}`);
       res.json(allSaleUnits);
     } catch (error) {
@@ -398,10 +398,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/customers/:id/categories/:categoryId/sale-units/:unitId", async (req, res, next) => {
     try {
-      if (!req.isAuthenticated() || (req.user.role !== 'admin' && req.user.role !== 'manager')) {
-        return res.status(403).json({ message: "Acesso negado" });
-      }
-
       const customerId = parseInt(req.params.id);
       const categoryId = parseInt(req.params.categoryId);
       const unitId = parseInt(req.params.unitId);
@@ -423,7 +419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error(`[ADD UNIT] Cliente ${customerId} não encontrado`);
           return res.status(404).json({ message: "Cliente não encontrado" });
         }
-        
+
         // Step 2: Verify category exists
         const category = await storage.getProductCategory(categoryId);
         if (!category) {
@@ -437,27 +433,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error(`[ADD UNIT] Unidade de venda ${unitId} não encontrada`);
           return res.status(404).json({ message: "Unidade de venda não encontrada" });
         }
-        
+
         // Step 4: Verify if the category is already associated with the customer
         const clientCategories = await storage.getCustomerCategories(customerId);
         let categoryExists = false;
-        
+
         // Enhanced category existence check handling different response formats
         if (Array.isArray(clientCategories)) {
           categoryExists = clientCategories.some((cat: any) => {
             // Handle different possible structures
             if (typeof cat === 'number') return cat === categoryId;
             if (!cat || typeof cat !== 'object') return false;
-            
+
             // Check direct properties
             if (cat.id !== undefined && cat.id === categoryId) return true;
             if (cat.category_id !== undefined && cat.category_id === categoryId) return true;
             if (cat.product_category_id !== undefined && cat.product_category_id === categoryId) return true;
-            
+
             // Check nested objects
             if (cat.productCategories && cat.productCategories.id === categoryId) return true;
             if (cat.product_categories && cat.product_categories.id === categoryId) return true;
-            
+
             return false;
           });
         }
@@ -466,28 +462,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!categoryExists) {
           console.log(`[ADD UNIT] Categoria ${categoryId} não está associada ao cliente ${customerId}, associando agora...`);
           const categoryAdded = await storage.addCategoryToCustomer(customerId, categoryId);
-          
+
           if (!categoryAdded) {
             console.error(`[ADD UNIT] Falha ao associar a categoria ${categoryId} ao cliente ${customerId}`);
             return res.status(500).json({ 
               message: "Erro interno: Não foi possível associar a categoria ao cliente"
             });
           }
-          
+
           console.log(`[ADD UNIT] Categoria ${categoryId} adicionada com sucesso ao cliente ${customerId}`);
-          
+
           // Wait a moment to ensure the database has processed the category association
           await new Promise(resolve => setTimeout(resolve, 100));
         } else {
           console.log(`[ADD UNIT] Categoria ${categoryId} já está associada ao cliente ${customerId}`);
         }
-        
+
         // Step 6: Check if sale unit is already associated
         const existingUnits = await storage.getCustomerAllowedSaleUnits(customerId, categoryId);
         const unitAlreadyAssociated = existingUnits.some((unit: any) => 
           unit.sale_unit_id === unitId || (unit.id !== undefined && unit.id === unitId)
         );
-        
+
         if (unitAlreadyAssociated) {
           console.log(`[ADD UNIT] Unidade ${unitId} já está associada à categoria ${categoryId} do cliente ${customerId}`);
           return res.status(200).json({ 
@@ -498,11 +494,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             status: "already_exists"
           });
         }
-        
+
         // Step 7: Add the sale unit to the customer-category
         console.log(`[ADD UNIT] Tentando adicionar unidade ${unitId} à categoria ${categoryId} do cliente ${customerId}`);
         const success = await storage.addCategorySaleUnitToCustomer(customerId, categoryId, unitId);
-        
+
         if (!success) {
           console.error(`[ADD UNIT] Falha ao adicionar unidade de venda ${unitId} à categoria ${categoryId}`);
           return res.status(500).json({ 
@@ -511,17 +507,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         console.log(`[ADD UNIT] Unidade ${unitId} adicionada com sucesso à categoria ${categoryId} do cliente ${customerId}`);
-        
+
         // Step 8: Verify the association was created successfully
         const updatedUnits = await storage.getCustomerAllowedSaleUnits(customerId, categoryId);
         const associationVerified = updatedUnits.some((unit: any) => 
           unit.sale_unit_id === unitId || (unit.id !== undefined && unit.id === unitId)
         );
-        
+
         if (!associationVerified) {
           console.warn(`[ADD UNIT] Aviso: A unidade parece ter sido adicionada, mas não foi encontrada na verificação`);
         }
-        
+
         res.status(201).json({ 
           message: "Unidade de venda adicionada com sucesso",
           customer_id: customerId,
@@ -532,7 +528,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       } catch (storageError) {
         console.error(`[ADD UNIT] Erro detalhado ao processar adição de unidade de venda:`, storageError);
-        
+
         // Determine if this is a database constraint violation
         const errorMessage = storageError.message || "";
         if (errorMessage.includes("duplicate key") || errorMessage.includes("unique constraint")) {
@@ -541,19 +537,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             details: errorMessage
           });
         }
-        
+
         throw storageError;
       }
     } catch (error) {
       console.error("[ADD UNIT] Erro ao adicionar unidade de venda:", error);
-      
+
       if (!res.headersSent) {
         return res.status(500).json({
           message: "Erro interno ao adicionar unidade de venda",
           details: error.message
         });
       }
-      
+
       next(error);
     }
   });
@@ -825,7 +821,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!success) {
-        return res.status(404).json({ message: "Produto não encontrado" });
+        return res.status(404).json({message: "Produto não encontrado" });
       }
 
       res.status(204).send();
@@ -1550,6 +1546,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       next(error);
+    }
+  });
+
+  // Add a sale unit to a customer category
+  app.post('/api/customers/:id/categories/:categoryId/sale-units/:unitId', async (req, res) => {
+    try {
+      const customerId = parseInt(req.params.id);
+      const categoryId = parseInt(req.params.categoryId);
+      const saleUnitId = parseInt(req.params.unitId);
+
+      // Validate inputs
+      if (isNaN(customerId) || isNaN(categoryId) || isNaN(saleUnitId)) {
+        return res.status(400).json({ 
+          message: 'Invalid parameters', 
+          details: { customerId, categoryId, saleUnitId }
+        });
+      }
+
+      // Verify the customer-category association exists before adding the sale unit
+      const categoryExists = await storage.checkCustomerCategoryExists(customerId, categoryId);
+      if (!categoryExists) {
+        return res.status(404).json({ 
+          message: 'Customer-category association not found',
+          details: { customerId, categoryId }
+        });
+      }
+
+      // Add the sale unit to the customer category
+      await storage.addSaleUnitToCustomerCategory(customerId, categoryId, saleUnitId);
+
+      console.log(`Added sale unit ${saleUnitId} to customer ${customerId} for category ${categoryId}`);
+      res.status(200).json({ 
+        message: 'Sale unit added to customer category',
+        details: { customerId, categoryId, saleUnitId }
+      });
+    } catch (error) {
+      console.error('Error adding sale unit to customer category:', error);
+      res.status(500).json({ 
+        message: 'Failed to add sale unit to customer category',
+        error: (error as Error).message
+      });
     }
   });
 
