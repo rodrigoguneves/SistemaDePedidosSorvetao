@@ -65,6 +65,12 @@ export default function AddCustomerPage() {
     }
   });
 
+  // Watch enable_delivery to conditionally show delivery settings
+  const enableDelivery = useWatch({
+    control: customerForm.control,
+    name: "enable_delivery",
+  });
+
   // Create customer mutation
   const createCustomerMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -93,18 +99,27 @@ export default function AddCustomerPage() {
         const allowedUnits = categoryUnits[categoryId] || [];
         
         if (allowedUnits.length > 0) {
-          const permissionRes = await fetch('/api/customer-category-permissions', {
+          const permissionRes = await fetch(`/api/customers/${customer.id}/categories/${categoryId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              customer_id: customer.id,
-              category_id: categoryId,
-              allowed_sale_unit_ids: allowedUnits
-            }),
+            body: JSON.stringify({}),
           });
 
           if (!permissionRes.ok) {
-            console.error(`Failed to set permissions for category ${categoryId}`);
+            console.error(`Failed to set category ${categoryId} for customer`);
+          }
+
+          // Add each allowed sale unit for this category
+          for (const unitId of allowedUnits) {
+            const unitRes = await fetch(`/api/customers/${customer.id}/categories/${categoryId}/sale-units/${unitId}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({}),
+            });
+
+            if (!unitRes.ok) {
+              console.error(`Failed to set permission for category ${categoryId}, unit ${unitId}`);
+            }
           }
         }
       }
@@ -177,20 +192,20 @@ export default function AddCustomerPage() {
         </div>
 
         <form onSubmit={onSubmit} className="space-y-6">
-          {/* Informações do Cliente */}
+          {/* Dados do Cliente */}
           <Card className="mb-4 shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center space-x-2 mb-4">
                 <div className="bg-pink-100 p-2 rounded-full">
                   <User className="h-5 w-5 text-[#E73664]" />
                 </div>
-                <h2 className="text-lg font-medium">Informações Básicas</h2>
+                <h2 className="text-lg font-medium">Dados do Cliente</h2>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nome da Empresa
+                    Nome da Empresa*
                   </label>
                   <input
                     {...customerForm.register("company_name")}
@@ -199,23 +214,7 @@ export default function AddCustomerPage() {
                   />
                   {customerForm.formState.errors.company_name && (
                     <p className="mt-1 text-sm text-red-600">
-                      {customerForm.formState.errors.company_name.message}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nome do Contato
-                  </label>
-                  <input
-                    {...customerForm.register("contact_person")}
-                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
-                    placeholder="Nome do Responsável"
-                  />
-                  {customerForm.formState.errors.contact_person && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {customerForm.formState.errors.contact_person.message}
+                      {customerForm.formState.errors.company_name.message as string}
                     </p>
                   )}
                 </div>
@@ -231,14 +230,30 @@ export default function AddCustomerPage() {
                   />
                   {customerForm.formState.errors.cnpj && (
                     <p className="mt-1 text-sm text-red-600">
-                      {customerForm.formState.errors.cnpj.message}
+                      {customerForm.formState.errors.cnpj.message as string}
                     </p>
                   )}
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email
+                    Nome do Responsável
+                  </label>
+                  <input
+                    {...customerForm.register("contact_person")}
+                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
+                    placeholder="Nome do Responsável"
+                  />
+                  {customerForm.formState.errors.contact_person && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {customerForm.formState.errors.contact_person.message as string}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    E-mail
                   </label>
                   <input
                     {...customerForm.register("email")}
@@ -248,23 +263,7 @@ export default function AddCustomerPage() {
                   />
                   {customerForm.formState.errors.email && (
                     <p className="mt-1 text-sm text-red-600">
-                      {customerForm.formState.errors.email.message}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Senha
-                  </label>
-                  <input
-                    {...customerForm.register("password")}
-                    type="password"
-                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
-                  />
-                  {customerForm.formState.errors.password && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {customerForm.formState.errors.password.message}
+                      {customerForm.formState.errors.email.message as string}
                     </p>
                   )}
                 </div>
@@ -280,7 +279,23 @@ export default function AddCustomerPage() {
                   />
                   {customerForm.formState.errors.phone && (
                     <p className="mt-1 text-sm text-red-600">
-                      {customerForm.formState.errors.phone.message}
+                      {customerForm.formState.errors.phone.message as string}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Senha
+                  </label>
+                  <input
+                    {...customerForm.register("password")}
+                    type="password"
+                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
+                  />
+                  {customerForm.formState.errors.password && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {customerForm.formState.errors.password.message as string}
                     </p>
                   )}
                 </div>
@@ -310,7 +325,7 @@ export default function AddCustomerPage() {
                   />
                   {customerForm.formState.errors.street && (
                     <p className="mt-1 text-sm text-red-600">
-                      {customerForm.formState.errors.street.message}
+                      {customerForm.formState.errors.street.message as string}
                     </p>
                   )}
                 </div>
@@ -326,7 +341,23 @@ export default function AddCustomerPage() {
                   />
                   {customerForm.formState.errors.number && (
                     <p className="mt-1 text-sm text-red-600">
-                      {customerForm.formState.errors.number.message}
+                      {customerForm.formState.errors.number.message as string}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Complemento
+                  </label>
+                  <input
+                    {...customerForm.register("complement")}
+                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
+                    placeholder="Sala, bloco, etc."
+                  />
+                  {customerForm.formState.errors.complement && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {customerForm.formState.errors.complement.message as string}
                     </p>
                   )}
                 </div>
@@ -342,23 +373,7 @@ export default function AddCustomerPage() {
                   />
                   {customerForm.formState.errors.neighborhood && (
                     <p className="mt-1 text-sm text-red-600">
-                      {customerForm.formState.errors.neighborhood.message}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Complemento
-                  </label>
-                  <input
-                    {...customerForm.register("complement")}
-                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
-                    placeholder="Sala 101"
-                  />
-                  {customerForm.formState.errors.complement && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {customerForm.formState.errors.complement.message}
+                      {customerForm.formState.errors.neighborhood.message as string}
                     </p>
                   )}
                 </div>
@@ -374,7 +389,7 @@ export default function AddCustomerPage() {
                   />
                   {customerForm.formState.errors.city && (
                     <p className="mt-1 text-sm text-red-600">
-                      {customerForm.formState.errors.city.message}
+                      {customerForm.formState.errors.city.message as string}
                     </p>
                   )}
                 </div>
@@ -390,7 +405,7 @@ export default function AddCustomerPage() {
                   />
                   {customerForm.formState.errors.state && (
                     <p className="mt-1 text-sm text-red-600">
-                      {customerForm.formState.errors.state.message}
+                      {customerForm.formState.errors.state.message as string}
                     </p>
                   )}
                 </div>
@@ -406,7 +421,7 @@ export default function AddCustomerPage() {
                   />
                   {customerForm.formState.errors.postal_code && (
                     <p className="mt-1 text-sm text-red-600">
-                      {customerForm.formState.errors.postal_code.message}
+                      {customerForm.formState.errors.postal_code.message as string}
                     </p>
                   )}
                 </div>
@@ -424,114 +439,138 @@ export default function AddCustomerPage() {
                 <h2 className="text-lg font-medium">Configurações de Entrega</h2>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-1">
+              <div className="space-y-4">
+                <div className="mb-4">
                   <label className="flex items-center space-x-2">
                     <input
                       type="checkbox"
                       {...customerForm.register("enable_delivery")}
                       className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664]"
                     />
-                    <span className="text-sm font-medium text-gray-700">Habilitar Entregas</span>
+                    <span className="text-sm font-medium text-gray-700">Habilitar entrega para este cliente</span>
                   </label>
                 </div>
 
-                <div className="col-span-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Taxa de Entrega (R$)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    {...customerForm.register("delivery_fee", { valueAsNumber: true })}
-                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
-                    placeholder="10.00"
-                  />
-                </div>
+                {enableDelivery && (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Taxa de Entrega (R$)
+                        </label>
+                        <div className="relative">
+                          <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                            R$
+                          </span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            {...customerForm.register("delivery_fee", { 
+                              valueAsNumber: true,
+                              setValueAs: (v) => parseFloat((parseFloat(v) * 100).toFixed(0)) // Store in cents
+                            })}
+                            className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664] pl-10"
+                            placeholder="0,00"
+                          />
+                        </div>
+                      </div>
 
-                <div className="col-span-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Valor Mínimo do Pedido (R$)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    {...customerForm.register("minimum_order_value", { valueAsNumber: true })}
-                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664]"
-                    placeholder="50.00"
-                  />
-                </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Pedido Mínimo para Entrega (R$)
+                        </label>
+                        <div className="relative">
+                          <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                            R$
+                          </span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            {...customerForm.register("minimum_order_value", { 
+                              valueAsNumber: true,
+                              setValueAs: (v) => parseFloat((parseFloat(v) * 100).toFixed(0)) // Store in cents
+                            })}
+                            className="w-full rounded-lg border-gray-300 shadow-sm focus:border-[#E73664] focus:ring-[#E73664] pl-10"
+                            placeholder="0,00"
+                          />
+                        </div>
+                      </div>
+                    </div>
 
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Dias Disponíveis para Entrega
-                  </label>
-                  <div className="flex space-x-2">
-                    {['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'].map((day, index) => (
-                      <label key={day} className="flex flex-col items-center">
-                        <span className="text-xs text-gray-500 mb-1">{day.substring(0, 3)}</span>
-                        <input
-                          type="checkbox"
-                          {...customerForm.register(`allowed_delivery_days.${index}`)}
-                          className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664]"
-                        />
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Dias Permitidos para Entrega
                       </label>
-                    ))}
-                  </div>
-                </div>
+                      <div className="flex space-x-2">
+                        {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day, index) => (
+                          <label key={day} className="flex items-center justify-center border p-2 rounded-md">
+                            <input
+                              type="checkbox"
+                              {...customerForm.register(`allowed_delivery_days.${index}`)}
+                              className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664] mr-1"
+                            />
+                            <span className="text-sm text-gray-700">{day}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
 
-          {/* Categorias e Unidades de Venda */}
+          {/* Acesso a Produtos */}
           <Card className="mb-4 shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center space-x-2 mb-4">
                 <div className="bg-pink-100 p-2 rounded-full">
                   <TagsIcon className="h-5 w-5 text-[#E73664]" />
                 </div>
-                <h2 className="text-lg font-medium">Acesso ao Catálogo</h2>
+                <h2 className="text-lg font-medium">Acesso a Produtos</h2>
               </div>
 
               <div className="space-y-4">
-                <p className="text-sm text-gray-600">
-                  Selecione as categorias e unidades de venda que este cliente poderá ver e comprar.
+                <p className="text-sm text-gray-600 mb-2">
+                  Selecione as categorias de produtos que o cliente pode acessar:
                 </p>
 
-                {productCategories.map((category: any) => (
-                  <div key={category.id} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={selectedCategories.includes(category.id)}
-                          onChange={() => handleCategoryToggle(category.id)}
-                          className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664]"
-                        />
-                        <span className="font-medium">{category.name}</span>
-                      </label>
-                    </div>
-
-                    {selectedCategories.includes(category.id) && (
-                      <div className="mt-3 pl-6 border-t pt-3">
-                        <p className="text-sm text-gray-600 mb-2">Unidades de venda permitidas:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {saleUnits.map((unit: any) => (
-                            <label key={unit.id} className="flex items-center space-x-1 bg-gray-100 rounded-full px-3 py-1">
-                              <input
-                                type="checkbox"
-                                checked={(categoryUnits[category.id] || []).includes(unit.id)}
-                                onChange={() => handleUnitSelection(category.id, unit.id)}
-                                className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664] h-4 w-4"
-                              />
-                              <span className="text-sm">{unit.name}</span>
-                            </label>
-                          ))}
-                        </div>
+                <div className="grid grid-cols-2 gap-4">
+                  {productCategories.map((category: any) => (
+                    <div key={category.id} className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between">
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={selectedCategories.includes(category.id)}
+                            onChange={() => handleCategoryToggle(category.id)}
+                            className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664]"
+                          />
+                          <span className="font-medium">{category.name}</span>
+                        </label>
                       </div>
-                    )}
-                  </div>
-                ))}
+
+                      {selectedCategories.includes(category.id) && (
+                        <div className="mt-3 pl-6 border-t pt-3">
+                          <p className="text-sm text-gray-600 mb-2">Unidades de venda permitidas:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {saleUnits.map((unit: any) => (
+                              <label key={unit.id} className="flex items-center space-x-1 bg-gray-100 rounded-full px-3 py-1">
+                                <input
+                                  type="checkbox"
+                                  checked={(categoryUnits[category.id] || []).includes(unit.id)}
+                                  onChange={() => handleUnitSelection(category.id, unit.id)}
+                                  className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664] h-4 w-4"
+                                />
+                                <span className="text-sm">{unit.name}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             </CardContent>
           </Card>
