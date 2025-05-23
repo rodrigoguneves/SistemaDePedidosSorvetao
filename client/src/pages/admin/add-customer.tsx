@@ -161,6 +161,26 @@ export default function AddCustomerPage() {
         
         return prev.filter(id => id !== categoryId);
       } else {
+        // If it's a category with single unit, automatically add the unit
+        const category = productCategories.find((c: any) => c.id === categoryId);
+        const isSingleUnitCategory = category && ["Balde 10 Litros", "Pote 1 Litro", "Balde 5 Litros", 
+                                                "Copo 250ml", "Copo 180ml", "Itens Avulsos", 
+                                                "Pote 1.8 Litros"].includes(category.name);
+        
+        if (isSingleUnitCategory) {
+          // Find the unit sale unit
+          const unitSaleUnit = saleUnits.find((unit: any) => 
+            unit.name === "Unidade" || unit.name === "unidade");
+          
+          if (unitSaleUnit) {
+            // Automatically select the "unit" sale unit for this category
+            setCategoryUnits(prevUnits => ({
+              ...prevUnits,
+              [categoryId]: [unitSaleUnit.id]
+            }));
+          }
+        }
+        
         return [...prev, categoryId];
       }
     });
@@ -527,49 +547,77 @@ export default function AddCustomerPage() {
                 <div className="bg-pink-100 p-2 rounded-full">
                   <TagsIcon className="h-5 w-5 text-[#E73664]" />
                 </div>
-                <h2 className="text-lg font-medium">Acesso a Produtos</h2>
+                <h2 className="text-lg font-medium">Definir Acesso a Produtos para o Cliente</h2>
               </div>
 
               <div className="space-y-4">
                 <p className="text-sm text-gray-600 mb-2">
-                  Selecione as categorias de produtos que o cliente pode acessar:
+                  Selecione as categorias de produtos e unidades de venda específicas que o cliente poderá acessar:
                 </p>
 
-                <div className="grid grid-cols-2 gap-4">
-                  {productCategories.map((category: any) => (
-                    <div key={category.id} className="border rounded-lg p-4">
-                      <div className="flex items-center justify-between">
-                        <label className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            checked={selectedCategories.includes(category.id)}
-                            onChange={() => handleCategoryToggle(category.id)}
-                            className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664]"
-                          />
-                          <span className="font-medium">{category.name}</span>
-                        </label>
-                      </div>
-
-                      {selectedCategories.includes(category.id) && (
-                        <div className="mt-3 pl-6 border-t pt-3">
-                          <p className="text-sm text-gray-600 mb-2">Unidades de venda permitidas:</p>
-                          <div className="flex flex-wrap gap-2">
-                            {saleUnits.map((unit: any) => (
-                              <label key={unit.id} className="flex items-center space-x-1 bg-gray-100 rounded-full px-3 py-1">
-                                <input
-                                  type="checkbox"
-                                  checked={(categoryUnits[category.id] || []).includes(unit.id)}
-                                  onChange={() => handleUnitSelection(category.id, unit.id)}
-                                  className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664] h-4 w-4"
-                                />
-                                <span className="text-sm">{unit.name}</span>
-                              </label>
-                            ))}
-                          </div>
+                <div className="space-y-3">
+                  {productCategories.map((category: any) => {
+                    // Determine if category has multiple sale units or just the default "unit"
+                    const categoryHasMultipleSaleUnits = 
+                      !["Balde 10 Litros", "Pote 1 Litro", "Balde 5 Litros", "Copo 250ml", 
+                        "Copo 180ml", "Itens Avulsos", "Pote 1.8 Litros"].includes(category.name);
+                    
+                    // Filter relevant sale units for categories with multiple options
+                    const relevantSaleUnits = categoryHasMultipleSaleUnits ? saleUnits : [];
+                    
+                    // For categories with single unit, find the "unit" sale unit
+                    const unitSaleUnit = saleUnits.find(unit => unit.name === "Unidade" || unit.name === "unidade");
+                    
+                    return (
+                      <div key={category.id} className="border rounded-lg p-4">
+                        <div className="flex items-center">
+                          <label className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              checked={selectedCategories.includes(category.id)}
+                              onChange={() => handleCategoryToggle(category.id)}
+                              className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664]"
+                            />
+                            <span className="font-medium">{category.name}</span>
+                          </label>
                         </div>
-                      )}
-                    </div>
-                  ))}
+                        
+                        {/* For categories with multiple sale units and the category is selected */}
+                        {selectedCategories.includes(category.id) && categoryHasMultipleSaleUnits && (
+                          <div className="mt-3 pl-6 pt-2 border-t">
+                            <div className="space-y-1">
+                              {relevantSaleUnits.map((unit: any) => (
+                                <label key={unit.id} className="flex items-center space-x-2 py-1">
+                                  <input
+                                    type="checkbox"
+                                    checked={(categoryUnits[category.id] || []).includes(unit.id)}
+                                    onChange={() => handleUnitSelection(category.id, unit.id)}
+                                    className="rounded border-gray-300 text-[#E73664] focus:ring-[#E73664]"
+                                  />
+                                  <span className="text-sm">{unit.name}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* For categories with only "unit" as the sale unit and category is selected */}
+                        {selectedCategories.includes(category.id) && !categoryHasMultipleSaleUnits && unitSaleUnit && (
+                          <div className="mt-1 pl-6">
+                            <p className="text-xs text-gray-500 italic mt-1">
+                              Este cliente poderá comprar produtos desta categoria por unidade.
+                            </p>
+                            {/* Add the unit sale unit automatically */}
+                            {!categoryUnits[category.id]?.includes(unitSaleUnit.id) && (
+                              <span className="hidden">
+                                {handleUnitSelection(category.id, unitSaleUnit.id)}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </CardContent>
