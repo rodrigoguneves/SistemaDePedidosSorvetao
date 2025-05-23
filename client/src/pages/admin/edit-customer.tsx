@@ -158,27 +158,31 @@ export default function EditCustomerPage() {
           return null;
         }
 
-        // For product_categories table joined with customer_categories table
-        if (cat.id !== undefined) {
-          return Number(cat.id);
-        }
-
-        // For customer_categories table alone
+        // Check for direct foreign key (product_categories.id)
         if (cat.category_id !== undefined) {
           return Number(cat.category_id);
         }
 
-        // Alternative field name
+        // Check for alternative direct foreign key name
         if (cat.product_category_id !== undefined) {
           return Number(cat.product_category_id);
         }
-
-        // Handle nested structure
+        
+        // Check for nested productCategories object (e.g., from Prisma include)
         if (cat.productCategories && cat.productCategories.id !== undefined) {
           return Number(cat.productCategories.id);
         }
 
-        console.log("Could not extract category ID from:", cat);
+        // Fallback: if cat.id is indeed the product_category_id (less likely given schema)
+        // This was the first check before, but it's more likely to be customer_categories.id
+        // If issues persist, this might need to be re-evaluated based on actual API output.
+        // For now, we assume category_id or productCategories.id is what we need.
+        // if (cat.id !== undefined) {
+        //   console.log("Warning: Falling back to cat.id for category ID:", cat);
+        //   return Number(cat.id);
+        // }
+
+        console.log("Could not extract product_category_id from:", JSON.stringify(cat));
         return null;
       }).filter(id => id !== null && !isNaN(id));
 
@@ -202,17 +206,32 @@ export default function EditCustomerPage() {
           return;
         }
 
-        // Determine category ID from various possible fields
-        let categoryId = null;
-        if (item.product_category_id !== undefined) categoryId = Number(item.product_category_id);
-        else if (item.category_id !== undefined) categoryId = Number(item.category_id);
+        let categoryId: number | null = null;
+        let unitId: number | null = null;
 
-        // Get unit ID
-        const unitId = item.sale_unit_id !== undefined ? Number(item.sale_unit_id) : null;
+        // Extract sale_unit_id (likely correct)
+        if (item.sale_unit_id !== undefined) {
+          unitId = Number(item.sale_unit_id);
+        }
+
+        // Extract product_category_id
+        // Option 1: Nested structure (most aligned with relational model if Prisma is used)
+        if (item.customerCategory && item.customerCategory.category_id !== undefined) {
+          categoryId = Number(item.customerCategory.category_id);
+        } 
+        // Option 2: Direct field (if backend denormalizes/flattens this)
+        else if (item.product_category_id !== undefined) {
+          categoryId = Number(item.product_category_id);
+        } 
+        // Option 3: Alternative direct field name
+        else if (item.category_id !== undefined) {
+          // This could be ambiguous, but we include it as per original logic
+          categoryId = Number(item.category_id);
+        }
 
         // Validate both IDs
         if (categoryId === null || unitId === null || isNaN(categoryId) || isNaN(unitId)) {
-          console.log("Skipping invalid sale unit entry:", item);
+          console.log("Skipping invalid sale unit entry (IDs not found/valid):", JSON.stringify(item));
           return;
         }
 
@@ -384,24 +403,6 @@ export default function EditCustomerPage() {
         email: "", // Will be updated asynchronously
         password: "",  // Optional for update
         user_id: customer.user_id
-      });
-
-      // Force CNPJ field to update - this is critical for proper display
-      customerForm.setValue("cnpj", cnpjValue);
-
-      // Use multiple timeouts with increasing delays for more reliable CNPJ setting
-      [50, 200, 500].forEach(delay => {
-        setTimeout(() => {
-          const currentCnpj = customerForm.getValues("cnpj");
-          if (currentCnpj !== cnpjValue) {
-            console.log(`CNPJ value check at ${delay}ms: Current: "${currentCnpj}", Expected: "${cnpjValue}"`);
-            customerForm.setValue("cnpj", cnpjValue, { 
-              shouldValidate: true,
-              shouldDirty: true,
-              shouldTouch: true
-            });
-          }
-        }, delay);
       });
 
       // Fetch user email with improved reliability
@@ -848,7 +849,7 @@ export default function EditCustomerPage() {
                     </label>
                     <input
                       type="email"
-                      disabled={true}
+                      readOnly={true}
                       className="wfull rounded-lg border-gray-300 shadow-sm bg-gray-100 focus:border-[#E73664] focus:ring-[#E73664]"
                       placeholder="contato@empresa.com"
                       {...customerForm.register("email")}
