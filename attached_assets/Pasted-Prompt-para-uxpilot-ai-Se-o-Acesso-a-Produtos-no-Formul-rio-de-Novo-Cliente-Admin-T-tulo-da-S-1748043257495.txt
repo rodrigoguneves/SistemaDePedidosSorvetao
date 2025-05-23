@@ -1,0 +1,66 @@
+Prompt para uxpilot.ai: Seção "Acesso a Produtos" no Formulário de Novo Cliente (Admin)
+
+Título da Seção no Formulário: "Definir Acesso a Produtos para o Cliente" ou "Catálogo de Produtos do Cliente"
+
+Objetivo:
+Permitir que o administrador defina de forma granular a quais categorias de produtos e, dentro delas, a quais unidades de venda específicas o novo cliente terá acesso ao realizar seus pedidos.
+
+Layout e Componentes:
+
+Listagem Principal de Categorias de Produtos:
+
+Apresentar uma lista vertical de todas as categorias de produtos disponíveis na fábrica.
+Cada item da lista representará uma categoria principal e deve conter:
+Nome da Categoria: Exibido de forma clara (ex: "Balde 10 Litros", "Picolés de Fruta").
+Checkbox de Acesso à Categoria Principal: Um checkbox ao lado do nome da categoria.
+Se este checkbox estiver marcado, o cliente terá acesso aos produtos desta categoria (conforme as unidades de venda permitidas abaixo).
+Se este checkbox estiver desmarcado, o cliente NÃO terá acesso a nenhum produto desta categoria, e quaisquer opções de unidade de venda abaixo (se houver) devem ser desabilitadas ou ocultadas e suas seleções anteriores desconsideradas.
+Seleção de Unidades de Venda por Categoria (Condicional):
+
+O comportamento para seleção de unidades de venda varia conforme a categoria:
+
+A. Para Categorias com APENAS "unidade" como Unidade de Venda:
+
+Categorias Afetadas: "Balde 10 Litros", "Pote 1 Litro", "Balde 5 Litros", "Copo 250ml", "Copo 180ml", "Itens Avulsos", "Pote 1.8 Litros".
+Interface: Para estas categorias, NÃO exibir checkboxes adicionais para "unidade de venda" abaixo do nome da categoria.
+Lógica: Se o administrador marcar o checkbox principal da categoria (ex: "[X] Balde 10 Litros"), o sistema automaticamente entenderá que o cliente tem acesso aos produtos dessa categoria vendidos na "unidade". Nenhuma seleção adicional de unidade de venda é necessária por parte do administrador para estas categorias.
+B. Para Categorias com MÚLTIPLAS Unidades de Venda Distintas:
+
+Categorias Afetadas:
+"Picolés de Fruta" (unidades de venda: unidade, caixa com 24 unidades, caixa com 12 unidades)
+"Picolés de Leite" (unidades de venda: unidade, caixa com 24 unidades, caixa com 12 unidades)
+"Picolés Especiais" (unidades de venda: unidade, caixa completa)
+"Picolés Premium" (unidades de venda: unidade, caixa completa)
+"Sorvete no Palito" (unidades de venda: unidade, caixa com 16 unidades, caixa com 8 unidades)
+Interface: Para estas categorias, se o checkbox principal da categoria estiver marcado:
+Abaixo do nome da categoria (e possivelmente com um leve recuo para indicar hierarquia), listar cada unidade de venda disponível como um item separado com seu próprio checkbox.
+Exemplo para "Picolés de Fruta":
+[X] Picolés de Fruta  // Checkbox principal da categoria
+    [ ] Unidade
+    [X] Caixa com 12 unidades
+    [ ] Caixa com 24 unidades
+O administrador poderá marcar quais dessas unidades de venda específicas o cliente poderá comprar para os produtos dentro da categoria "Picolés de Fruta".
+Lógica: O cliente só poderá comprar produtos daquela categoria nas unidades de venda que estiverem explicitamente marcadas aqui pelo administrador. Se o checkbox principal da categoria estiver desmarcado, todos os checkboxes de unidade de venda abaixo devem ser desabilitados/esmaecidos e suas seleções não consideradas.
+Considerações Visuais e de Interação:
+
+Clareza Visual: Utilizar um layout limpo com boa hierarquia visual entre o nome da categoria principal e as opções de unidades de venda (quando aplicável).
+Estilo: Manter a consistência com o guia de design global (tema claro, estética arredondada, cor primária #e73664 para elementos interativos como os checkboxes quando ativos).
+Feedback: Ao marcar/desmarcar o checkbox principal de uma categoria com múltiplas unidades de venda, as opções de unidades de venda abaixo devem refletir visualmente seu estado habilitado/desabilitado.
+Usabilidade: A lista de categorias deve ser fácil de percorrer, mesmo que longa. Considerar agrupamentos visuais ou seções se a lista total de categorias for muito extensa.
+Exemplo de como algumas categorias apareceriam no formulário:
+
+[ ] Balde 10 Litros
+
+[ ] Pote 1 Litro
+
+[X] Picolés de Fruta
+    [X] Unidade
+    [ ] Caixa com 12 unidades
+    [X] Caixa com 24 unidades
+
+[ ] Picolés Especiais // Se desmarcado, os de baixo ficam desabilitados/ocultos ou não são salvos
+    [ ] Unidade
+    [ ] Caixa completa
+
+... e assim por diante para todas as outras categorias.
+Este prompt deve dar à IA uma direção clara sobre como construir a interface para esta seção específica do formulário de cadastro de clientes, respeitando a lógica de exibição e seleção das unidades de venda.
