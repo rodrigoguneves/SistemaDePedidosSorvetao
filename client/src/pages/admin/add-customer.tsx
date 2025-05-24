@@ -185,19 +185,19 @@ export default function AddCustomerPage() {
           else if (picolesFrutaLeiteCategories.includes(category.name)) {
             // For "Picolés de Fruta" and "Picolés de Leite"
             unitIdsToAdd = saleUnits
-              .filter((unit: any) => ["Unidade", "Caixa Completa 24un", "Meia Caixa 12un"].includes(unit.unit_name))
+              .filter((unit: any) => ["Unidade", "Caixa com 24 unidades", "Caixa com 12 unidades"].includes(unit.unit_name))
               .map((unit: any) => unit.sale_unit_id);
           }
           else if (picolesEspeciaisPremiumCategories.includes(category.name)) {
             // For "Picolés Especiais" and "Picolés Premium"
             unitIdsToAdd = saleUnits
-              .filter((unit: any) => ["Unidade", "Caixa Completa"].includes(unit.unit_name))
+              .filter((unit: any) => ["Unidade", "Caixa completa"].includes(unit.unit_name))
               .map((unit: any) => unit.sale_unit_id);
           }
           else if (sorveteNoPalitoCategories.includes(category.name)) {
             // For "Sorvete no Palito"
             unitIdsToAdd = saleUnits
-              .filter((unit: any) => ["Unidade", "Caixa Completa 16un", "Meia Caixa 8un"].includes(unit.unit_name))
+              .filter((unit: any) => ["Unidade", "Caixa com 16 unidades", "Caixa com 8 unidades"].includes(unit.unit_name))
               .map((unit: any) => unit.sale_unit_id);
           }
           
@@ -600,25 +600,28 @@ export default function AddCustomerPage() {
                     let relevantSaleUnits = [];
                     
                     if (picolesFrutaLeiteCategories.includes(category.name)) {
+                        // Picolés de Fruta e Picolés de Leite: unidade, caixa com 24 unidades e caixa com 12 unidades
                         relevantSaleUnits = saleUnits.filter((unit: any) => 
-                            ["Unidade", "Caixa Completa 24un", "Meia Caixa 12un"].includes(unit.unit_name)
+                            ["Unidade", "Caixa com 24 unidades", "Caixa com 12 unidades"].includes(unit.unit_name)
                         );
                     } else if (picolesEspeciaisPremiumCategories.includes(category.name)) {
+                        // Picolés Especiais e Picolés Premium: unidade e caixa completa
                         relevantSaleUnits = saleUnits.filter((unit: any) => 
-                            ["Unidade", "Caixa Completa"].includes(unit.unit_name)
+                            ["Unidade", "Caixa completa"].includes(unit.unit_name)
                         );
                     } else if (sorveteNoPalitoCategories.includes(category.name)) {
+                        // Sorvete no Palito: unidade, caixa com 16 unidades e caixa com 8 unidades
                         relevantSaleUnits = saleUnits.filter((unit: any) => 
-                            ["Unidade", "Caixa Completa 16un", "Meia Caixa 8un"].includes(unit.unit_name)
+                            ["Unidade", "Caixa com 16 unidades", "Caixa com 8 unidades"].includes(unit.unit_name)
                         );
                     } else if (categoryHasMultipleSaleUnits) {
-                        relevantSaleUnits = saleUnits;
+                        // Para outras categorias com múltiplas unidades, filtramos apenas a unidade relevante
+                        relevantSaleUnits = saleUnits.filter((unit: any) => unit.unit_name === "Unidade");
                     }
                     
-                    // For categories with single unit, find the "unit" sale unit
+                    // Para categorias com apenas uma unidade de venda (unidade), encontramos a unidade "Unidade"
                     const unitSaleUnit = saleUnits.find(unit => 
-                      (unit.name === "Unidade" || unit.name === "unidade" || 
-                       unit.unit_name === "Unidade" || unit.unit_name === "unidade"));
+                      (unit.unit_name === "Unidade"));
                     
                     return (
                       <div key={category.id} className="border rounded-lg p-4">
@@ -638,7 +641,7 @@ export default function AddCustomerPage() {
                         {selectedCategories.includes(category.id) && categoryHasMultipleSaleUnits && (
                           <div className="mt-3 pl-6 pt-2 border-t">
                             <div className="space-y-1">
-                              {saleUnits.map((unit: any) => (
+                              {relevantSaleUnits.map((unit: any) => (
                                 <label key={unit.id || unit.sale_unit_id} className="flex items-center space-x-2 py-1">
                                   <input
                                     type="checkbox"
